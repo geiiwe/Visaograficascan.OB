@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, ReactNode } from "react";
 
-export type AnalysisType = "trendlines" | "movingAverages" | "rsi" | "macd" | "all";
+export type AnalysisType = "trendlines" | "movingAverages" | "rsi" | "macd" | "fibonacci" | "candlePatterns" | "all";
 
 interface AnalyzerContextType {
   imageData: string | null;
@@ -15,6 +15,8 @@ interface AnalyzerContextType {
   captureMode: boolean;
   setCaptureMode: (mode: boolean) => void;
   resetAnalysis: () => void;
+  showVisualMarkers: boolean;
+  toggleVisualMarkers: () => void;
 }
 
 const AnalyzerContext = createContext<AnalyzerContextType | undefined>(undefined);
@@ -28,16 +30,19 @@ export const AnalyzerProvider = ({ children }: { children: ReactNode }) => {
     movingAverages: false,
     rsi: false,
     macd: false,
+    fibonacci: false,
+    candlePatterns: false,
     all: false,
   });
   const [captureMode, setCaptureMode] = useState(true);
+  const [showVisualMarkers, setShowVisualMarkers] = useState(true);
 
   const toggleAnalysis = (type: AnalysisType) => {
     if (type === "all") {
       if (activeAnalysis.includes("all")) {
         setActiveAnalysis([]);
       } else {
-        setActiveAnalysis(["trendlines", "movingAverages", "rsi", "macd", "all"]);
+        setActiveAnalysis(["trendlines", "movingAverages", "rsi", "macd", "fibonacci", "candlePatterns", "all"]);
       }
       return;
     }
@@ -56,7 +61,7 @@ export const AnalyzerProvider = ({ children }: { children: ReactNode }) => {
         const newAnalysis = [...prev, type];
         
         // Check if we need to add 'all'
-        const hasAllTypes = ["trendlines", "movingAverages", "rsi", "macd"].every(
+        const hasAllTypes = ["trendlines", "movingAverages", "rsi", "macd", "fibonacci", "candlePatterns"].every(
           (t) => newAnalysis.includes(t as AnalysisType) || t === type
         );
         
@@ -83,8 +88,14 @@ export const AnalyzerProvider = ({ children }: { children: ReactNode }) => {
       movingAverages: false,
       rsi: false,
       macd: false,
+      fibonacci: false,
+      candlePatterns: false,
       all: false,
     });
+  };
+
+  const toggleVisualMarkers = () => {
+    setShowVisualMarkers(prev => !prev);
   };
 
   return (
@@ -101,6 +112,8 @@ export const AnalyzerProvider = ({ children }: { children: ReactNode }) => {
         captureMode,
         setCaptureMode,
         resetAnalysis,
+        showVisualMarkers,
+        toggleVisualMarkers,
       }}
     >
       {children}

@@ -1,6 +1,7 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { useAnalyzer } from "@/context/AnalyzerContext";
 import { 
   TrendingUp, 
@@ -9,7 +10,10 @@ import {
   Activity, 
   Play, 
   Camera, 
-  Layers
+  Layers,
+  Fingerprint,
+  CandlestickChart,
+  Eye
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -22,7 +26,9 @@ const ControlPanel = () => {
     activeAnalysis, 
     toggleAnalysis,
     setCaptureMode,
-    resetAnalysis
+    resetAnalysis,
+    showVisualMarkers,
+    toggleVisualMarkers
   } = useAnalyzer();
 
   const handleAnalyze = () => {
@@ -72,6 +78,18 @@ const ControlPanel = () => {
       color: "bg-trader-purple" 
     },
     { 
+      type: "fibonacci" as const, 
+      label: "Fibonacci", 
+      icon: <Fingerprint className="h-4 w-4 mr-2" />,
+      color: "bg-[#f97316]" 
+    },
+    { 
+      type: "candlePatterns" as const, 
+      label: "Padrões Candles", 
+      icon: <CandlestickChart className="h-4 w-4 mr-2" />,
+      color: "bg-[#e11d48]" 
+    },
+    { 
       type: "all" as const, 
       label: "Todos", 
       icon: <Layers className="h-4 w-4 mr-2" />,
@@ -84,7 +102,7 @@ const ControlPanel = () => {
       <div className="space-y-4">
         <div>
           <h3 className="text-sm font-medium mb-2 text-trader-gray">Selecione os Tipos de Análise</h3>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             {analysisOptions.map(({ type, label, icon, color }) => (
               <Button
                 key={type}
@@ -103,6 +121,23 @@ const ControlPanel = () => {
                 {label}
               </Button>
             ))}
+          </div>
+        </div>
+        
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center space-x-2">
+            <Switch 
+              id="markers" 
+              checked={showVisualMarkers}
+              onCheckedChange={toggleVisualMarkers}
+            />
+            <label 
+              htmlFor="markers" 
+              className="text-sm font-medium cursor-pointer flex items-center"
+            >
+              <Eye className="h-4 w-4 mr-1" />
+              Mostrar Marcadores Visuais
+            </label>
           </div>
         </div>
         
