@@ -9,10 +9,12 @@ import {
   TrendingUp, 
   LineChart, 
   Activity, 
-  BarChart4
+  BarChart4,
+  Users
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 
 const ResultsOverlay = () => {
   const { 
@@ -35,22 +37,22 @@ const ResultsOverlay = () => {
           const results = await detectPatterns(processedImage, activeAnalysis);
           
           // Update the analysis results in the context
-          Object.entries(results).forEach(([type, found]) => {
-            setAnalysisResult(type as any, found);
+          Object.entries(results).forEach(([type, result]) => {
+            setAnalysisResult(type as any, result.found);
           });
           
           // Notify the user about the results
-          if (results.all) {
-            toast.success("Analysis complete! Multiple patterns detected.");
-          } else if (Object.values(results).some(Boolean)) {
-            toast.success("Analysis complete! Some patterns detected.");
+          if (results.all.found) {
+            toast.success("Análise concluída! Múltiplos padrões detectados.");
+          } else if (Object.values(results).some(r => r.found)) {
+            toast.success("Análise concluída! Alguns padrões foram detectados.");
           } else {
-            toast.info("Analysis complete. No clear patterns detected.");
+            toast.info("Análise concluída. Nenhum padrão claro detectado.");
           }
           
         } catch (error) {
           console.error("Analysis error:", error);
-          toast.error("Error during analysis. Please try again.");
+          toast.error("Erro durante a análise. Por favor, tente novamente.");
         } finally {
           setIsAnalyzing(false);
         }
@@ -68,40 +70,48 @@ const ResultsOverlay = () => {
     {
       type: "trendlines",
       icon: TrendingUp,
-      label: "Trend Lines",
+      label: "Linhas de Tendência",
       color: "text-trader-green",
-      description: "Support and resistance levels detected"
+      description: "Níveis de suporte e resistência detectados",
+      detailedDesc: "Linhas de tendência são formadas conectando-se pontos de máximo ou mínimo de um preço. Elas ajudam a identificar a direção do movimento do preço e possíveis pontos de reversão.",
+      recommendation: "Compre próximo ao suporte e venda próximo à resistência."
     },
     {
       type: "movingAverages",
       icon: LineChart,
-      label: "Moving Averages",
+      label: "Médias Móveis",
       color: "text-trader-blue",
-      description: "SMA and EMA patterns found"
+      description: "Padrões de SMA e EMA encontrados",
+      detailedDesc: "Médias móveis suavizam flutuações de preço para mostrar tendências. O cruzamento de médias de diferentes períodos gera sinais de compra ou venda.",
+      recommendation: "Considere comprar quando a média de curto prazo cruza acima da média de longo prazo."
     },
     {
       type: "rsi",
       icon: Activity,
       label: "RSI",
       color: "text-trader-yellow",
-      description: "Overbought/oversold conditions identified"
+      description: "Condições de sobrecompra/sobrevenda identificadas",
+      detailedDesc: "O Índice de Força Relativa (RSI) mede a velocidade e mudança dos movimentos de preço, indicando sobrecompra (>70) ou sobrevenda (<30).",
+      recommendation: "Considere vender quando RSI > 70 e comprar quando RSI < 30."
     },
     {
       type: "macd",
       icon: BarChart4,
       label: "MACD",
       color: "text-trader-purple",
-      description: "Signal line crossovers detected"
+      description: "Cruzamentos de linha de sinal detectados",
+      detailedDesc: "O MACD mostra a relação entre duas médias móveis exponenciais. Sinais são gerados quando a linha MACD cruza sua linha de sinal.",
+      recommendation: "Considere comprar quando o MACD cruza acima da linha de sinal e vender quando cruza abaixo."
     }
   ];
 
   return (
     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-4">
       <div className="bg-trader-dark/90 rounded-lg border border-trader-panel p-4 backdrop-blur-sm">
-        <h3 className="font-semibold text-lg mb-4">Analysis Results</h3>
+        <h3 className="font-semibold text-lg mb-4">Resultados da Análise</h3>
         
         <div className="space-y-3">
-          {resultItems.map(({ type, icon: Icon, label, color, description }) => {
+          {resultItems.map(({ type, icon: Icon, label, color, description, detailedDesc, recommendation }) => {
             // Only show results for active analysis types that have results
             if (!activeAnalysis.includes(type as any) || !analysisResults[type as any]) {
               return null;
@@ -116,8 +126,56 @@ const ResultsOverlay = () => {
                   <div className="flex items-center">
                     <span className="font-medium">{label}</span>
                     <CheckCircle2 className="h-4 w-4 text-trader-green ml-2" />
+                    
+                    <HoverCard>
+                      <HoverCardTrigger asChild>
+                        <button className="ml-2 text-trader-gray hover:text-white transition-colors">
+                          <Users size={14} />
+                        </button>
+                      </HoverCardTrigger>
+                      <HoverCardContent className="w-80 text-sm p-4">
+                        <div className="space-y-2">
+                          <h4 className="font-medium">Usado por grandes players:</h4>
+                          <ul className="list-disc pl-4 space-y-1">
+                            {type === "trendlines" && (
+                              <>
+                                <li>Goldman Sachs</li>
+                                <li>JP Morgan</li>
+                                <li>BlackRock</li>
+                              </>
+                            )}
+                            {type === "movingAverages" && (
+                              <>
+                                <li>Morgan Stanley</li>
+                                <li>Fidelity</li>
+                                <li>Vanguard</li>
+                              </>
+                            )}
+                            {type === "rsi" && (
+                              <>
+                                <li>Renaissance Technologies</li>
+                                <li>Citadel</li>
+                                <li>Two Sigma</li>
+                              </>
+                            )}
+                            {type === "macd" && (
+                              <>
+                                <li>Bridgewater Associates</li>
+                                <li>AQR Capital</li>
+                                <li>DE Shaw</li>
+                              </>
+                            )}
+                          </ul>
+                        </div>
+                      </HoverCardContent>
+                    </HoverCard>
                   </div>
                   <p className="text-sm text-trader-gray">{description}</p>
+                  
+                  <div className="mt-2 bg-trader-panel/50 p-2 rounded-sm border-l-2 border-trader-blue">
+                    <p className="text-xs text-trader-gray">{detailedDesc}</p>
+                    <p className="text-xs font-medium mt-1 text-trader-blue">{recommendation}</p>
+                  </div>
                 </div>
               </div>
             );

@@ -27,18 +27,18 @@ const ControlPanel = () => {
 
   const handleAnalyze = () => {
     if (!imageData) {
-      toast.error("Please capture an image first");
+      toast.error("Capture uma imagem primeiro");
       return;
     }
 
     if (activeAnalysis.length === 0) {
-      toast.error("Please select at least one analysis type");
+      toast.error("Selecione pelo menos um tipo de análise");
       return;
     }
 
     resetAnalysis();
     setIsAnalyzing(true);
-    toast.success("Analyzing chart...");
+    toast.success("Analisando gráfico...");
   };
 
   const handleRetake = () => {
@@ -49,13 +49,13 @@ const ControlPanel = () => {
   const analysisOptions = [
     { 
       type: "trendlines" as const, 
-      label: "Trend Lines", 
+      label: "Tendências", 
       icon: <TrendingUp className="h-4 w-4 mr-2" />,
       color: "bg-trader-green" 
     },
     { 
       type: "movingAverages" as const, 
-      label: "Moving Avgs", 
+      label: "Médias Móveis", 
       icon: <LineChart className="h-4 w-4 mr-2" />,
       color: "bg-trader-blue" 
     },
@@ -73,7 +73,7 @@ const ControlPanel = () => {
     },
     { 
       type: "all" as const, 
-      label: "All", 
+      label: "Todos", 
       icon: <Layers className="h-4 w-4 mr-2" />,
       color: "bg-trader-red" 
     }
@@ -83,7 +83,7 @@ const ControlPanel = () => {
     <div className="p-4 bg-trader-panel rounded-lg shadow-md">
       <div className="space-y-4">
         <div>
-          <h3 className="text-sm font-medium mb-2 text-trader-gray">Select Analysis Types</h3>
+          <h3 className="text-sm font-medium mb-2 text-trader-gray">Selecione os Tipos de Análise</h3>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
             {analysisOptions.map(({ type, label, icon, color }) => (
               <Button
@@ -113,7 +113,7 @@ const ControlPanel = () => {
             disabled={isAnalyzing || !imageData}
           >
             <Play className="mr-2 h-4 w-4" />
-            {isAnalyzing ? "Analyzing..." : "Analyze Chart"}
+            {isAnalyzing ? "Analisando..." : "Analisar Gráfico"}
           </Button>
           
           <Button
@@ -123,7 +123,7 @@ const ControlPanel = () => {
             disabled={isAnalyzing}
           >
             <Camera className="mr-2 h-4 w-4" />
-            Retake
+            Nova Captura
           </Button>
         </div>
       </div>

@@ -19,7 +19,7 @@ const GraphAnalyzer = () => {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
           console.error("Camera API not supported");
           setCameraSupported(false);
-          toast.error("Camera access is not supported in this browser or device");
+          toast.error("Acesso à câmera não é suportado neste navegador ou dispositivo");
           return;
         }
         
@@ -30,7 +30,7 @@ const GraphAnalyzer = () => {
           setCameraSupported(true);
         } catch (error) {
           console.error("Error requesting camera permission:", error);
-          toast.error("Please allow camera access to use this app");
+          toast.error("Por favor, permita o acesso à câmera para usar este aplicativo");
           setCaptureMode(false);
           // We still mark as supported because the API exists, just permission was denied
           setCameraSupported(true);
@@ -62,7 +62,7 @@ const GraphAnalyzer = () => {
           <div className="relative mt-4 rounded-lg overflow-hidden shadow-xl">
             <img 
               src={imageData} 
-              alt="Captured Chart" 
+              alt="Gráfico Capturado" 
               className="w-full object-contain" 
             />
             <ResultsOverlay />

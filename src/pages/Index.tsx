@@ -12,7 +12,7 @@ const Index = () => {
           <div className="flex items-center justify-between max-w-4xl mx-auto">
             <div className="flex items-center space-x-2">
               <ChartLine className="h-6 w-6 text-trader-blue" />
-              <h1 className="text-xl font-bold">Smart Graph Analyzer</h1>
+              <h1 className="text-xl font-bold">Analisador Gráfico Inteligente</h1>
             </div>
             <div className="flex items-center space-x-1 text-trader-gray text-sm">
               <Camera className="h-4 w-4" />
@@ -29,20 +29,20 @@ const Index = () => {
           <div className="max-w-4xl mx-auto px-4 text-center">
             <div className="text-trader-gray text-sm">
               <p className="mb-2">
-                Aim your camera at any financial chart to detect patterns and indicators
+                Aponte sua câmera para qualquer gráfico financeiro para detectar padrões e indicadores
               </p>
               <div className="flex justify-center space-x-8 mt-4">
                 <div className="flex flex-col items-center">
                   <BarChart3 className="h-6 w-6 mb-2 text-trader-blue" />
-                  <span className="text-xs">Technical Patterns</span>
+                  <span className="text-xs">Padrões Técnicos</span>
                 </div>
                 <div className="flex flex-col items-center">
                   <ChartLine className="h-6 w-6 mb-2 text-trader-green" />
-                  <span className="text-xs">Trend Lines</span>
+                  <span className="text-xs">Linhas de Tendência</span>
                 </div>
                 <div className="flex flex-col items-center">
                   <Camera className="h-6 w-6 mb-2 text-trader-purple" />
-                  <span className="text-xs">Real-time Analysis</span>
+                  <span className="text-xs">Análise em Tempo Real</span>
                 </div>
               </div>
             </div>
