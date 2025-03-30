@@ -10,6 +10,7 @@ const CameraView = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [streamActive, setStreamActive] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const { setImageData, captureMode, setCaptureMode } = useAnalyzer();
   const isMobile = useIsMobile();
 
@@ -17,57 +18,70 @@ const CameraView = () => {
     let stream: MediaStream | null = null;
 
     const setupCamera = async () => {
+      if (!captureMode) {
+        return;
+      }
+
       try {
-        if (captureMode && !streamActive) {
-          // Stop any existing streams first
-          if (videoRef.current && videoRef.current.srcObject) {
-            const currentStream = videoRef.current.srcObject as MediaStream;
-            currentStream.getTracks().forEach(track => track.stop());
-            videoRef.current.srcObject = null;
-          }
+        // Stop any existing streams first
+        if (videoRef.current && videoRef.current.srcObject) {
+          const currentStream = videoRef.current.srcObject as MediaStream;
+          currentStream.getTracks().forEach(track => track.stop());
+          videoRef.current.srcObject = null;
+        }
 
-          console.log("Requesting camera access...");
+        setCameraError(null);
+        setStreamActive(false);
+        console.log("Requesting camera access...", isMobile ? "mobile" : "desktop");
+        
+        // Request camera access with appropriate constraints for mobile
+        const constraints = {
+          video: isMobile 
+            ? { facingMode: "environment" } 
+            : true,
+          audio: false,
+        };
+        
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        console.log("Camera access granted:", stream.active);
+
+        if (!stream.active) {
+          throw new Error("Camera stream is not active");
+        }
+
+        // Set the stream to the video element
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.muted = true;
+          videoRef.current.setAttribute("playsinline", "true");
           
-          // Request camera access with appropriate constraints for mobile
-          const constraints = {
-            video: isMobile 
-              ? { facingMode: "environment" } 
-              : true,
-            audio: false,
+          videoRef.current.onloadedmetadata = () => {
+            if (videoRef.current) {
+              videoRef.current.play()
+                .then(() => {
+                  console.log("Video playback started");
+                  setStreamActive(true);
+                })
+                .catch(err => {
+                  console.error("Error starting video playback:", err);
+                  setCameraError("Could not start video playback");
+                  toast.error("Could not start video playback");
+                });
+            }
           };
-          
-          stream = await navigator.mediaDevices.getUserMedia(constraints);
-          console.log("Camera access granted:", stream.active);
-
-          // Set the stream to the video element
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-            videoRef.current.onloadedmetadata = () => {
-              if (videoRef.current) {
-                videoRef.current.play()
-                  .then(() => {
-                    console.log("Video playback started");
-                    setStreamActive(true);
-                  })
-                  .catch(err => {
-                    console.error("Error starting video playback:", err);
-                    toast.error("Could not start video playback");
-                  });
-              }
-            };
-          }
-        } else if (!captureMode && streamActive) {
-          // Stop the camera stream
-          if (videoRef.current && videoRef.current.srcObject) {
-            const currentStream = videoRef.current.srcObject as MediaStream;
-            currentStream.getTracks().forEach(track => track.stop());
-            videoRef.current.srcObject = null;
-            setStreamActive(false);
-          }
         }
       } catch (error) {
         console.error("Error accessing camera:", error);
-        toast.error("Camera access denied. Please allow camera access and try again.");
+        let errorMessage = "Error accessing camera. ";
+        
+        if (isMobile) {
+          errorMessage += "Please make sure camera permissions are granted in your browser settings.";
+        } else {
+          errorMessage += "Please allow camera access and try again.";
+        }
+        
+        setCameraError(errorMessage);
+        toast.error(errorMessage);
         setCaptureMode(false);
       }
     };
@@ -82,7 +96,7 @@ const CameraView = () => {
         videoRef.current.srcObject = null;
       }
     };
-  }, [captureMode, streamActive, setCaptureMode, isMobile]);
+  }, [captureMode, setCaptureMode, isMobile]);
 
   const captureImage = () => {
     if (videoRef.current && canvasRef.current) {
@@ -128,9 +142,18 @@ const CameraView = () => {
             />
             <div className="absolute inset-0 flex items-center justify-center">
               {!streamActive && (
-                <div className="animate-pulse-slow text-trader-gray">
-                  <Camera size={48} />
-                  <p className="mt-2 text-sm">Initializing camera...</p>
+                <div className="animate-pulse-slow text-trader-gray text-center px-4">
+                  {cameraError ? (
+                    <>
+                      <Camera size={48} className="mx-auto mb-2 text-red-400" />
+                      <p className="text-sm text-red-400">{cameraError}</p>
+                    </>
+                  ) : (
+                    <>
+                      <Camera size={48} className="mx-auto" />
+                      <p className="mt-2 text-sm">Inicializando câmera...</p>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -143,7 +166,7 @@ const CameraView = () => {
                 disabled={!streamActive}
               >
                 <Camera className="mr-2 h-4 w-4" />
-                Capture
+                Capturar
               </Button>
             </div>
           </>
@@ -165,7 +188,7 @@ const CameraView = () => {
                 size={32} 
                 onClick={resetCamera}
               />
-              <p className="text-sm text-trader-gray">Tap to retake photo</p>
+              <p className="text-sm text-trader-gray">Toque para tirar outra foto</p>
             </div>
           </div>
         )}
