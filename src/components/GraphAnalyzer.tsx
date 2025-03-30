@@ -1,12 +1,35 @@
 
-import React from "react";
+import React, { useEffect } from "react";
 import { useAnalyzer } from "@/context/AnalyzerContext";
 import CameraView from "./CameraView";
 import ControlPanel from "./ControlPanel";
 import ResultsOverlay from "./ResultsOverlay";
+import { toast } from "sonner";
 
 const GraphAnalyzer = () => {
-  const { imageData, isAnalyzing } = useAnalyzer();
+  const { imageData, isAnalyzing, setCaptureMode } = useAnalyzer();
+
+  useEffect(() => {
+    // Check if the device has camera capabilities
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      toast.error("Camera access is not supported in this browser or device");
+      return;
+    }
+
+    // Try to get permission for camera on component mount
+    const requestCameraPermission = async () => {
+      try {
+        await navigator.mediaDevices.getUserMedia({ video: true });
+        console.log("Camera permission granted");
+      } catch (error) {
+        console.error("Error requesting camera permission:", error);
+        toast.error("Please allow camera access to use this app");
+        setCaptureMode(false);
+      }
+    };
+
+    requestCameraPermission();
+  }, [setCaptureMode]);
 
   return (
     <div className="w-full max-w-4xl mx-auto p-4 space-y-4">

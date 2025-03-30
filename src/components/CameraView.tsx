@@ -4,12 +4,14 @@ import { Button } from "@/components/ui/button";
 import { useAnalyzer } from "@/context/AnalyzerContext";
 import { Camera, RefreshCw, X } from "lucide-react";
 import { toast } from "sonner";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const CameraView = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [streamActive, setStreamActive] = useState(false);
   const { setImageData, captureMode, setCaptureMode } = useAnalyzer();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     let stream: MediaStream | null = null;
@@ -17,16 +19,42 @@ const CameraView = () => {
     const setupCamera = async () => {
       try {
         if (captureMode && !streamActive) {
-          // Request camera access
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: "environment" },
+          // Stop any existing streams first
+          if (videoRef.current && videoRef.current.srcObject) {
+            const currentStream = videoRef.current.srcObject as MediaStream;
+            currentStream.getTracks().forEach(track => track.stop());
+            videoRef.current.srcObject = null;
+          }
+
+          console.log("Requesting camera access...");
+          
+          // Request camera access with appropriate constraints for mobile
+          const constraints = {
+            video: isMobile 
+              ? { facingMode: "environment" } 
+              : true,
             audio: false,
-          });
+          };
+          
+          stream = await navigator.mediaDevices.getUserMedia(constraints);
+          console.log("Camera access granted:", stream.active);
 
           // Set the stream to the video element
           if (videoRef.current) {
             videoRef.current.srcObject = stream;
-            setStreamActive(true);
+            videoRef.current.onloadedmetadata = () => {
+              if (videoRef.current) {
+                videoRef.current.play()
+                  .then(() => {
+                    console.log("Video playback started");
+                    setStreamActive(true);
+                  })
+                  .catch(err => {
+                    console.error("Error starting video playback:", err);
+                    toast.error("Could not start video playback");
+                  });
+              }
+            };
           }
         } else if (!captureMode && streamActive) {
           // Stop the camera stream
@@ -48,11 +76,13 @@ const CameraView = () => {
 
     // Cleanup function to stop camera when component unmounts
     return () => {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+      if (videoRef.current && videoRef.current.srcObject) {
+        const currentStream = videoRef.current.srcObject as MediaStream;
+        currentStream.getTracks().forEach(track => track.stop());
+        videoRef.current.srcObject = null;
       }
     };
-  }, [captureMode, streamActive, setCaptureMode]);
+  }, [captureMode, streamActive, setCaptureMode, isMobile]);
 
   const captureImage = () => {
     if (videoRef.current && canvasRef.current) {
@@ -93,6 +123,7 @@ const CameraView = () => {
               ref={videoRef}
               autoPlay 
               playsInline 
+              muted
               className="w-full h-full object-cover"
             />
             <div className="absolute inset-0 flex items-center justify-center">
