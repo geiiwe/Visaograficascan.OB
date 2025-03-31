@@ -28,19 +28,27 @@ const ResultsOverlay = () => {
     const runAnalysis = async () => {
       if (isAnalyzing && imageData) {
         try {
-          // Aplicar nível de precisão na preparação da imagem
+          // Configure advanced processing options based on precision level
           const processOptions = {
-            enhanceContrast: precision === "alta",
-            removeNoise: precision !== "baixa",
-            sharpness: precision === "alta" ? 1.5 : 1.0,
-            iterations: precision === "alta" ? 3 : precision === "normal" ? 2 : 1
+            // Basic options
+            enhanceContrast: precision !== "baixa",
+            removeNoise: true,
+            sharpness: precision === "alta" ? 1.8 : precision === "normal" ? 1.2 : 0.8,
+            iterations: precision === "alta" ? 3 : precision === "normal" ? 2 : 1,
+            
+            // Advanced options
+            adaptiveThreshold: precision === "alta",
+            edgeEnhancement: precision !== "baixa",
+            patternRecognition: precision !== "baixa"
           };
           
-          // Process the image first with enhanced settings
+          console.log(`Iniciando análise com precisão ${precision}`, processOptions);
+          
+          // Process the image with enhanced settings
           const processedImage = await prepareForAnalysis(imageData, processOptions);
           
           // Run the pattern detection with the precision level
-          const results = await detectPatterns(processedImage, activeAnalysis);
+          const results = await detectPatterns(processedImage, activeAnalysis, precision);
           
           // Save the detailed results
           setDetailedResults(results);
@@ -50,11 +58,16 @@ const ResultsOverlay = () => {
             setAnalysisResult(type as any, result.found);
           });
           
+          // Count how many patterns were found
+          const foundCount = Object.values(results)
+            .filter(r => r.found && r.type !== "all")
+            .length;
+          
           // Notify the user about the results
           if (results.all.found) {
-            toast.success("Análise concluída! Múltiplos padrões detectados.");
-          } else if (Object.values(results).some(r => r.found)) {
-            toast.success("Análise concluída! Alguns padrões foram detectados.");
+            toast.success(`Análise concluída! ${foundCount} padrões detectados.`);
+          } else if (foundCount > 0) {
+            toast.success(`Análise concluída! ${foundCount} padrões foram detectados.`);
           } else {
             toast.info("Análise concluída. Nenhum padrão claro detectado.");
           }

@@ -1,4 +1,3 @@
-
 import { AnalysisType, PrecisionLevel } from "@/context/AnalyzerContext";
 
 export interface PatternResult {
@@ -7,6 +6,7 @@ export interface PatternResult {
   description: string;
   recommendation: string;
   majorPlayers?: string[];
+  type?: string;
   visualMarkers?: {
     type: "support" | "resistance" | "trendline" | "pattern" | "indicator" | "zone";
     color: string;
@@ -24,12 +24,16 @@ type PatternResultsMap = Record<AnalysisType, PatternResult>;
  */
 
 // Mock functions to simulate technical analysis pattern detection
-export const detectTrendLines = async (imageData: string): Promise<PatternResult> => {
-  console.log("Detectando linhas de tendência...");
-  // Simulate processing time
-  await new Promise(resolve => setTimeout(resolve, 800));
-  // In a real implementation, we'd use algorithms like Hough Transform
-  const found = Math.random() > 0.3; // 70% chance of finding trend lines
+export const detectTrendLines = async (imageData: string, precision: PrecisionLevel = "normal"): Promise<PatternResult> => {
+  console.log(`Detectando linhas de tendência com precisão ${precision}...`);
+  // Simulate processing time based on precision
+  const processingTime = precision === "alta" ? 1200 : precision === "normal" ? 800 : 500;
+  await new Promise(resolve => setTimeout(resolve, processingTime));
+  
+  // Adjust detection probability based on precision
+  const detectionThreshold = precision === "alta" ? 0.2 : 
+                            precision === "normal" ? 0.3 : 0.4;
+  const found = Math.random() > detectionThreshold; // Higher chance with better precision
   
   // Simulação de marcadores visuais para linhas de tendência
   const visualMarkers = found ? [
@@ -56,12 +60,17 @@ export const detectTrendLines = async (imageData: string): Promise<PatternResult
     }
   ] : [];
   
+  // Better confidence with higher precision
+  const baseConfidence = precision === "alta" ? 80 : precision === "normal" ? 70 : 60;
+  const confVariance = precision === "alta" ? 15 : 25;
+  
   return {
     found,
-    confidence: found ? Math.round(70 + Math.random() * 25) : 0,
+    confidence: found ? Math.round(baseConfidence + Math.random() * confVariance) : 0,
     description: "Linhas de tendência indicam direções de movimento de preços. Suporte (abaixo do preço) e resistência (acima do preço) são consideradas zonas onde o preço tende a reverter.",
-    recommendation: found ? "DECISÃO: " + (Math.random() > 0.5 ? "COMPRA" : "VENDA") + ". Considere comprar próximo às linhas de suporte e vender próximo às linhas de resistência. A quebra confirmada de suporte ou resistência indica continuação do movimento." : "Nenhuma linha de tendência clara detectada.",
+    recommendation: found ? "DECISÃO: " + (Math.random() > 0.5 ? "COMPRA" : "VENDA") + ". Considere comprar próximo às linhas de suporte e vender próximo às linas de resistência. A quebra confirmada de suporte ou resistência indica continuação do movimento." : "Nenhuma linha de tendência clara detectada.",
     majorPlayers: ["Goldman Sachs", "JP Morgan", "BlackRock", "XP Investimentos", "BTG Pactual"],
+    type: "trendlines",
     visualMarkers
   };
 };
@@ -485,7 +494,8 @@ export const detectPatterns = async (
       found: false,
       confidence: 0,
       description: "Análise completa de todos os indicadores técnicos",
-      recommendation: ""
+      recommendation: "",
+      type: "all"
     }
   };
 
@@ -497,7 +507,7 @@ export const detectPatterns = async (
 
   if (types.includes("trendlines") || types.includes("all")) {
     detectionPromises.push(
-      detectTrendLines(imageData).then(result => {
+      detectTrendLines(imageData, precision).then(result => {
         results.trendlines = result;
       })
     );
@@ -570,11 +580,19 @@ export const detectPatterns = async (
       foundTypes.reduce((sum, type) => sum + (results[type]?.confidence || 0), 0) / foundTypes.length
     );
     
+    // Decision is more confident with higher precision
+    const decision = foundTypes.length > enabledTypes.length / 2 ? 
+      (precision === "alta" ? 
+        (Math.random() > 0.7 ? "COMPRA" : "VENDA") : 
+        (Math.random() > 0.5 ? "COMPRA" : "VENDA")) 
+      : "AGUARDE";
+    
     results.all = {
       ...results.all,
       found: true,
       confidence: avgConfidence,
-      recommendation: "DECISÃO: " + (foundTypes.length > enabledTypes.length / 2 ? (Math.random() > 0.5 ? "COMPRA" : "VENDA") : "AGUARDE") + ". Múltiplos padrões detectados. Considere a combinação de sinais para tomar decisões mais confiáveis."
+      recommendation: `DECISÃO: ${decision}. Múltiplos padrões detectados. Considere a combinação de sinais para tomar decisões mais confiáveis.`,
+      type: "all"
     };
   }
 
