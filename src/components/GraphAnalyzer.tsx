@@ -6,13 +6,21 @@ import ControlPanel from "./ControlPanel";
 import ResultsOverlay from "./ResultsOverlay";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle, Info } from "lucide-react";
+import { AlertTriangle, Info, Maximize2, Minimize2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
 
 const GraphAnalyzer = () => {
-  const { imageData, isAnalyzing, setCaptureMode } = useAnalyzer();
+  const { 
+    imageData, 
+    isAnalyzing, 
+    setCaptureMode, 
+    precision, 
+    setPrecision,
+    compactMode,
+    toggleCompactMode
+  } = useAnalyzer();
   const [cameraSupported, setCameraSupported] = useState<boolean | null>(null);
-  const [captureQuality, setCaptureQuality] = useState<"alta" | "normal" | "baixa">("normal");
 
   useEffect(() => {
     // Check if the device has camera capabilities
@@ -52,9 +60,9 @@ const GraphAnalyzer = () => {
     checkCameraSupport();
   }, [setCaptureMode]);
 
-  const handleCaptureQualityChange = (quality: "alta" | "normal" | "baixa") => {
-    setCaptureQuality(quality);
-    toast.info(`Qualidade de análise alterada para ${quality}`);
+  const handlePrecisionChange = (level: "baixa" | "normal" | "alta") => {
+    setPrecision(level);
+    toast.info(`Precisão de análise alterada para ${level}`);
   };
 
   return (
@@ -73,44 +81,55 @@ const GraphAnalyzer = () => {
         <div className="flex justify-between items-center mb-2">
           <h2 className="text-lg font-medium">Análise de Gráficos</h2>
           
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="flex items-center space-x-2">
-                  <span className="text-xs text-trader-gray">Qualidade da análise:</span>
-                  <div className="flex space-x-1">
-                    <button 
-                      onClick={() => handleCaptureQualityChange("baixa")}
-                      className={`px-2 py-1 text-xs rounded ${captureQuality === "baixa" ? "bg-trader-blue text-white" : "bg-trader-panel text-trader-gray"}`}
-                    >
-                      Rápida
-                    </button>
-                    <button 
-                      onClick={() => handleCaptureQualityChange("normal")}
-                      className={`px-2 py-1 text-xs rounded ${captureQuality === "normal" ? "bg-trader-blue text-white" : "bg-trader-panel text-trader-gray"}`}
-                    >
-                      Normal
-                    </button>
-                    <button 
-                      onClick={() => handleCaptureQualityChange("alta")}
-                      className={`px-2 py-1 text-xs rounded ${captureQuality === "alta" ? "bg-trader-blue text-white" : "bg-trader-panel text-trader-gray"}`}
-                    >
-                      Precisa
-                    </button>
+          <div className="flex items-center gap-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs text-trader-gray">Precisão:</span>
+                    <div className="flex space-x-1">
+                      <button 
+                        onClick={() => handlePrecisionChange("baixa")}
+                        className={`px-2 py-1 text-xs rounded ${precision === "baixa" ? "bg-trader-blue text-white" : "bg-trader-panel text-trader-gray"}`}
+                      >
+                        Rápida
+                      </button>
+                      <button 
+                        onClick={() => handlePrecisionChange("normal")}
+                        className={`px-2 py-1 text-xs rounded ${precision === "normal" ? "bg-trader-blue text-white" : "bg-trader-panel text-trader-gray"}`}
+                      >
+                        Normal
+                      </button>
+                      <button 
+                        onClick={() => handlePrecisionChange("alta")}
+                        className={`px-2 py-1 text-xs rounded ${precision === "alta" ? "bg-trader-blue text-white" : "bg-trader-panel text-trader-gray"}`}
+                      >
+                        Precisa
+                      </button>
+                    </div>
+                    <Info className="h-4 w-4 text-trader-gray" />
                   </div>
-                  <Info className="h-4 w-4 text-trader-gray" />
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p className="text-xs max-w-xs">
-                  Ajuste a qualidade da análise de acordo com sua necessidade:
-                  <br />- <strong>Rápida:</strong> Análise mais veloz, menos precisa
-                  <br />- <strong>Normal:</strong> Equilíbrio entre velocidade e precisão
-                  <br />- <strong>Precisa:</strong> Análise detalhada, mais demorada
-                </p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs max-w-xs">
+                    Ajuste a precisão da análise:
+                    <br />- <strong>Rápida:</strong> Análise mais veloz, menos precisa
+                    <br />- <strong>Normal:</strong> Equilíbrio entre velocidade e precisão
+                    <br />- <strong>Precisa:</strong> Análise detalhada, mais demorada
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={toggleCompactMode}
+              className="h-8 w-8"
+            >
+              {compactMode ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
+            </Button>
+          </div>
         </div>
         
         <CameraView />
@@ -133,9 +152,9 @@ const GraphAnalyzer = () => {
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-trader-blue"></div>
             <p className="mt-4 text-white font-medium">Analisando padrões do gráfico...</p>
             <p className="text-sm text-trader-gray mt-2">
-              {captureQuality === "alta" 
+              {precision === "alta" 
                 ? "Análise detalhada em andamento. Isso pode levar mais tempo para maior precisão."
-                : captureQuality === "baixa"
+                : precision === "baixa"
                   ? "Análise rápida em andamento."
                   : "Análise em andamento. Isso pode levar alguns instantes."
               }

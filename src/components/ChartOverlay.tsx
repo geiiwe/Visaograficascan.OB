@@ -2,6 +2,7 @@
 import React from "react";
 import { PatternResult } from "@/utils/patternDetection";
 import { cn } from "@/lib/utils";
+import { useAnalyzer } from "@/context/AnalyzerContext";
 
 interface ChartOverlayProps {
   results: Record<string, PatternResult>;
@@ -9,6 +10,8 @@ interface ChartOverlayProps {
 }
 
 const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => {
+  const { precision } = useAnalyzer();
+  
   if (!showMarkers) return null;
   
   const allMarkers = Object.values(results)
@@ -16,6 +19,17 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
     .flatMap(result => result.visualMarkers || []);
   
   if (allMarkers.length === 0) return null;
+
+  // Ajustes na espessura das linhas com base na precisão
+  const getStrokeWidth = (type: string) => {
+    const baseWidth = type === "trendline" ? 1.5 : 1;
+    return precision === "alta" ? baseWidth * 0.8 : baseWidth;
+  };
+
+  // Ajustes no tamanho do texto com base na precisão
+  const getFontSize = (baseSize: number) => {
+    return precision === "alta" ? baseSize * 0.8 : baseSize;
+  };
 
   return (
     <svg 
@@ -29,23 +43,28 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
           
           if (isLine) {
             const [[x1, y1], [x2, y2]] = marker.points;
+            const adjustedX1 = x1 * 0.5; // Ajustado para melhor posicionamento
+            const adjustedY1 = y1 * 0.5;
+            const adjustedX2 = x2 * 0.5;
+            const adjustedY2 = y2 * 0.5;
+            
             return (
               <g key={idx}>
                 <line
-                  x1={`${x1 / 2}%`}
-                  y1={`${y1 / 2}%`}
-                  x2={`${x2 / 2}%`}
-                  y2={`${y2 / 2}%`}
+                  x1={`${adjustedX1}%`}
+                  y1={`${adjustedY1}%`}
+                  x2={`${adjustedX2}%`}
+                  y2={`${adjustedY2}%`}
                   stroke={marker.color}
-                  strokeWidth={marker.type === "trendline" ? 1.5 : 1}
+                  strokeWidth={getStrokeWidth(marker.type)}
                   strokeDasharray={marker.type === "support" ? "5,3" : marker.type === "resistance" ? "3,3" : undefined}
                 />
                 {marker.label && (
                   <text
-                    x={`${x2 / 2 + 1}%`}
-                    y={`${y2 / 2 + 4}%`}
+                    x={`${adjustedX2 + 1}%`}
+                    y={`${adjustedY2 + 3}%`}
                     fill={marker.color}
-                    fontSize="8"
+                    fontSize={getFontSize(8)}
                     textAnchor="start"
                     className="select-none"
                   >
@@ -59,7 +78,7 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
           // For indicators like MA, MACD that need a polyline
           if (marker.type === "indicator" && marker.points.length > 2) {
             const pointsString = marker.points
-              .map(([x, y]) => `${x / 2},${y / 2}`)
+              .map(([x, y]) => `${x * 0.5},${y * 0.5}`)
               .join(" ");
             
             return (
@@ -68,15 +87,15 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
                   points={pointsString}
                   fill="none"
                   stroke={marker.color}
-                  strokeWidth={1}
+                  strokeWidth={getStrokeWidth("indicator")}
                   strokeDasharray={marker.label?.includes("MM 50") || marker.label?.includes("MA 50") ? "3,2" : undefined}
                 />
                 {marker.label && (
                   <text
-                    x={`${marker.points[marker.points.length - 1][0] / 2 + 1}%`}
-                    y={`${marker.points[marker.points.length - 1][1] / 2 + 4}%`}
+                    x={`${marker.points[marker.points.length - 1][0] * 0.5 + 1}%`}
+                    y={`${marker.points[marker.points.length - 1][1] * 0.5 + 3}%`}
                     fill={marker.color}
-                    fontSize="8"
+                    fontSize={getFontSize(8)}
                     textAnchor="start"
                     className="select-none"
                   >
@@ -90,23 +109,25 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
           // For patterns like Golden Cross, Divergence, etc
           if (marker.type === "pattern") {
             const [[x1, y1], [x2, y2]] = marker.points;
+            const centerX = (x1 + x2) * 0.25;
+            const centerY = (y1 + y2) * 0.25;
             
             return (
               <g key={idx}>
                 <circle
-                  cx={`${(x1 + x2) / 4}%`}
-                  cy={`${(y1 + y2) / 4}%`}
-                  r="5"
+                  cx={`${centerX}%`}
+                  cy={`${centerY}%`}
+                  r="4"
                   fill="none"
                   stroke={marker.color}
-                  strokeWidth={1.5}
+                  strokeWidth={getStrokeWidth("pattern")}
                 />
                 {marker.label && (
                   <text
-                    x={`${(x1 + x2) / 4}%`}
-                    y={`${(y1 + y2) / 4 - 10}%`}
+                    x={`${centerX}%`}
+                    y={`${centerY - 8}%`}
                     fill={marker.color}
-                    fontSize="9"
+                    fontSize={getFontSize(9)}
                     fontWeight="bold"
                     textAnchor="middle"
                     className="select-none"
@@ -116,10 +137,10 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
                 )}
                 {marker.strength && (
                   <text
-                    x={`${(x1 + x2) / 4}%`}
-                    y={`${(y1 + y2) / 4 - 5}%`}
+                    x={`${centerX}%`}
+                    y={`${centerY - 4}%`}
                     fill={marker.color}
-                    fontSize="7"
+                    fontSize={getFontSize(7)}
                     textAnchor="middle"
                     className="select-none"
                   >
@@ -129,6 +150,33 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
               </g>
             );
           }
+        }
+        
+        // Para zonas e áreas (como zonas de Fibonacci)
+        if (marker.type === "zone" && marker.points && marker.points.length >= 4) {
+          const [[x1, y1], [x2, y2], [x3, y3], [x4, y4]] = marker.points;
+          return (
+            <g key={idx}>
+              <polygon
+                points={`${x1 * 0.5},${y1 * 0.5} ${x2 * 0.5},${y2 * 0.5} ${x3 * 0.5},${y3 * 0.5} ${x4 * 0.5},${y4 * 0.5}`}
+                fill={`${marker.color}33`} // 20% de opacidade
+                stroke={marker.color}
+                strokeWidth={getStrokeWidth("zone")}
+              />
+              {marker.label && (
+                <text
+                  x={`${(x1 + x3) * 0.25}%`}
+                  y={`${(y1 + y3) * 0.25}%`}
+                  fill={marker.color}
+                  fontSize={getFontSize(8)}
+                  textAnchor="middle"
+                  className="select-none"
+                >
+                  {marker.label}
+                </text>
+              )}
+            </g>
+          );
         }
         
         return null;

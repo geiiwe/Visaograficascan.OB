@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, ReactNode } from "react";
 
 export type AnalysisType = "trendlines" | "movingAverages" | "rsi" | "macd" | "fibonacci" | "candlePatterns" | "elliottWaves" | "dowTheory" | "all";
+export type PrecisionLevel = "baixa" | "normal" | "alta";
 
 interface AnalyzerContextType {
   imageData: string | null;
@@ -17,6 +18,10 @@ interface AnalyzerContextType {
   resetAnalysis: () => void;
   showVisualMarkers: boolean;
   toggleVisualMarkers: () => void;
+  precision: PrecisionLevel;
+  setPrecision: (level: PrecisionLevel) => void;
+  compactMode: boolean;
+  toggleCompactMode: () => void;
 }
 
 const AnalyzerContext = createContext<AnalyzerContextType | undefined>(undefined);
@@ -38,6 +43,8 @@ export const AnalyzerProvider = ({ children }: { children: ReactNode }) => {
   });
   const [captureMode, setCaptureMode] = useState(true);
   const [showVisualMarkers, setShowVisualMarkers] = useState(true);
+  const [precision, setPrecision] = useState<PrecisionLevel>("normal");
+  const [compactMode, setCompactMode] = useState(true);
 
   const toggleAnalysis = (type: AnalysisType) => {
     if (type === "all") {
@@ -102,6 +109,10 @@ export const AnalyzerProvider = ({ children }: { children: ReactNode }) => {
     setShowVisualMarkers(prev => !prev);
   };
 
+  const toggleCompactMode = () => {
+    setCompactMode(prev => !prev);
+  };
+
   return (
     <AnalyzerContext.Provider
       value={{
@@ -118,6 +129,10 @@ export const AnalyzerProvider = ({ children }: { children: ReactNode }) => {
         resetAnalysis,
         showVisualMarkers,
         toggleVisualMarkers,
+        precision,
+        setPrecision,
+        compactMode,
+        toggleCompactMode,
       }}
     >
       {children}
