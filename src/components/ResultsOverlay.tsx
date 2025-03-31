@@ -18,6 +18,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import ChartOverlay from "./ChartOverlay";
+import { useMediaQuery } from "@/hooks/use-media-query";
 
 const ResultsOverlay = () => {
   const { 
@@ -31,6 +32,7 @@ const ResultsOverlay = () => {
   } = useAnalyzer();
   
   const [detailedResults, setDetailedResults] = useState<Record<string, PatternResult>>({});
+  const isMobile = useMediaQuery("(max-width: 768px)");
 
   useEffect(() => {
     const runAnalysis = async () => {
@@ -39,7 +41,7 @@ const ResultsOverlay = () => {
           // Process the image first
           const processedImage = await prepareForAnalysis(imageData);
           
-          // Run the pattern detection
+          // Run the pattern detection with more detailed processing
           const results = await detectPatterns(processedImage, activeAnalysis);
           
           // Save the detailed results
@@ -138,65 +140,110 @@ const ResultsOverlay = () => {
     }
   ];
 
+  // Layout para dispositivos móveis (resultados abaixo)
+  if (isMobile) {
+    return (
+      <div className="absolute inset-0 flex flex-col justify-end">
+        <ChartOverlay 
+          results={detailedResults} 
+          showMarkers={showVisualMarkers}
+        />
+        
+        <div className="bg-gradient-to-t from-black/80 via-transparent to-transparent p-2">
+          <div className="bg-trader-dark/90 rounded-lg border border-trader-panel p-3 backdrop-blur-sm">
+            <h3 className="font-semibold text-lg mb-3">Resultados da Análise</h3>
+            
+            <div className="space-y-2 max-h-[30vh] overflow-y-auto">
+              {resultItems.map(({ type, icon: Icon, label, color, description }) => {
+                // Only show results for active analysis types that have results
+                if (!activeAnalysis.includes(type as any) || !analysisResults[type as any]) {
+                  return null;
+                }
+                
+                return (
+                  <div key={type} className="flex items-start gap-2 border-b border-trader-panel/40 pb-2">
+                    <div className="flex-shrink-0 mt-1">
+                      <Icon className={cn("h-4 w-4", color)} />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center">
+                        <span className="font-medium text-sm">{label}</span>
+                        <CheckCircle2 className="h-3 w-3 text-trader-green ml-1" />
+                      </div>
+                      <p className="text-xs text-trader-gray">{description}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Layout para desktop (resultados ao lado)
   return (
-    <div className="absolute inset-0 flex flex-col justify-end">
+    <div className="absolute inset-0 flex">
       <ChartOverlay 
         results={detailedResults} 
         showMarkers={showVisualMarkers}
       />
       
-      <div className="bg-gradient-to-t from-black/80 via-transparent to-transparent p-4">
-        <div className="bg-trader-dark/90 rounded-lg border border-trader-panel p-4 backdrop-blur-sm">
-          <h3 className="font-semibold text-lg mb-4">Resultados da Análise</h3>
-          
-          <div className="space-y-3 max-h-[40vh] overflow-y-auto">
-            {resultItems.map(({ type, icon: Icon, label, color, description, detailedDesc, recommendation, majorPlayers }) => {
-              // Only show results for active analysis types that have results
-              if (!activeAnalysis.includes(type as any) || !analysisResults[type as any]) {
-                return null;
-              }
-              
-              return (
-                <div key={type} className="flex items-start gap-3">
-                  <div className="flex-shrink-0 mt-1">
-                    <Icon className={cn("h-5 w-5", color)} />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center">
-                      <span className="font-medium">{label}</span>
-                      <CheckCircle2 className="h-4 w-4 text-trader-green ml-2" />
-                      
-                      {majorPlayers && majorPlayers.length > 0 && (
-                        <HoverCard>
-                          <HoverCardTrigger asChild>
-                            <button className="ml-2 text-trader-gray hover:text-white transition-colors">
-                              <Users size={14} />
-                            </button>
-                          </HoverCardTrigger>
-                          <HoverCardContent className="w-80 text-sm p-4">
-                            <div className="space-y-2">
-                              <h4 className="font-medium">Usado por grandes players:</h4>
-                              <ul className="list-disc pl-4 space-y-1">
-                                {majorPlayers.map((player, idx) => (
-                                  <li key={idx}>{player}</li>
-                                ))}
-                              </ul>
-                            </div>
-                          </HoverCardContent>
-                        </HoverCard>
-                      )}
-                    </div>
-                    <p className="text-sm text-trader-gray">{description}</p>
+      <div className="relative flex-1">
+        {/* Espaço para o gráfico */}
+      </div>
+      
+      <div className="w-2/5 md:w-1/3 bg-trader-dark/90 border-l border-trader-panel p-4 backdrop-blur-sm overflow-y-auto">
+        <h3 className="font-semibold text-lg mb-4">Resultados da Análise</h3>
+        
+        <div className="space-y-4">
+          {resultItems.map(({ type, icon: Icon, label, color, description, detailedDesc, recommendation, majorPlayers }) => {
+            // Only show results for active analysis types that have results
+            if (!activeAnalysis.includes(type as any) || !analysisResults[type as any]) {
+              return null;
+            }
+            
+            return (
+              <div key={type} className="flex items-start gap-3 border-b border-trader-panel/40 pb-3">
+                <div className="flex-shrink-0 mt-1">
+                  <Icon className={cn("h-5 w-5", color)} />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center">
+                    <span className="font-medium">{label}</span>
+                    <CheckCircle2 className="h-4 w-4 text-trader-green ml-2" />
                     
-                    <div className="mt-2 bg-trader-panel/50 p-2 rounded-sm border-l-2 border-trader-blue">
-                      <p className="text-xs text-trader-gray">{detailedDesc}</p>
-                      <p className="text-xs font-medium mt-1 text-trader-blue">{recommendation}</p>
-                    </div>
+                    {majorPlayers && majorPlayers.length > 0 && (
+                      <HoverCard>
+                        <HoverCardTrigger asChild>
+                          <button className="ml-2 text-trader-gray hover:text-white transition-colors">
+                            <Users size={14} />
+                          </button>
+                        </HoverCardTrigger>
+                        <HoverCardContent className="w-80 text-sm p-4">
+                          <div className="space-y-2">
+                            <h4 className="font-medium">Usado por grandes players:</h4>
+                            <ul className="list-disc pl-4 space-y-1">
+                              {majorPlayers.map((player, idx) => (
+                                <li key={idx}>{player}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </HoverCardContent>
+                      </HoverCard>
+                    )}
+                  </div>
+                  <p className="text-sm text-trader-gray">{description}</p>
+                  
+                  <div className="mt-2 bg-trader-panel/50 p-2 rounded-sm border-l-2 border-trader-blue">
+                    <p className="text-xs text-trader-gray">{detailedDesc}</p>
+                    <p className="text-xs font-medium mt-1 text-trader-blue">{recommendation}</p>
                   </div>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

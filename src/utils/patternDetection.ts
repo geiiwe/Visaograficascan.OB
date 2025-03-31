@@ -36,21 +36,21 @@ export const detectTrendLines = async (imageData: string): Promise<PatternResult
     {
       type: "support" as const,
       color: "#22c55e", // verde
-      points: [[20, 120], [180, 140]],
+      points: [[20, 120], [180, 140]] as [number, number][],
       label: "Suporte",
       strength: "forte" as const
     },
     {
       type: "resistance" as const,
       color: "#ef4444", // vermelho
-      points: [[10, 60], [190, 40]],
+      points: [[10, 60], [190, 40]] as [number, number][],
       label: "Resistência",
       strength: "moderado" as const
     },
     {
       type: "trendline" as const,
       color: "#3b82f6", // azul
-      points: [[0, 90], [200, 30]],
+      points: [[0, 90], [200, 30]] as [number, number][],
       label: "Tendência Primária",
       strength: "forte" as const
     }
@@ -76,21 +76,21 @@ export const detectMovingAverages = async (imageData: string): Promise<PatternRe
     {
       type: "indicator" as const,
       color: "#8b5cf6", // roxo
-      points: [[0, 80], [50, 75], [100, 85], [150, 95], [200, 100]],
+      points: [[0, 80], [50, 75], [100, 85], [150, 95], [200, 100]] as [number, number][],
       label: "MA 20",
       strength: "moderado" as const
     },
     {
       type: "indicator" as const,
       color: "#f59e0b", // laranja
-      points: [[0, 90], [50, 85], [100, 90], [150, 100], [200, 110]],
+      points: [[0, 90], [50, 85], [100, 90], [150, 100], [200, 110]] as [number, number][],
       label: "MA 50",
       strength: "forte" as const
     },
     {
       type: "pattern" as const,
       color: "#10b981", // verde
-      points: [[95, 87], [105, 87]],
+      points: [[95, 87], [105, 87]] as [number, number][],
       label: "Golden Cross",
       strength: "forte" as const
     }
@@ -120,14 +120,14 @@ export const detectRSI = async (imageData: string): Promise<PatternResult> => {
     {
       type: "indicator" as const,
       color: rsiValue > 70 ? "#ef4444" : rsiValue < 30 ? "#22c55e" : "#3b82f6",
-      points: [[180, 160], [200, 160]],
+      points: [[180, 160], [200, 160]] as [number, number][],
       label: `RSI: ${rsiValue} (${rsiCondition})`,
       strength: rsiValue > 80 || rsiValue < 20 ? "forte" as const : "moderado" as const
     },
     {
       type: "pattern" as const,
       color: "#8b5cf6",
-      points: [[150, 150], [170, 150]],
+      points: [[150, 150], [170, 150]] as [number, number][],
       label: "Divergência RSI",
       strength: "moderado" as const
     }
@@ -158,21 +158,21 @@ export const detectMACD = async (imageData: string): Promise<PatternResult> => {
     {
       type: "indicator" as const,
       color: "#3b82f6", // azul
-      points: [[160, 170], [200, 170]],
+      points: [[160, 170], [200, 170]] as [number, number][],
       label: `MACD: ${macdValue}`,
       strength: Math.abs(parseFloat(macdValue)) > 0.5 ? "forte" as const : "moderado" as const
     },
     {
       type: "indicator" as const,
       color: "#f59e0b", // laranja
-      points: [[160, 175], [200, 175]],
+      points: [[160, 175], [200, 175]] as [number, number][],
       label: `Sinal: ${signalValue}`,
       strength: "moderado" as const
     },
     {
       type: "pattern" as const,
       color: isBullish ? "#22c55e" : "#ef4444",
-      points: [[180, 180], [190, 180]],
+      points: [[180, 180], [190, 180]] as [number, number][],
       label: `Histograma: ${histogram} (${isBullish ? "Bullish" : "Bearish"})`,
       strength: Math.abs(parseFloat(histogram)) > 0.3 ? "forte" as const : "moderado" as const
     }
@@ -198,42 +198,42 @@ export const detectFibonacci = async (imageData: string): Promise<PatternResult>
     {
       type: "indicator" as const,
       color: "#e11d48", // vermelho escuro
-      points: [[0, 40], [200, 40]],
+      points: [[0, 40], [200, 40]] as [number, number][],
       label: "Fib 0%",
       strength: "forte" as const
     },
     {
       type: "indicator" as const,
       color: "#f97316", // laranja
-      points: [[0, 65], [200, 65]],
+      points: [[0, 65], [200, 65]] as [number, number][],
       label: "Fib 23.6%",
       strength: "moderado" as const
     },
     {
       type: "indicator" as const,
       color: "#eab308", // amarelo
-      points: [[0, 90], [200, 90]],
+      points: [[0, 90], [200, 90]] as [number, number][],
       label: "Fib 38.2%",
       strength: "forte" as const
     },
     {
       type: "indicator" as const,
       color: "#22c55e", // verde
-      points: [[0, 115], [200, 115]],
+      points: [[0, 115], [200, 115]] as [number, number][],
       label: "Fib 50%",
       strength: "forte" as const
     },
     {
       type: "indicator" as const,
       color: "#0ea5e9", // azul claro
-      points: [[0, 140], [200, 140]],
+      points: [[0, 140], [200, 140]] as [number, number][],
       label: "Fib 61.8%",
       strength: "forte" as const
     },
     {
       type: "indicator" as const,
       color: "#8b5cf6", // roxo
-      points: [[0, 165], [200, 165]],
+      points: [[0, 165], [200, 165]] as [number, number][],
       label: "Fib 100%",
       strength: "forte" as const
     }
@@ -272,7 +272,7 @@ export const detectCandlePatterns = async (imageData: string): Promise<PatternRe
     {
       type: "pattern" as const,
       color: isBullish ? "#22c55e" : "#ef4444",
-      points: [[150, 100], [170, 100]],
+      points: [[150, 100], [170, 100]] as [number, number][],
       label: randomPattern,
       strength: Math.random() > 0.5 ? "forte" as const : "moderado" as const
     }
