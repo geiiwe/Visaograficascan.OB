@@ -40,7 +40,7 @@ const ResultsOverlay = () => {
           const processedImage = await prepareForAnalysis(imageData, processOptions);
           
           // Run the pattern detection with the precision level
-          const results = await detectPatterns(processedImage, activeAnalysis, precision);
+          const results = await detectPatterns(processedImage, activeAnalysis);
           
           // Save the detailed results
           setDetailedResults(results);

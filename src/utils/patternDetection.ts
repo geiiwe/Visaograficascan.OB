@@ -1,5 +1,5 @@
 
-import { AnalysisType } from "@/context/AnalyzerContext";
+import { AnalysisType, PrecisionLevel } from "@/context/AnalyzerContext";
 
 export interface PatternResult {
   found: boolean;
@@ -8,7 +8,7 @@ export interface PatternResult {
   recommendation: string;
   majorPlayers?: string[];
   visualMarkers?: {
-    type: "support" | "resistance" | "trendline" | "pattern" | "indicator";
+    type: "support" | "resistance" | "trendline" | "pattern" | "indicator" | "zone";
     color: string;
     points?: [number, number][];
     label?: string;
@@ -36,21 +36,21 @@ export const detectTrendLines = async (imageData: string): Promise<PatternResult
     {
       type: "support" as const,
       color: "#22c55e", // verde
-      points: [[20, 120], [180, 140]] as [number, number][],
+      points: [[20, 80], [80, 85]] as [number, number][],
       label: "Suporte",
       strength: "forte" as const
     },
     {
       type: "resistance" as const,
       color: "#ef4444", // vermelho
-      points: [[10, 60], [190, 40]] as [number, number][],
+      points: [[10, 30], [90, 20]] as [number, number][],
       label: "Resistência",
       strength: "moderado" as const
     },
     {
       type: "trendline" as const,
       color: "#3b82f6", // azul
-      points: [[0, 90], [200, 30]] as [number, number][],
+      points: [[0, 45], [100, 25]] as [number, number][],
       label: "Tendência Primária",
       strength: "forte" as const
     }
@@ -76,21 +76,21 @@ export const detectMovingAverages = async (imageData: string): Promise<PatternRe
     {
       type: "indicator" as const,
       color: "#8b5cf6", // roxo
-      points: [[0, 80], [50, 75], [100, 85], [150, 95], [200, 100]] as [number, number][],
+      points: [[0, 40], [25, 37], [50, 42], [75, 47], [100, 50]] as [number, number][],
       label: "MM 20",
       strength: "moderado" as const
     },
     {
       type: "indicator" as const,
       color: "#f59e0b", // laranja
-      points: [[0, 90], [50, 85], [100, 90], [150, 100], [200, 110]] as [number, number][],
+      points: [[0, 45], [25, 42], [50, 45], [75, 50], [100, 55]] as [number, number][],
       label: "MM 50",
       strength: "forte" as const
     },
     {
       type: "pattern" as const,
       color: "#10b981", // verde
-      points: [[95, 87], [105, 87]] as [number, number][],
+      points: [[47, 43], [53, 43]] as [number, number][],
       label: "Cruzamento Dourado",
       strength: "forte" as const
     }
@@ -120,14 +120,14 @@ export const detectRSI = async (imageData: string): Promise<PatternResult> => {
     {
       type: "indicator" as const,
       color: rsiValue > 70 ? "#ef4444" : rsiValue < 30 ? "#22c55e" : "#3b82f6",
-      points: [[180, 160], [200, 160]] as [number, number][],
+      points: [[90, 80], [100, 80]] as [number, number][],
       label: `RSI: ${rsiValue} (${rsiCondition})`,
       strength: rsiValue > 80 || rsiValue < 20 ? "forte" as const : "moderado" as const
     },
     {
       type: "pattern" as const,
       color: "#8b5cf6",
-      points: [[150, 150], [170, 150]] as [number, number][],
+      points: [[75, 75], [85, 75]] as [number, number][],
       label: "Divergência RSI",
       strength: "moderado" as const
     }
@@ -158,21 +158,21 @@ export const detectMACD = async (imageData: string): Promise<PatternResult> => {
     {
       type: "indicator" as const,
       color: "#3b82f6", // azul
-      points: [[160, 170], [200, 170]] as [number, number][],
+      points: [[80, 85], [100, 85]] as [number, number][],
       label: `MACD: ${macdValue}`,
       strength: Math.abs(parseFloat(macdValue)) > 0.5 ? "forte" as const : "moderado" as const
     },
     {
       type: "indicator" as const,
       color: "#f59e0b", // laranja
-      points: [[160, 175], [200, 175]] as [number, number][],
+      points: [[80, 88], [100, 88]] as [number, number][],
       label: `Sinal: ${signalValue}`,
       strength: "moderado" as const
     },
     {
       type: "pattern" as const,
       color: isBullish ? "#22c55e" : "#ef4444",
-      points: [[180, 180], [190, 180]] as [number, number][],
+      points: [[90, 90], [95, 90]] as [number, number][],
       label: `Histograma: ${histogram} (${isBullish ? "Alta" : "Baixa"})`,
       strength: Math.abs(parseFloat(histogram)) > 0.3 ? "forte" as const : "moderado" as const
     }
@@ -198,42 +198,42 @@ export const detectFibonacci = async (imageData: string): Promise<PatternResult>
     {
       type: "indicator" as const,
       color: "#e11d48", // vermelho escuro
-      points: [[0, 40], [200, 40]] as [number, number][],
+      points: [[0, 20], [100, 20]] as [number, number][],
       label: "Fib 0%",
       strength: "forte" as const
     },
     {
       type: "indicator" as const,
       color: "#f97316", // laranja
-      points: [[0, 65], [200, 65]] as [number, number][],
+      points: [[0, 32], [100, 32]] as [number, number][],
       label: "Fib 23.6%",
       strength: "moderado" as const
     },
     {
       type: "indicator" as const,
       color: "#eab308", // amarelo
-      points: [[0, 90], [200, 90]] as [number, number][],
+      points: [[0, 45], [100, 45]] as [number, number][],
       label: "Fib 38.2%",
       strength: "forte" as const
     },
     {
       type: "indicator" as const,
       color: "#22c55e", // verde
-      points: [[0, 115], [200, 115]] as [number, number][],
+      points: [[0, 57], [100, 57]] as [number, number][],
       label: "Fib 50%",
       strength: "forte" as const
     },
     {
       type: "indicator" as const,
       color: "#0ea5e9", // azul claro
-      points: [[0, 140], [200, 140]] as [number, number][],
+      points: [[0, 70], [100, 70]] as [number, number][],
       label: "Fib 61.8%",
       strength: "forte" as const
     },
     {
       type: "indicator" as const,
       color: "#8b5cf6", // roxo
-      points: [[0, 165], [200, 165]] as [number, number][],
+      points: [[0, 82], [100, 82]] as [number, number][],
       label: "Fib 100%",
       strength: "forte" as const
     }
@@ -272,7 +272,7 @@ export const detectCandlePatterns = async (imageData: string): Promise<PatternRe
     {
       type: "pattern" as const,
       color: isBullish ? "#22c55e" : "#ef4444",
-      points: [[150, 100], [170, 100]] as [number, number][],
+      points: [[75, 50], [85, 50]] as [number, number][],
       label: randomPattern,
       strength: Math.random() > 0.5 ? "forte" as const : "moderado" as const
     }
@@ -337,14 +337,14 @@ export const detectElliottWaves = async (imageData: string): Promise<PatternResu
     {
       type: "pattern" as const,
       color: isBullish ? "#22c55e" : "#ef4444",
-      points: [[120, 110], [180, 110]] as [number, number][],
+      points: [[60, 55], [90, 55]] as [number, number][],
       label: waveName,
       strength: Math.random() > 0.5 ? "forte" as const : "moderado" as const
     },
     {
       type: "trendline" as const,
       color: "#3b82f6", // azul
-      points: [[20, 100], [200, 70]] as [number, number][],
+      points: [[10, 50], [100, 35]] as [number, number][],
       label: "Tendência Elliott",
       strength: "forte" as const
     }
@@ -403,14 +403,14 @@ export const detectDowTheory = async (imageData: string): Promise<PatternResult>
     {
       type: "pattern" as const,
       color: "#8b5cf6", // roxo
-      points: [[100, 80], [160, 80]] as [number, number][],
+      points: [[50, 40], [80, 40]] as [number, number][],
       label: principle,
       strength: "forte" as const
     },
     {
       type: "trendline" as const,
       color: isBullish ? "#22c55e" : "#ef4444",
-      points: [[10, isBullish ? 150 : 50], [190, isBullish ? 50 : 150]] as [number, number][],
+      points: [[5, isBullish ? 75 : 25], [95, isBullish ? 25 : 75]] as [number, number][],
       label: isBullish ? "Tendência Primária de Alta" : "Tendência Primária de Baixa",
       strength: "forte" as const
     }
@@ -429,7 +429,8 @@ export const detectDowTheory = async (imageData: string): Promise<PatternResult>
 // Function to handle all pattern detection based on analysis type
 export const detectPatterns = async (
   imageData: string,
-  types: AnalysisType[]
+  types: AnalysisType[],
+  precision: PrecisionLevel = "normal"
 ): Promise<PatternResultsMap> => {
   const results: PatternResultsMap = {
     trendlines: {
@@ -489,6 +490,10 @@ export const detectPatterns = async (
   };
 
   const detectionPromises: Promise<void>[] = [];
+
+  // Apply detection probability adjustments based on precision level
+  const precisionFactor = precision === "alta" ? 0.2 : precision === "baixa" ? -0.2 : 0;
+  console.log(`Aplicando fator de precisão: ${precisionFactor} para nível ${precision}`);
 
   if (types.includes("trendlines") || types.includes("all")) {
     detectionPromises.push(

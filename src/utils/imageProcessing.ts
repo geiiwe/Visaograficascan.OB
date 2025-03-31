@@ -4,6 +4,13 @@
  * In a real implementation, these would use WebAssembly bindings to OpenCV or similar
  */
 
+interface ProcessOptions {
+  enhanceContrast?: boolean;
+  removeNoise?: boolean;
+  sharpness?: number;
+  iterations?: number;
+}
+
 export const processImage = async (imageData: string): Promise<string> => {
   // This is a mock function that would use actual image processing
   // In a real implementation, we'd use OpenCV.js or a similar library
@@ -20,23 +27,39 @@ export const detectEdges = async (imageData: string): Promise<string> => {
   return imageData;
 };
 
-export const enhanceContrast = async (imageData: string): Promise<string> => {
+export const enhanceContrast = async (imageData: string, level: number = 1.0): Promise<string> => {
   // Mock contrast enhancement
-  console.log("Enhancing contrast...");
+  console.log(`Enhancing contrast with level ${level}...`);
   return imageData;
 };
 
-export const removeNoise = async (imageData: string): Promise<string> => {
+export const removeNoise = async (imageData: string, strength: number = 1.0): Promise<string> => {
   // Mock noise removal
-  console.log("Removing noise...");
+  console.log(`Removing noise with strength ${strength}...`);
   return imageData;
 };
 
-export const prepareForAnalysis = async (imageData: string): Promise<string> => {
+export const prepareForAnalysis = async (imageData: string, options: ProcessOptions = {}): Promise<string> => {
   // This function would chain multiple image processing steps
-  const denoised = await removeNoise(imageData);
-  const enhancedContrast = await enhanceContrast(denoised);
-  const edgeDetected = await detectEdges(enhancedContrast);
+  console.log("Preparing image for analysis with options:", options);
   
-  return edgeDetected;
+  let processedImage = imageData;
+  
+  // Apply processing steps based on options
+  if (options.removeNoise) {
+    processedImage = await removeNoise(processedImage, options.sharpness || 1.0);
+  }
+  
+  if (options.enhanceContrast) {
+    processedImage = await enhanceContrast(processedImage, options.sharpness || 1.0);
+  }
+  
+  // Apply edge detection as the final step
+  processedImage = await detectEdges(processedImage);
+  
+  // In a real implementation, we'd apply multiple iterations for more precision
+  const iterations = options.iterations || 1;
+  console.log(`Applied ${iterations} iterations of image processing`);
+  
+  return processedImage;
 };

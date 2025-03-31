@@ -43,26 +43,21 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
           
           if (isLine) {
             const [[x1, y1], [x2, y2]] = marker.points;
-            const adjustedX1 = x1 * 0.5; // Ajustado para melhor posicionamento
-            const adjustedY1 = y1 * 0.5;
-            const adjustedX2 = x2 * 0.5;
-            const adjustedY2 = y2 * 0.5;
-            
             return (
               <g key={idx}>
                 <line
-                  x1={`${adjustedX1}%`}
-                  y1={`${adjustedY1}%`}
-                  x2={`${adjustedX2}%`}
-                  y2={`${adjustedY2}%`}
+                  x1={`${x1}%`}
+                  y1={`${y1}%`}
+                  x2={`${x2}%`}
+                  y2={`${y2}%`}
                   stroke={marker.color}
                   strokeWidth={getStrokeWidth(marker.type)}
                   strokeDasharray={marker.type === "support" ? "5,3" : marker.type === "resistance" ? "3,3" : undefined}
                 />
                 {marker.label && (
                   <text
-                    x={`${adjustedX2 + 1}%`}
-                    y={`${adjustedY2 + 3}%`}
+                    x={`${x2 + 1}%`}
+                    y={`${y2 + 3}%`}
                     fill={marker.color}
                     fontSize={getFontSize(8)}
                     textAnchor="start"
@@ -78,7 +73,7 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
           // For indicators like MA, MACD that need a polyline
           if (marker.type === "indicator" && marker.points.length > 2) {
             const pointsString = marker.points
-              .map(([x, y]) => `${x * 0.5},${y * 0.5}`)
+              .map(([x, y]) => `${x},${y}`)
               .join(" ");
             
             return (
@@ -92,8 +87,8 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
                 />
                 {marker.label && (
                   <text
-                    x={`${marker.points[marker.points.length - 1][0] * 0.5 + 1}%`}
-                    y={`${marker.points[marker.points.length - 1][1] * 0.5 + 3}%`}
+                    x={`${marker.points[marker.points.length - 1][0] + 1}%`}
+                    y={`${marker.points[marker.points.length - 1][1] + 3}%`}
                     fill={marker.color}
                     fontSize={getFontSize(8)}
                     textAnchor="start"
@@ -109,8 +104,8 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
           // For patterns like Golden Cross, Divergence, etc
           if (marker.type === "pattern") {
             const [[x1, y1], [x2, y2]] = marker.points;
-            const centerX = (x1 + x2) * 0.25;
-            const centerY = (y1 + y2) * 0.25;
+            const centerX = (x1 + x2) * 0.5;
+            const centerY = (y1 + y2) * 0.5;
             
             return (
               <g key={idx}>
@@ -150,33 +145,33 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
               </g>
             );
           }
-        }
-        
-        // Para zonas e áreas (como zonas de Fibonacci)
-        if (marker.type === "zone" && marker.points && marker.points.length >= 4) {
-          const [[x1, y1], [x2, y2], [x3, y3], [x4, y4]] = marker.points;
-          return (
-            <g key={idx}>
-              <polygon
-                points={`${x1 * 0.5},${y1 * 0.5} ${x2 * 0.5},${y2 * 0.5} ${x3 * 0.5},${y3 * 0.5} ${x4 * 0.5},${y4 * 0.5}`}
-                fill={`${marker.color}33`} // 20% de opacidade
-                stroke={marker.color}
-                strokeWidth={getStrokeWidth("zone")}
-              />
-              {marker.label && (
-                <text
-                  x={`${(x1 + x3) * 0.25}%`}
-                  y={`${(y1 + y3) * 0.25}%`}
-                  fill={marker.color}
-                  fontSize={getFontSize(8)}
-                  textAnchor="middle"
-                  className="select-none"
-                >
-                  {marker.label}
-                </text>
-              )}
-            </g>
-          );
+          
+          // Para zonas e áreas (como zonas de Fibonacci)
+          if (marker.type === "zone" || marker.points.length >= 4) {
+            const [[x1, y1], [x2, y2], [x3, y3], [x4, y4]] = marker.points;
+            return (
+              <g key={idx}>
+                <polygon
+                  points={`${x1},${y1} ${x2},${y2} ${x3},${y3} ${x4},${y4}`}
+                  fill={`${marker.color}33`} // 20% de opacidade
+                  stroke={marker.color}
+                  strokeWidth={getStrokeWidth("zone")}
+                />
+                {marker.label && (
+                  <text
+                    x={`${(x1 + x3) * 0.5}%`}
+                    y={`${(y1 + y3) * 0.5}%`}
+                    fill={marker.color}
+                    fontSize={getFontSize(8)}
+                    textAnchor="middle"
+                    className="select-none"
+                  >
+                    {marker.label}
+                  </text>
+                )}
+              </g>
+            );
+          }
         }
         
         return null;
