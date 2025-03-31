@@ -13,7 +13,9 @@ import {
   Layers,
   Fingerprint,
   CandlestickChart,
-  Eye
+  Eye,
+  TrendingDown,
+  BarChart
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -90,6 +92,18 @@ const ControlPanel = () => {
       color: "bg-[#e11d48]" 
     },
     { 
+      type: "elliottWaves" as const, 
+      label: "Ondas de Elliott", 
+      icon: <TrendingDown className="h-4 w-4 mr-2" />,
+      color: "bg-[#06b6d4]" 
+    },
+    { 
+      type: "dowTheory" as const, 
+      label: "Teoria de Dow", 
+      icon: <BarChart className="h-4 w-4 mr-2" />,
+      color: "bg-[#d946ef]" 
+    },
+    { 
       type: "all" as const, 
       label: "Todos", 
       icon: <Layers className="h-4 w-4 mr-2" />,
@@ -102,7 +116,7 @@ const ControlPanel = () => {
       <div className="space-y-4">
         <div>
           <h3 className="text-sm font-medium mb-2 text-trader-gray">Selecione os Tipos de Análise</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
             {analysisOptions.map(({ type, label, icon, color }) => (
               <Button
                 key={type}

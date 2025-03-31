@@ -12,7 +12,9 @@ import {
   BarChart4,
   Users,
   Fingerprint,
-  CandlestickChart
+  CandlestickChart,
+  TrendingDown,
+  BarChart
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -77,6 +79,22 @@ const ResultsOverlay = () => {
     return null;
   }
 
+  // Extrair decisões das recomendações para exibição em destaque
+  const extractDecision = (recommendation: string): string | null => {
+    if (!recommendation) return null;
+    
+    const match = recommendation.match(/DECISÃO:\s+(COMPRA|VENDA|AGUARDE|ESPERE|MANTENHA POSIÇÃO|REALIZE LUCROS|PREPARE-SE PARA COMPRA)/i);
+    return match ? match[1] : null;
+  };
+
+  const getDecisionColor = (decision: string | null): string => {
+    if (!decision) return "text-trader-gray";
+    
+    if (decision.includes("COMPRA")) return "text-trader-green";
+    if (decision.includes("VENDA")) return "text-trader-red";
+    return "text-trader-yellow";
+  };
+
   const resultItems = [
     {
       type: "trendlines",
@@ -93,7 +111,7 @@ const ResultsOverlay = () => {
       icon: LineChart,
       label: "Médias Móveis",
       color: "text-trader-blue",
-      description: "Padrões de SMA e EMA encontrados",
+      description: "Padrões de MM e MMA encontrados",
       detailedDesc: detailedResults.movingAverages?.description || "Médias móveis suavizam flutuações de preço para mostrar tendências. O cruzamento de médias de diferentes períodos gera sinais de compra ou venda.",
       recommendation: detailedResults.movingAverages?.recommendation || "Considere comprar quando a média de curto prazo cruza acima da média de longo prazo.",
       majorPlayers: detailedResults.movingAverages?.majorPlayers || []
@@ -137,6 +155,26 @@ const ResultsOverlay = () => {
       detailedDesc: detailedResults.candlePatterns?.description || "Padrões de candles são formações específicas que indicam possíveis reversões ou continuações de tendência. Eles revelam o sentimento e a psicologia do mercado.",
       recommendation: detailedResults.candlePatterns?.recommendation || "Use padrões de candles para identificar pontos de entrada e saída com bom risco/retorno.",
       majorPlayers: detailedResults.candlePatterns?.majorPlayers || []
+    },
+    {
+      type: "elliottWaves",
+      icon: TrendingDown,
+      label: "Ondas de Elliott",
+      color: "text-[#06b6d4]",
+      description: "Padrões de ondas e ciclos identificados",
+      detailedDesc: detailedResults.elliottWaves?.description || "A Teoria das Ondas de Elliott divide os movimentos do mercado em 5 ondas de impulso seguidas por 3 ondas corretivas, revelando padrões fractais nos mercados financeiros.",
+      recommendation: detailedResults.elliottWaves?.recommendation || "As ondas de Elliott ajudam a identificar pontos de reversão e continuação da tendência principal.",
+      majorPlayers: detailedResults.elliottWaves?.majorPlayers || []
+    },
+    {
+      type: "dowTheory",
+      icon: BarChart,
+      label: "Teoria de Dow",
+      color: "text-[#d946ef]",
+      description: "Análise de tendências primárias e secundárias",
+      detailedDesc: detailedResults.dowTheory?.description || "A Teoria de Dow é a base da análise técnica moderna, estabelecendo que os preços se movem em tendências e que o volume deve confirmar o movimento.",
+      recommendation: detailedResults.dowTheory?.recommendation || "A Teoria de Dow ajuda a identificar tendências de longo prazo e pontos de reversão.",
+      majorPlayers: detailedResults.dowTheory?.majorPlayers || []
     }
   ];
 
@@ -153,7 +191,33 @@ const ResultsOverlay = () => {
           <div className="bg-trader-dark/90 rounded-lg border border-trader-panel p-3 backdrop-blur-sm">
             <h3 className="font-semibold text-lg mb-3">Resultados da Análise</h3>
             
-            <div className="space-y-2 max-h-[30vh] overflow-y-auto">
+            {/* Resumo das decisões */}
+            <div className="mb-3 border-b border-trader-panel/50 pb-2">
+              <div className="flex flex-wrap gap-2">
+                {resultItems.map(({ type, label, recommendation }) => {
+                  if (!activeAnalysis.includes(type as any) || !analysisResults[type as any]) {
+                    return null;
+                  }
+                  
+                  const decision = extractDecision(recommendation);
+                  if (!decision) return null;
+                  
+                  return (
+                    <div 
+                      key={`decision-${type}`}
+                      className={cn(
+                        "px-2 py-1 rounded-full text-xs font-medium border",
+                        getDecisionColor(decision)
+                      )}
+                    >
+                      {label}: {decision}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            
+            <div className="space-y-2 max-h-[35vh] overflow-y-auto">
               {resultItems.map(({ type, icon: Icon, label, color, description }) => {
                 // Only show results for active analysis types that have results
                 if (!activeAnalysis.includes(type as any) || !analysisResults[type as any]) {
@@ -197,12 +261,42 @@ const ResultsOverlay = () => {
       <div className="w-2/5 md:w-1/3 bg-trader-dark/90 border-l border-trader-panel p-4 backdrop-blur-sm overflow-y-auto">
         <h3 className="font-semibold text-lg mb-4">Resultados da Análise</h3>
         
+        {/* Resumo das decisões */}
+        <div className="mb-4 bg-trader-panel/30 p-3 rounded-md border border-trader-panel/50">
+          <h4 className="text-sm font-medium mb-2">Decisões Recomendadas:</h4>
+          <div className="flex flex-wrap gap-2">
+            {resultItems.map(({ type, label, recommendation }) => {
+              if (!activeAnalysis.includes(type as any) || !analysisResults[type as any]) {
+                return null;
+              }
+              
+              const decision = extractDecision(recommendation);
+              if (!decision) return null;
+              
+              return (
+                <div 
+                  key={`decision-${type}`}
+                  className={cn(
+                    "px-2 py-1 rounded-full text-xs font-medium border",
+                    getDecisionColor(decision)
+                  )}
+                >
+                  {label}: {decision}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        
         <div className="space-y-4">
           {resultItems.map(({ type, icon: Icon, label, color, description, detailedDesc, recommendation, majorPlayers }) => {
             // Only show results for active analysis types that have results
             if (!activeAnalysis.includes(type as any) || !analysisResults[type as any]) {
               return null;
             }
+            
+            // Extrair a decisão da recomendação
+            const decision = extractDecision(recommendation);
             
             return (
               <div key={type} className="flex items-start gap-3 border-b border-trader-panel/40 pb-3">
@@ -236,9 +330,19 @@ const ResultsOverlay = () => {
                   </div>
                   <p className="text-sm text-trader-gray">{description}</p>
                   
-                  <div className="mt-2 bg-trader-panel/50 p-2 rounded-sm border-l-2 border-trader-blue">
+                  <div className="mt-2 bg-trader-panel/50 p-2 rounded-sm">
                     <p className="text-xs text-trader-gray">{detailedDesc}</p>
-                    <p className="text-xs font-medium mt-1 text-trader-blue">{recommendation}</p>
+                    
+                    {decision && (
+                      <p className={cn(
+                        "text-sm font-bold mt-2 p-1 rounded",
+                        getDecisionColor(decision)
+                      )}>
+                        {decision}
+                      </p>
+                    )}
+                    
+                    <p className="text-xs mt-1 text-trader-blue">{recommendation.replace(/DECISÃO:\s+(COMPRA|VENDA|AGUARDE|ESPERE|MANTENHA POSIÇÃO|REALIZE LUCROS|PREPARE-SE PARA COMPRA)/i, '')}</p>
                   </div>
                 </div>
               </div>

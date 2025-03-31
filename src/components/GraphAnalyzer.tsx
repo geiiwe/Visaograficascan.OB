@@ -54,7 +54,7 @@ const GraphAnalyzer = () => {
 
   const handleCaptureQualityChange = (quality: "alta" | "normal" | "baixa") => {
     setCaptureQuality(quality);
-    toast.info(`Qualidade de captura alterada para ${quality}`);
+    toast.info(`Qualidade de análise alterada para ${quality}`);
   };
 
   return (

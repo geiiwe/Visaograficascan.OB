@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, ReactNode } from "react";
 
-export type AnalysisType = "trendlines" | "movingAverages" | "rsi" | "macd" | "fibonacci" | "candlePatterns" | "all";
+export type AnalysisType = "trendlines" | "movingAverages" | "rsi" | "macd" | "fibonacci" | "candlePatterns" | "elliottWaves" | "dowTheory" | "all";
 
 interface AnalyzerContextType {
   imageData: string | null;
@@ -32,6 +32,8 @@ export const AnalyzerProvider = ({ children }: { children: ReactNode }) => {
     macd: false,
     fibonacci: false,
     candlePatterns: false,
+    elliottWaves: false,
+    dowTheory: false,
     all: false,
   });
   const [captureMode, setCaptureMode] = useState(true);
@@ -42,7 +44,7 @@ export const AnalyzerProvider = ({ children }: { children: ReactNode }) => {
       if (activeAnalysis.includes("all")) {
         setActiveAnalysis([]);
       } else {
-        setActiveAnalysis(["trendlines", "movingAverages", "rsi", "macd", "fibonacci", "candlePatterns", "all"]);
+        setActiveAnalysis(["trendlines", "movingAverages", "rsi", "macd", "fibonacci", "candlePatterns", "elliottWaves", "dowTheory", "all"]);
       }
       return;
     }
@@ -61,7 +63,7 @@ export const AnalyzerProvider = ({ children }: { children: ReactNode }) => {
         const newAnalysis = [...prev, type];
         
         // Check if we need to add 'all'
-        const hasAllTypes = ["trendlines", "movingAverages", "rsi", "macd", "fibonacci", "candlePatterns"].every(
+        const hasAllTypes = ["trendlines", "movingAverages", "rsi", "macd", "fibonacci", "candlePatterns", "elliottWaves", "dowTheory"].every(
           (t) => newAnalysis.includes(t as AnalysisType) || t === type
         );
         
@@ -90,6 +92,8 @@ export const AnalyzerProvider = ({ children }: { children: ReactNode }) => {
       macd: false,
       fibonacci: false,
       candlePatterns: false,
+      elliottWaves: false,
+      dowTheory: false,
       all: false,
     });
   };

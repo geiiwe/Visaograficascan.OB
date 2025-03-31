@@ -47,6 +47,7 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
                     fill={marker.color}
                     fontSize="8"
                     textAnchor="start"
+                    className="select-none"
                   >
                     {marker.label} {marker.strength ? `(${marker.strength})` : ""}
                   </text>
@@ -68,7 +69,7 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
                   fill="none"
                   stroke={marker.color}
                   strokeWidth={1}
-                  strokeDasharray={marker.label?.includes("MA 50") ? "3,2" : undefined}
+                  strokeDasharray={marker.label?.includes("MM 50") || marker.label?.includes("MA 50") ? "3,2" : undefined}
                 />
                 {marker.label && (
                   <text
@@ -77,6 +78,7 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
                     fill={marker.color}
                     fontSize="8"
                     textAnchor="start"
+                    className="select-none"
                   >
                     {marker.label} {marker.strength ? `(${marker.strength})` : ""}
                   </text>
@@ -107,6 +109,7 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
                     fontSize="9"
                     fontWeight="bold"
                     textAnchor="middle"
+                    className="select-none"
                   >
                     {marker.label}
                   </text>
@@ -118,6 +121,7 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
                     fill={marker.color}
                     fontSize="7"
                     textAnchor="middle"
+                    className="select-none"
                   >
                     {marker.strength}
                   </text>
