@@ -18,7 +18,8 @@ const ResultsOverlay = () => {
     setAnalysisResult,
     showVisualMarkers,
     precision,
-    compactMode
+    compactMode,
+    chartRegion
   } = useAnalyzer();
   
   const [detailedResults, setDetailedResults] = useState<Record<string, PatternResult>>({});
@@ -55,12 +56,15 @@ const ResultsOverlay = () => {
             sensitivity: precision === "alta" ? 0.85 : precision === "normal" ? 0.7 : 0.5,
             contextAwareness: precision !== "baixa", // Consider surrounding elements
             patternConfidence: precision === "alta" ? 0.75 : precision === "normal" ? 0.6 : 0.45,
+            
+            // User-defined chart region
+            chartRegion: chartRegion || undefined,
           };
           
           console.log(`Iniciando análise técnica avançada com precisão ${precision}`, processOptions);
           
           // Stage 1: Chart region detection and preprocessing
-          setProcessingStage("Detectando região do gráfico");
+          setProcessingStage(chartRegion ? "Processando região selecionada" : "Detectando região do gráfico");
           const processedImage = await prepareForAnalysis(imageData, processOptions, 
             (stage) => setProcessingStage(stage));
           
@@ -101,7 +105,7 @@ const ResultsOverlay = () => {
     };
 
     runAnalysis();
-  }, [imageData, isAnalyzing, activeAnalysis, setAnalysisResult, setIsAnalyzing, precision]);
+  }, [imageData, isAnalyzing, activeAnalysis, setAnalysisResult, setIsAnalyzing, precision, chartRegion]);
 
   if (!imageData || !activeAnalysis.some(type => analysisResults[type])) {
     return null;

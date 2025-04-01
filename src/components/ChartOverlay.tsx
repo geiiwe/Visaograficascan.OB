@@ -9,16 +9,15 @@ interface ChartOverlayProps {
 }
 
 const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => {
-  const { precision } = useAnalyzer();
+  const { precision, chartRegion } = useAnalyzer();
   
+  // Don't render anything if markers are disabled
   if (!showMarkers) return null;
   
   const allMarkers = Object.values(results)
     .filter(result => result?.found && result.visualMarkers)
     .flatMap(result => result.visualMarkers || []);
   
-  if (allMarkers.length === 0) return null;
-
   // Adjust the visual elements based on precision level
   const getStrokeWidth = (type: string) => {
     const baseWidth = type === "trendline" ? 2 : type === "pattern" ? 1.5 : 1;
@@ -48,6 +47,22 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
         </filter>
       </defs>
       
+      {/* Chart region indicator */}
+      {chartRegion && (
+        <rect
+          x={`${chartRegion.x / 10}%`}
+          y={`${chartRegion.y / 10}%`}
+          width={`${chartRegion.width / 10}%`}
+          height={`${chartRegion.height / 10}%`}
+          fill="none"
+          stroke="#00aeff"
+          strokeWidth="2"
+          strokeDasharray="5,3"
+          opacity="0.7"
+        />
+      )}
+      
+      {/* Draw all markers from analysis results */}
       {allMarkers.map((marker, idx) => {
         // Render different marker types based on their properties
         if (marker.points && marker.points.length >= 2) {

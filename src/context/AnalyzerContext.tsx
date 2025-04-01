@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, ReactNode } from "react";
 
 export type AnalysisType = "trendlines" | "fibonacci" | "candlePatterns" | "elliottWaves" | "dowTheory" | "all";
@@ -22,6 +21,10 @@ interface AnalyzerContextType {
   setPrecision: (level: PrecisionLevel) => void;
   compactMode: boolean;
   toggleCompactMode: () => void;
+  selectionMode: boolean;
+  setSelectionMode: (mode: boolean) => void;
+  chartRegion: { x: number; y: number; width: number; height: number } | null;
+  setChartRegion: (region: { x: number; y: number; width: number; height: number } | null) => void;
 }
 
 const AnalyzerContext = createContext<AnalyzerContextType | undefined>(undefined);
@@ -42,6 +45,8 @@ export const AnalyzerProvider = ({ children }: { children: ReactNode }) => {
   const [showVisualMarkers, setShowVisualMarkers] = useState(true);
   const [precision, setPrecision] = useState<PrecisionLevel>("normal");
   const [compactMode, setCompactMode] = useState(true);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [chartRegion, setChartRegion] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 
   const toggleAnalysis = (type: AnalysisType) => {
     if (type === "all") {
@@ -57,7 +62,6 @@ export const AnalyzerProvider = ({ children }: { children: ReactNode }) => {
       if (prev.includes(type)) {
         const filtered = prev.filter((t) => t !== type);
         
-        // Check if we need to remove 'all' as well
         if (prev.includes("all")) {
           return filtered.filter((t) => t !== "all");
         }
@@ -66,7 +70,6 @@ export const AnalyzerProvider = ({ children }: { children: ReactNode }) => {
       } else {
         const newAnalysis = [...prev, type];
         
-        // Check if we need to add 'all'
         const hasAllTypes = ["trendlines", "fibonacci", "candlePatterns", "elliottWaves", "dowTheory"].every(
           (t) => newAnalysis.includes(t as AnalysisType) || t === type
         );
@@ -97,6 +100,7 @@ export const AnalyzerProvider = ({ children }: { children: ReactNode }) => {
       dowTheory: false,
       all: false,
     });
+    setChartRegion(null);
   };
 
   const toggleVisualMarkers = () => {
@@ -127,6 +131,10 @@ export const AnalyzerProvider = ({ children }: { children: ReactNode }) => {
         setPrecision,
         compactMode,
         toggleCompactMode,
+        selectionMode,
+        setSelectionMode,
+        chartRegion,
+        setChartRegion,
       }}
     >
       {children}

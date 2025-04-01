@@ -4,9 +4,10 @@ import { useAnalyzer } from "@/context/AnalyzerContext";
 import CameraView from "./CameraView";
 import ControlPanel from "./ControlPanel";
 import ResultsOverlay from "./ResultsOverlay";
+import ChartRegionSelector from "./ChartRegionSelector";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle, Info, Maximize2, Minimize2 } from "lucide-react";
+import { AlertTriangle, Crop, Info, Maximize2, Minimize2 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 
@@ -18,7 +19,10 @@ const GraphAnalyzer = () => {
     precision, 
     setPrecision,
     compactMode,
-    toggleCompactMode
+    toggleCompactMode,
+    selectionMode,
+    setSelectionMode,
+    chartRegion
   } = useAnalyzer();
   const [cameraSupported, setCameraSupported] = useState<boolean | null>(null);
 
@@ -63,6 +67,17 @@ const GraphAnalyzer = () => {
   const handlePrecisionChange = (level: "baixa" | "normal" | "alta") => {
     setPrecision(level);
     toast.info(`Precisão de análise alterada para ${level}`);
+  };
+
+  const toggleChartSelection = () => {
+    if (isAnalyzing) {
+      toast.error("Não é possível selecionar região durante a análise");
+      return;
+    }
+    setSelectionMode(!selectionMode);
+    if (!selectionMode) {
+      toast.info("Selecione a região exata do gráfico para análise");
+    }
   };
 
   return (
@@ -121,6 +136,18 @@ const GraphAnalyzer = () => {
               </Tooltip>
             </TooltipProvider>
             
+            {imageData && !selectionMode && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={toggleChartSelection}
+                className={`h-8 ${chartRegion ? "bg-trader-blue/20 text-trader-blue border-trader-blue" : ""}`}
+              >
+                <Crop className="h-4 w-4 mr-1" />
+                {chartRegion ? "Editar Região" : "Definir Região"}
+              </Button>
+            )}
+            
             <Button 
               variant="ghost" 
               size="icon" 
@@ -141,6 +168,7 @@ const GraphAnalyzer = () => {
               className="w-full object-contain" 
             />
             <ResultsOverlay />
+            <ChartRegionSelector />
           </div>
         )}
       </div>
