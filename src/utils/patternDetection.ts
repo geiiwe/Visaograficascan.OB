@@ -1,3 +1,4 @@
+
 import { AnalysisType, PrecisionLevel } from "@/context/AnalyzerContext";
 
 export interface PatternResult {
@@ -71,128 +72,6 @@ export const detectTrendLines = async (imageData: string, precision: PrecisionLe
     recommendation: found ? "DECISÃO: " + (Math.random() > 0.5 ? "COMPRA" : "VENDA") + ". Considere comprar próximo às linhas de suporte e vender próximo às linas de resistência. A quebra confirmada de suporte ou resistência indica continuação do movimento." : "Nenhuma linha de tendência clara detectada.",
     majorPlayers: ["Goldman Sachs", "JP Morgan", "BlackRock", "XP Investimentos", "BTG Pactual"],
     type: "trendlines",
-    visualMarkers
-  };
-};
-
-export const detectMovingAverages = async (imageData: string): Promise<PatternResult> => {
-  console.log("Detectando médias móveis...");
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  const found = Math.random() > 0.4; // 60% chance of finding moving averages
-  
-  // Simulação de marcadores visuais para médias móveis
-  const visualMarkers = found ? [
-    {
-      type: "indicator" as const,
-      color: "#8b5cf6", // roxo
-      points: [[0, 40], [25, 37], [50, 42], [75, 47], [100, 50]] as [number, number][],
-      label: "MM 20",
-      strength: "moderado" as const
-    },
-    {
-      type: "indicator" as const,
-      color: "#f59e0b", // laranja
-      points: [[0, 45], [25, 42], [50, 45], [75, 50], [100, 55]] as [number, number][],
-      label: "MM 50",
-      strength: "forte" as const
-    },
-    {
-      type: "pattern" as const,
-      color: "#10b981", // verde
-      points: [[47, 43], [53, 43]] as [number, number][],
-      label: "Cruzamento Dourado",
-      strength: "forte" as const
-    }
-  ] : [];
-  
-  return {
-    found,
-    confidence: found ? Math.round(65 + Math.random() * 30) : 0,
-    description: "Médias móveis indicam a direção de tendência do mercado. Cruzamentos da média curta (MM de 9 ou 20 períodos) com a longa (MM de 50 ou 200 períodos) são sinais importantes.",
-    recommendation: found ? "DECISÃO: " + (Math.random() > 0.6 ? "COMPRA" : "VENDA") + ". Observe os cruzamentos de médias móveis. Um cruzamento para cima (Cruzamento Dourado) sugere entrada de compra, enquanto um cruzamento para baixo (Cruzamento da Morte) sugere entrada de venda." : "Nenhum padrão de médias móveis identificado.",
-    majorPlayers: ["Morgan Stanley", "Fidelity", "Vanguard", "Itaú Asset", "Bradesco Asset"],
-    visualMarkers
-  };
-};
-
-export const detectRSI = async (imageData: string): Promise<PatternResult> => {
-  console.log("Detectando padrões de RSI...");
-  await new Promise(resolve => setTimeout(resolve, 1200));
-  const found = Math.random() > 0.5; // 50% chance of finding RSI patterns
-  
-  // Rsi aleatório entre 0 e 100
-  const rsiValue = Math.floor(Math.random() * 100);
-  const rsiCondition = rsiValue > 70 ? "sobrecomprado" : rsiValue < 30 ? "sobrevendido" : "neutro";
-  
-  // Simulação de marcadores visuais para RSI
-  const visualMarkers = found ? [
-    {
-      type: "indicator" as const,
-      color: rsiValue > 70 ? "#ef4444" : rsiValue < 30 ? "#22c55e" : "#3b82f6",
-      points: [[90, 80], [100, 80]] as [number, number][],
-      label: `RSI: ${rsiValue} (${rsiCondition})`,
-      strength: rsiValue > 80 || rsiValue < 20 ? "forte" as const : "moderado" as const
-    },
-    {
-      type: "pattern" as const,
-      color: "#8b5cf6",
-      points: [[75, 75], [85, 75]] as [number, number][],
-      label: "Divergência RSI",
-      strength: "moderado" as const
-    }
-  ] : [];
-  
-  return {
-    found,
-    confidence: found ? Math.round(60 + Math.random() * 35) : 0,
-    description: "RSI (Índice de Força Relativa) mede o momentum do preço em uma escala de 0 a 100. Valores acima de 70 indicam sobrecompra, enquanto valores abaixo de 30 indicam sobrevenda.",
-    recommendation: found ? `DECISÃO: ${rsiValue > 70 ? "VENDA" : rsiValue < 30 ? "COMPRA" : "AGUARDE"}. RSI atual: ${rsiValue}. ${rsiValue > 70 ? "Condição de sobrecompra detectada, considere venda ou aguarde correção" : rsiValue < 30 ? "Condição de sobrevenda detectada, considere compra" : "RSI em zona neutra, observe outros indicadores"}. Divergências entre RSI e preço podem indicar reversões.` : "Nenhum padrão claro de RSI detectado.",
-    majorPlayers: ["Renaissance Technologies", "Citadel", "Two Sigma", "Verde Asset", "Alaska Asset"],
-    visualMarkers
-  };
-};
-
-export const detectMACD = async (imageData: string): Promise<PatternResult> => {
-  console.log("Detectando padrões MACD...");
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  const found = Math.random() > 0.5; // 50% chance of finding MACD patterns
-  
-  // Simulação de marcadores visuais para MACD
-  const macdValue = (Math.random() * 2 - 1).toFixed(2); // Valor entre -1 e 1
-  const signalValue = (Math.random() * 2 - 1).toFixed(2); // Valor entre -1 e 1
-  const histogram = (parseFloat(macdValue) - parseFloat(signalValue)).toFixed(2);
-  const isBullish = parseFloat(histogram) > 0;
-  
-  const visualMarkers = found ? [
-    {
-      type: "indicator" as const,
-      color: "#3b82f6", // azul
-      points: [[80, 85], [100, 85]] as [number, number][],
-      label: `MACD: ${macdValue}`,
-      strength: Math.abs(parseFloat(macdValue)) > 0.5 ? "forte" as const : "moderado" as const
-    },
-    {
-      type: "indicator" as const,
-      color: "#f59e0b", // laranja
-      points: [[80, 88], [100, 88]] as [number, number][],
-      label: `Sinal: ${signalValue}`,
-      strength: "moderado" as const
-    },
-    {
-      type: "pattern" as const,
-      color: isBullish ? "#22c55e" : "#ef4444",
-      points: [[90, 90], [95, 90]] as [number, number][],
-      label: `Histograma: ${histogram} (${isBullish ? "Alta" : "Baixa"})`,
-      strength: Math.abs(parseFloat(histogram)) > 0.3 ? "forte" as const : "moderado" as const
-    }
-  ] : [];
-  
-  return {
-    found,
-    confidence: found ? Math.round(65 + Math.random() * 30) : 0,
-    description: "MACD (Convergência e Divergência de Médias Móveis) é um indicador de momentum que mostra a relação entre duas médias móveis do preço. Usado para identificar mudanças na força, direção, momentum e duração de tendências.",
-    recommendation: found ? `DECISÃO: ${isBullish ? "COMPRA" : "VENDA"}. MACD: ${macdValue}, Sinal: ${signalValue}, Histograma: ${histogram}. ${isBullish ? "MACD acima da linha de sinal, tendência de alta. Considere compra." : "MACD abaixo da linha de sinal, tendência de baixa. Considere venda."}` : "Nenhum padrão de MACD claro identificado.",
-    majorPlayers: ["Bridgewater Associates", "AQR Capital", "DE Shaw", "Kapitalo Investimentos", "Legacy Capital"],
     visualMarkers
   };
 };
@@ -440,27 +319,9 @@ export const detectPatterns = async (
   imageData: string,
   types: AnalysisType[],
   precision: PrecisionLevel = "normal"
-): Promise<PatternResultsMap> => {
-  const results: PatternResultsMap = {
+): Promise<Record<string, PatternResult>> => {
+  const results: Record<string, PatternResult> = {
     trendlines: {
-      found: false,
-      confidence: 0,
-      description: "",
-      recommendation: ""
-    },
-    movingAverages: {
-      found: false,
-      confidence: 0,
-      description: "",
-      recommendation: ""
-    },
-    rsi: {
-      found: false,
-      confidence: 0,
-      description: "",
-      recommendation: ""
-    },
-    macd: {
       found: false,
       confidence: 0,
       description: "",
@@ -509,30 +370,6 @@ export const detectPatterns = async (
     detectionPromises.push(
       detectTrendLines(imageData, precision).then(result => {
         results.trendlines = result;
-      })
-    );
-  }
-
-  if (types.includes("movingAverages") || types.includes("all")) {
-    detectionPromises.push(
-      detectMovingAverages(imageData).then(result => {
-        results.movingAverages = result;
-      })
-    );
-  }
-
-  if (types.includes("rsi") || types.includes("all")) {
-    detectionPromises.push(
-      detectRSI(imageData).then(result => {
-        results.rsi = result;
-      })
-    );
-  }
-
-  if (types.includes("macd") || types.includes("all")) {
-    detectionPromises.push(
-      detectMACD(imageData).then(result => {
-        results.macd = result;
       })
     );
   }

@@ -4,9 +4,6 @@ import { PatternResult } from "@/utils/patternDetection";
 import { cn } from "@/lib/utils";
 import { 
   TrendingUp, 
-  LineChart, 
-  Activity, 
-  BarChart4,
   Fingerprint,
   CandlestickChart,
   TrendingDown,
@@ -60,27 +57,6 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ results, compact }) => 
       label: "Linhas de Tendência",
       color: "text-trader-green",
       description: "Níveis de suporte e resistência"
-    },
-    {
-      type: "movingAverages",
-      icon: LineChart,
-      label: "Médias Móveis",
-      color: "text-trader-blue",
-      description: "Padrões de MM e MMA"
-    },
-    {
-      type: "rsi",
-      icon: Activity,
-      label: "RSI",
-      color: "text-trader-yellow",
-      description: "Condições de sobrecompra/sobrevenda"
-    },
-    {
-      type: "macd",
-      icon: BarChart4,
-      label: "MACD",
-      color: "text-trader-purple",
-      description: "Cruzamentos de linha de sinal"
     },
     {
       type: "fibonacci",
