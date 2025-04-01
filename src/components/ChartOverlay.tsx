@@ -1,7 +1,6 @@
 
 import React from "react";
 import { PatternResult } from "@/utils/patternDetection";
-import { cn } from "@/lib/utils";
 import { useAnalyzer } from "@/context/AnalyzerContext";
 
 interface ChartOverlayProps {
@@ -20,18 +19,16 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
   
   if (allMarkers.length === 0) return null;
 
-  // Ajustes na espessura das linhas com base na precisão
+  // Adjust the visual elements based on precision level
   const getStrokeWidth = (type: string) => {
     const baseWidth = type === "trendline" ? 2 : type === "pattern" ? 1.5 : 1;
     return precision === "alta" ? baseWidth * 0.8 : baseWidth;
   };
 
-  // Ajustes no tamanho do texto com base na precisão
   const getFontSize = (baseSize: number) => {
     return precision === "alta" ? baseSize * 0.9 : baseSize;
   };
 
-  // Aplicar efeito de glow para melhor visibilidade
   const getGlowEffect = (color: string) => {
     return precision === "alta" ? `drop-shadow(0 0 2px ${color})` : undefined;
   };
@@ -52,7 +49,7 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
       </defs>
       
       {allMarkers.map((marker, idx) => {
-        // Trendlines, support, resistance
+        // Render different marker types based on their properties
         if (marker.points && marker.points.length >= 2) {
           const isLine = ["trendline", "support", "resistance"].includes(marker.type);
           
@@ -86,7 +83,7 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
             );
           }
           
-          // For indicators that need a polyline
+          // For indicators like Fibonacci levels
           if (marker.type === "indicator" && marker.points.length > 2) {
             const pointsString = marker.points
               .map(([x, y]) => `${x},${y}`)
@@ -117,7 +114,7 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
             );
           }
           
-          // For patterns like Golden Cross, Divergence, etc
+          // For pattern markers
           if (marker.type === "pattern") {
             const [[x1, y1], [x2, y2]] = marker.points;
             const centerX = (x1 + x2) * 0.5;
@@ -162,14 +159,14 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
             );
           }
           
-          // Para zonas e áreas (como zonas de Fibonacci)
-          if (marker.type === "zone" || marker.points.length >= 4) {
+          // For zone areas like support/resistance zones
+          if (marker.type === "zone" && marker.points.length >= 4) {
             const [[x1, y1], [x2, y2], [x3, y3], [x4, y4]] = marker.points;
             return (
               <g key={idx} style={{ filter: precision === "alta" ? "url(#glow)" : undefined }}>
                 <polygon
                   points={`${x1},${y1} ${x2},${y2} ${x3},${y3} ${x4},${y4}`}
-                  fill={`${marker.color}33`} // 20% de opacidade
+                  fill={`${marker.color}33`}
                   stroke={marker.color}
                   strokeWidth={getStrokeWidth("zone")}
                 />

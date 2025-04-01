@@ -26,7 +26,7 @@ interface AnalysisLabelsProps {
 const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ results, compact }) => {
   const isMobile = useMediaQuery("(max-width: 768px)");
   
-  // Extrair decisões das recomendações
+  // Extract decision from recommendations
   const extractDecision = (recommendation: string): string | null => {
     if (!recommendation) return null;
     
@@ -88,14 +88,14 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ results, compact }) => 
     }
   ];
   
-  // Filtrar apenas resultados encontrados
+  // Filter only found results
   const foundResults = resultItems.filter(
     item => results[item.type]?.found
   );
   
   if (foundResults.length === 0) return null;
 
-  // Renderizar versão compacta
+  // Render compact version
   if (compact) {
     return (
       <div className={`
@@ -157,7 +157,7 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ results, compact }) => 
     );
   }
 
-  // Renderizar versão expandida
+  // Render expanded version
   return (
     <div className={`
       grid gap-2 p-3 bg-black/70 backdrop-blur-sm rounded-lg border border-trader-panel/50

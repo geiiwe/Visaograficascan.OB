@@ -28,7 +28,7 @@ const ResultsOverlay = () => {
     const runAnalysis = async () => {
       if (isAnalyzing && imageData) {
         try {
-          // Configure advanced processing options based on precision level
+          // Configure processing options based on precision level
           const processOptions = {
             // Basic options
             enhanceContrast: true,
@@ -41,7 +41,7 @@ const ResultsOverlay = () => {
             edgeEnhancement: true,
             patternRecognition: true,
             
-            // New computer vision enhancements
+            // Computer vision enhancements
             contourDetection: precision !== "baixa",
             featureExtraction: precision === "alta",
             histogramEqualization: precision !== "baixa"
@@ -49,26 +49,26 @@ const ResultsOverlay = () => {
           
           console.log(`Iniciando análise técnica com precisão ${precision}`, processOptions);
           
-          // Process the image with enhanced computer vision settings
+          // Process the image with enhanced computer vision
           const processedImage = await prepareForAnalysis(imageData, processOptions);
           
-          // Run the pattern detection with the precision level
+          // Run pattern detection with the precision level
           const results = await detectPatterns(processedImage, activeAnalysis, precision);
           
-          // Save the detailed results
+          // Save detailed results
           setDetailedResults(results);
           
-          // Update the analysis results in the context
+          // Update analysis results in context
           Object.entries(results).forEach(([type, result]) => {
             setAnalysisResult(type as any, result.found);
           });
           
-          // Count how many patterns were found
+          // Count patterns found
           const foundCount = Object.values(results)
             .filter(r => r.found && r.type !== "all")
             .length;
           
-          // Notify the user about the results
+          // Notify user about results
           if (results.all.found) {
             toast.success(`Análise concluída! ${foundCount} padrões detectados.`);
           } else if (foundCount > 0) {
@@ -95,13 +95,13 @@ const ResultsOverlay = () => {
 
   return (
     <div className="absolute inset-0 flex flex-col">
-      {/* Overlay para as marcações no gráfico */}
+      {/* Chart overlay with visual markers */}
       <ChartOverlay 
         results={detailedResults} 
         showMarkers={showVisualMarkers}
       />
       
-      {/* Labels das análises na parte inferior */}
+      {/* Analysis labels at the bottom */}
       <div className={`absolute ${isMobile ? "bottom-0 left-0 right-0" : "bottom-2 left-2 right-2"}`}>
         <AnalysisLabels 
           results={detailedResults} 
