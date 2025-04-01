@@ -31,20 +31,25 @@ const ResultsOverlay = () => {
           // Configure advanced processing options based on precision level
           const processOptions = {
             // Basic options
-            enhanceContrast: precision !== "baixa",
+            enhanceContrast: true,
             removeNoise: true,
             sharpness: precision === "alta" ? 1.8 : precision === "normal" ? 1.2 : 0.8,
             iterations: precision === "alta" ? 3 : precision === "normal" ? 2 : 1,
             
             // Advanced options
-            adaptiveThreshold: precision === "alta",
-            edgeEnhancement: precision !== "baixa",
-            patternRecognition: precision !== "baixa"
+            adaptiveThreshold: precision !== "baixa",
+            edgeEnhancement: true,
+            patternRecognition: true,
+            
+            // New computer vision enhancements
+            contourDetection: precision !== "baixa",
+            featureExtraction: precision === "alta",
+            histogramEqualization: precision !== "baixa"
           };
           
-          console.log(`Iniciando análise com precisão ${precision}`, processOptions);
+          console.log(`Iniciando análise técnica com precisão ${precision}`, processOptions);
           
-          // Process the image with enhanced settings
+          // Process the image with enhanced computer vision settings
           const processedImage = await prepareForAnalysis(imageData, processOptions);
           
           // Run the pattern detection with the precision level
@@ -69,7 +74,7 @@ const ResultsOverlay = () => {
           } else if (foundCount > 0) {
             toast.success(`Análise concluída! ${foundCount} padrões foram detectados.`);
           } else {
-            toast.info("Análise concluída. Nenhum padrão claro detectado.");
+            toast.info("Análise concluída. Nenhum padrão técnico detectado.");
           }
           
         } catch (error) {

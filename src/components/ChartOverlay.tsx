@@ -22,13 +22,18 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
 
   // Ajustes na espessura das linhas com base na precisão
   const getStrokeWidth = (type: string) => {
-    const baseWidth = type === "trendline" ? 1.5 : 1;
+    const baseWidth = type === "trendline" ? 2 : type === "pattern" ? 1.5 : 1;
     return precision === "alta" ? baseWidth * 0.8 : baseWidth;
   };
 
   // Ajustes no tamanho do texto com base na precisão
   const getFontSize = (baseSize: number) => {
-    return precision === "alta" ? baseSize * 0.8 : baseSize;
+    return precision === "alta" ? baseSize * 0.9 : baseSize;
+  };
+
+  // Aplicar efeito de glow para melhor visibilidade
+  const getGlowEffect = (color: string) => {
+    return precision === "alta" ? `drop-shadow(0 0 2px ${color})` : undefined;
   };
 
   return (
@@ -36,6 +41,16 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
       className="absolute inset-0 w-full h-full pointer-events-none z-10"
       preserveAspectRatio="none"
     >
+      <defs>
+        <filter id="glow">
+          <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
+          <feMerge>
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+      </defs>
+      
       {allMarkers.map((marker, idx) => {
         // Trendlines, support, resistance
         if (marker.points && marker.points.length >= 2) {
@@ -44,7 +59,7 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
           if (isLine) {
             const [[x1, y1], [x2, y2]] = marker.points;
             return (
-              <g key={idx}>
+              <g key={idx} style={{ filter: precision === "alta" ? "url(#glow)" : undefined }}>
                 <line
                   x1={`${x1}%`}
                   y1={`${y1}%`}
@@ -59,7 +74,8 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
                     x={`${x2 + 1}%`}
                     y={`${y2 + 3}%`}
                     fill={marker.color}
-                    fontSize={getFontSize(8)}
+                    fontSize={getFontSize(9)}
+                    fontWeight="bold"
                     textAnchor="start"
                     className="select-none"
                   >
@@ -70,27 +86,27 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
             );
           }
           
-          // For indicators like MA, MACD that need a polyline
+          // For indicators that need a polyline
           if (marker.type === "indicator" && marker.points.length > 2) {
             const pointsString = marker.points
               .map(([x, y]) => `${x},${y}`)
               .join(" ");
             
             return (
-              <g key={idx}>
+              <g key={idx} style={{ filter: precision === "alta" ? "url(#glow)" : undefined }}>
                 <polyline
                   points={pointsString}
                   fill="none"
                   stroke={marker.color}
                   strokeWidth={getStrokeWidth("indicator")}
-                  strokeDasharray={marker.label?.includes("MM 50") || marker.label?.includes("MA 50") ? "3,2" : undefined}
                 />
                 {marker.label && (
                   <text
                     x={`${marker.points[marker.points.length - 1][0] + 1}%`}
                     y={`${marker.points[marker.points.length - 1][1] + 3}%`}
                     fill={marker.color}
-                    fontSize={getFontSize(8)}
+                    fontSize={getFontSize(9)}
+                    fontWeight="bold"
                     textAnchor="start"
                     className="select-none"
                   >
@@ -108,12 +124,12 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
             const centerY = (y1 + y2) * 0.5;
             
             return (
-              <g key={idx}>
+              <g key={idx} style={{ filter: precision === "alta" ? "url(#glow)" : undefined }}>
                 <circle
                   cx={`${centerX}%`}
                   cy={`${centerY}%`}
-                  r="4"
-                  fill="none"
+                  r="5"
+                  fill={`${marker.color}33`}
                   stroke={marker.color}
                   strokeWidth={getStrokeWidth("pattern")}
                 />
@@ -122,7 +138,7 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
                     x={`${centerX}%`}
                     y={`${centerY - 8}%`}
                     fill={marker.color}
-                    fontSize={getFontSize(9)}
+                    fontSize={getFontSize(10)}
                     fontWeight="bold"
                     textAnchor="middle"
                     className="select-none"
@@ -135,7 +151,7 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
                     x={`${centerX}%`}
                     y={`${centerY - 4}%`}
                     fill={marker.color}
-                    fontSize={getFontSize(7)}
+                    fontSize={getFontSize(8)}
                     textAnchor="middle"
                     className="select-none"
                   >
@@ -150,7 +166,7 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
           if (marker.type === "zone" || marker.points.length >= 4) {
             const [[x1, y1], [x2, y2], [x3, y3], [x4, y4]] = marker.points;
             return (
-              <g key={idx}>
+              <g key={idx} style={{ filter: precision === "alta" ? "url(#glow)" : undefined }}>
                 <polygon
                   points={`${x1},${y1} ${x2},${y2} ${x3},${y3} ${x4},${y4}`}
                   fill={`${marker.color}33`} // 20% de opacidade
@@ -162,7 +178,8 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
                     x={`${(x1 + x3) * 0.5}%`}
                     y={`${(y1 + y3) * 0.5}%`}
                     fill={marker.color}
-                    fontSize={getFontSize(8)}
+                    fontSize={getFontSize(9)}
+                    fontWeight="bold"
                     textAnchor="middle"
                     className="select-none"
                   >

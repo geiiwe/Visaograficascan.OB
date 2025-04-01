@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, ReactNode } from "react";
 
-export type AnalysisType = "trendlines" | "movingAverages" | "rsi" | "macd" | "fibonacci" | "candlePatterns" | "elliottWaves" | "dowTheory" | "all";
+export type AnalysisType = "trendlines" | "fibonacci" | "candlePatterns" | "elliottWaves" | "dowTheory" | "all";
 export type PrecisionLevel = "baixa" | "normal" | "alta";
 
 interface AnalyzerContextType {
@@ -32,9 +32,6 @@ export const AnalyzerProvider = ({ children }: { children: ReactNode }) => {
   const [activeAnalysis, setActiveAnalysis] = useState<AnalysisType[]>(["trendlines"]);
   const [analysisResults, setAnalysisResults] = useState<Record<AnalysisType, boolean>>({
     trendlines: false,
-    movingAverages: false,
-    rsi: false,
-    macd: false,
     fibonacci: false,
     candlePatterns: false,
     elliottWaves: false,
@@ -51,7 +48,7 @@ export const AnalyzerProvider = ({ children }: { children: ReactNode }) => {
       if (activeAnalysis.includes("all")) {
         setActiveAnalysis([]);
       } else {
-        setActiveAnalysis(["trendlines", "movingAverages", "rsi", "macd", "fibonacci", "candlePatterns", "elliottWaves", "dowTheory", "all"]);
+        setActiveAnalysis(["trendlines", "fibonacci", "candlePatterns", "elliottWaves", "dowTheory", "all"]);
       }
       return;
     }
@@ -70,7 +67,7 @@ export const AnalyzerProvider = ({ children }: { children: ReactNode }) => {
         const newAnalysis = [...prev, type];
         
         // Check if we need to add 'all'
-        const hasAllTypes = ["trendlines", "movingAverages", "rsi", "macd", "fibonacci", "candlePatterns", "elliottWaves", "dowTheory"].every(
+        const hasAllTypes = ["trendlines", "fibonacci", "candlePatterns", "elliottWaves", "dowTheory"].every(
           (t) => newAnalysis.includes(t as AnalysisType) || t === type
         );
         
@@ -94,9 +91,6 @@ export const AnalyzerProvider = ({ children }: { children: ReactNode }) => {
     setIsAnalyzing(false);
     setAnalysisResults({
       trendlines: false,
-      movingAverages: false,
-      rsi: false,
-      macd: false,
       fibonacci: false,
       candlePatterns: false,
       elliottWaves: false,

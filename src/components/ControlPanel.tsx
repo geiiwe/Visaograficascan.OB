@@ -5,9 +5,6 @@ import { Switch } from "@/components/ui/switch";
 import { useAnalyzer } from "@/context/AnalyzerContext";
 import { 
   TrendingUp, 
-  LineChart, 
-  BarChart4, 
-  Activity, 
   Play, 
   Camera, 
   Layers,
@@ -60,24 +57,6 @@ const ControlPanel = () => {
       label: "Tendências", 
       icon: <TrendingUp className="h-4 w-4 mr-2" />,
       color: "bg-trader-green" 
-    },
-    { 
-      type: "movingAverages" as const, 
-      label: "Médias Móveis", 
-      icon: <LineChart className="h-4 w-4 mr-2" />,
-      color: "bg-trader-blue" 
-    },
-    { 
-      type: "rsi" as const, 
-      label: "RSI", 
-      icon: <Activity className="h-4 w-4 mr-2" />,
-      color: "bg-trader-yellow" 
-    },
-    { 
-      type: "macd" as const, 
-      label: "MACD", 
-      icon: <BarChart4 className="h-4 w-4 mr-2" />,
-      color: "bg-trader-purple" 
     },
     { 
       type: "fibonacci" as const, 
