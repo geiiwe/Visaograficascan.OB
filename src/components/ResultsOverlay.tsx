@@ -22,37 +22,50 @@ const ResultsOverlay = () => {
   } = useAnalyzer();
   
   const [detailedResults, setDetailedResults] = useState<Record<string, PatternResult>>({});
+  const [processingStage, setProcessingStage] = useState<string>("");
   const isMobile = useMediaQuery("(max-width: 768px)");
 
   useEffect(() => {
     const runAnalysis = async () => {
       if (isAnalyzing && imageData) {
         try {
-          // Configure processing options based on precision level
+          // Configure advanced processing options based on precision level
           const processOptions = {
-            // Basic options
+            // Core options
             enhanceContrast: true,
-            removeNoise: true,
-            sharpness: precision === "alta" ? 1.8 : precision === "normal" ? 1.2 : 0.8,
+            removeNoise: precision !== "baixa",
+            sharpness: precision === "alta" ? 2.2 : precision === "normal" ? 1.5 : 1.0,
             iterations: precision === "alta" ? 3 : precision === "normal" ? 2 : 1,
             
-            // Advanced options
+            // Advanced vision options
             adaptiveThreshold: precision !== "baixa",
-            edgeEnhancement: true,
+            perspectiveCorrection: true, // Always apply perspective correction
+            chartRegionDetection: true,  // Always identify chart region
+            
+            // Pattern recognition enhancements
+            edgeEnhancement: precision !== "baixa",
             patternRecognition: true,
             
-            // Computer vision enhancements
+            // Advanced computer vision
             contourDetection: precision !== "baixa",
             featureExtraction: precision === "alta",
-            histogramEqualization: precision !== "baixa"
+            histogramEqualization: precision !== "baixa",
+            
+            // Human-like analysis properties
+            sensitivity: precision === "alta" ? 0.85 : precision === "normal" ? 0.7 : 0.5,
+            contextAwareness: precision !== "baixa", // Consider surrounding elements
+            patternConfidence: precision === "alta" ? 0.75 : precision === "normal" ? 0.6 : 0.45,
           };
           
-          console.log(`Iniciando análise técnica com precisão ${precision}`, processOptions);
+          console.log(`Iniciando análise técnica avançada com precisão ${precision}`, processOptions);
           
-          // Process the image with enhanced computer vision
-          const processedImage = await prepareForAnalysis(imageData, processOptions);
+          // Stage 1: Chart region detection and preprocessing
+          setProcessingStage("Detectando região do gráfico");
+          const processedImage = await prepareForAnalysis(imageData, processOptions, 
+            (stage) => setProcessingStage(stage));
           
-          // Run pattern detection with the precision level
+          // Stage 2: Pattern detection with enhanced algorithms
+          setProcessingStage("Analisando padrões técnicos");
           const results = await detectPatterns(processedImage, activeAnalysis, precision);
           
           // Save detailed results
@@ -69,7 +82,7 @@ const ResultsOverlay = () => {
             .length;
           
           // Notify user about results
-          if (results.all.found) {
+          if (results.all?.found) {
             toast.success(`Análise concluída! ${foundCount} padrões detectados.`);
           } else if (foundCount > 0) {
             toast.success(`Análise concluída! ${foundCount} padrões foram detectados.`);
@@ -81,6 +94,7 @@ const ResultsOverlay = () => {
           console.error("Analysis error:", error);
           toast.error("Erro durante a análise. Por favor, tente novamente.");
         } finally {
+          setProcessingStage("");
           setIsAnalyzing(false);
         }
       }
@@ -108,6 +122,15 @@ const ResultsOverlay = () => {
           compact={compactMode}
         />
       </div>
+      
+      {/* Processing stage indicator */}
+      {processingStage && (
+        <div className="absolute top-4 left-0 right-0 flex justify-center">
+          <div className="bg-black/70 text-white px-4 py-2 rounded-full text-sm">
+            {processingStage}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
