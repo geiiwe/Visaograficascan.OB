@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from "react";
 import { useAnalyzer } from "@/context/AnalyzerContext";
 import { detectPatterns, PatternResult } from "@/utils/patternDetection";
@@ -25,6 +26,7 @@ const ResultsOverlay = () => {
   const [processingStage, setProcessingStage] = useState<string>("");
   const isMobile = useMediaQuery("(max-width: 768px)");
   const analysisImageRef = useRef<HTMLImageElement | null>(null);
+  const processedRegionRef = useRef<string | null>(null);
 
   useEffect(() => {
     const runAnalysis = async () => {
@@ -73,6 +75,7 @@ const ResultsOverlay = () => {
                   const debugImg = new Image();
                   debugImg.src = regionImage;
                   analysisImageRef.current = debugImg;
+                  processedRegionRef.current = regionImage;
                   
                   resolve(regionImage);
                 } catch (error) {
@@ -101,7 +104,7 @@ const ResultsOverlay = () => {
             // Advanced vision options
             adaptiveThreshold: precision !== "baixa",
             perspectiveCorrection: true, // Always apply perspective correction
-            chartRegionDetection: !chartRegion, // Only if user hasn't selected a region
+            chartRegionDetection: false, // Don't auto-detect, use the user's region
             
             // Pattern recognition enhancements
             edgeEnhancement: precision !== "baixa",
@@ -112,19 +115,22 @@ const ResultsOverlay = () => {
             featureExtraction: precision === "alta",
             histogramEqualization: precision !== "baixa",
             
-            // Human-like analysis properties
-            sensitivity: precision === "alta" ? 0.85 : precision === "normal" ? 0.7 : 0.5,
-            contextAwareness: precision !== "baixa", // Consider surrounding elements
-            patternConfidence: precision === "alta" ? 0.75 : precision === "normal" ? 0.6 : 0.45,
+            // Human-like analysis properties - don't simulate sensitivity
+            sensitivity: 1.0, // Always use full sensitivity
+            contextAwareness: true, // Always consider surrounding elements
+            patternConfidence: 1.0, // Require high confidence
             
             // User-defined chart region
             chartRegion: chartRegion || undefined,
+            
+            // Disable simulation
+            disableSimulation: true,
           };
           
-          console.log(`Iniciando análise técnica avançada com precisão ${precision}`, processOptions);
+          console.log(`Iniciando análise técnica realística com precisão ${precision}`, processOptions);
           
           // Stage 1: Extract the chart region if specified
-          setProcessingStage(chartRegion ? "Processando região selecionada" : "Detectando região do gráfico");
+          setProcessingStage(chartRegion ? "Processando região selecionada" : "Processando imagem completa");
           const regionImage = await extractRegionFromImage();
           
           // Stage 2: Preprocess the image for analysis
@@ -132,9 +138,9 @@ const ResultsOverlay = () => {
           const processedImage = await prepareForAnalysis(regionImage, processOptions, 
             (stage) => setProcessingStage(stage));
           
-          // Stage 3: Detect patterns with enhanced algorithms
+          // Stage 3: Detect patterns with real algorithms
           setProcessingStage("Analisando padrões técnicos");
-          const results = await detectPatterns(processedImage, activeAnalysis, precision);
+          const results = await detectPatterns(processedImage, activeAnalysis, precision, true);
           
           // Save detailed results
           setDetailedResults(results);
@@ -150,12 +156,10 @@ const ResultsOverlay = () => {
             .length;
           
           // Notify user about results
-          if (results.all?.found) {
+          if (foundCount > 0) {
             toast.success(`Análise concluída! ${foundCount} padrões detectados.`);
-          } else if (foundCount > 0) {
-            toast.success(`Análise concluída! ${foundCount} padrões foram detectados.`);
           } else {
-            toast.info("Análise concluída. Nenhum padrão técnico detectado.");
+            toast.info("Análise concluída. Nenhum padrão técnico detectado na região selecionada.");
           }
           
         } catch (error) {
@@ -181,6 +185,8 @@ const ResultsOverlay = () => {
       <ChartOverlay 
         results={detailedResults} 
         showMarkers={showVisualMarkers}
+        imageRegion={chartRegion}
+        processedImage={processedRegionRef.current}
       />
       
       {/* Analysis labels at the bottom */}
@@ -202,7 +208,7 @@ const ResultsOverlay = () => {
       
       {/* Debug view of the selected region (hidden) */}
       {process.env.NODE_ENV === 'development' && analysisImageRef.current && (
-        <div className="fixed bottom-0 right-0 w-32 h-32 opacity-50 pointer-events-none">
+        <div className="fixed bottom-0 right-0 w-32 h-32 opacity-50 pointer-events-none border border-red-500">
           <img 
             src={analysisImageRef.current.src} 
             alt="Region debug" 

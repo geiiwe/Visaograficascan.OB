@@ -6,10 +6,17 @@ import { useAnalyzer } from "@/context/AnalyzerContext";
 interface ChartOverlayProps {
   results: Record<string, PatternResult>;
   showMarkers: boolean;
+  imageRegion: { x: number; y: number; width: number; height: number } | null;
+  processedImage: string | null;
 }
 
-const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => {
-  const { precision, chartRegion } = useAnalyzer();
+const ChartOverlay: React.FC<ChartOverlayProps> = ({ 
+  results, 
+  showMarkers, 
+  imageRegion,
+  processedImage
+}) => {
+  const { precision } = useAnalyzer();
   
   // Don't render anything if markers are disabled
   if (!showMarkers) return null;
@@ -17,6 +24,9 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
   const allMarkers = Object.values(results)
     .filter(result => result?.found && result.visualMarkers)
     .flatMap(result => result.visualMarkers || []);
+  
+  // If no markers found, don't render anything
+  if (allMarkers.length === 0) return null;
   
   // Adjust the visual elements based on precision level
   const getStrokeWidth = (type: string) => {
@@ -26,6 +36,15 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
 
   const getFontSize = (baseSize: number) => {
     return precision === "alta" ? baseSize * 0.9 : baseSize;
+  };
+
+  // Map percentage coordinates to the correct positions within the selected region
+  const adjustCoordinates = (x: number, y: number): [number, number] => {
+    if (!imageRegion) return [x, y];
+    
+    // If we have a region, we need to map the coordinates from the analyzed image 
+    // back to the full image viewport
+    return [x, y]; // The markers are already in percentage coordinates
   };
 
   return (
@@ -43,6 +62,21 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
         </filter>
       </defs>
       
+      {/* Draw only the region outline if we have a region */}
+      {imageRegion && (
+        <rect
+          x="0%"
+          y="0%"
+          width="100%"
+          height="100%"
+          fill="none"
+          stroke="#3b82f6"
+          strokeWidth="2"
+          strokeDasharray="5,3"
+          className="pointer-events-none"
+        />
+      )}
+      
       {/* Draw all markers from analysis results */}
       {allMarkers.map((marker, idx) => {
         // Render different marker types based on their properties
@@ -50,7 +84,7 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
           const isLine = ["trendline", "support", "resistance"].includes(marker.type);
           
           if (isLine) {
-            const [[x1, y1], [x2, y2]] = marker.points;
+            const [[x1, y1], [x2, y2]] = marker.points.map(point => adjustCoordinates(point[0], point[1]));
             return (
               <g key={idx} style={{ filter: precision === "alta" ? "url(#glow)" : undefined }}>
                 <line
@@ -82,8 +116,16 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
           // For indicators like Fibonacci levels
           if (marker.type === "indicator" && marker.points.length > 2) {
             const pointsString = marker.points
-              .map(([x, y]) => `${x},${y}`)
+              .map(point => {
+                const [x, y] = adjustCoordinates(point[0], point[1]);
+                return `${x},${y}`;
+              })
               .join(" ");
+            
+            const [lastX, lastY] = adjustCoordinates(
+              marker.points[marker.points.length - 1][0], 
+              marker.points[marker.points.length - 1][1]
+            );
             
             return (
               <g key={idx} style={{ filter: precision === "alta" ? "url(#glow)" : undefined }}>
@@ -95,8 +137,8 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
                 />
                 {marker.label && (
                   <text
-                    x={`${marker.points[marker.points.length - 1][0] + 1}%`}
-                    y={`${marker.points[marker.points.length - 1][1] + 3}%`}
+                    x={`${lastX + 1}%`}
+                    y={`${lastY + 3}%`}
                     fill={marker.color}
                     fontSize={getFontSize(9)}
                     fontWeight="bold"
@@ -112,7 +154,7 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
           
           // For pattern markers
           if (marker.type === "pattern") {
-            const [[x1, y1], [x2, y2]] = marker.points;
+            const [[x1, y1], [x2, y2]] = marker.points.map(point => adjustCoordinates(point[0], point[1]));
             const centerX = (x1 + x2) * 0.5;
             const centerY = (y1 + y2) * 0.5;
             
@@ -157,7 +199,9 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
           
           // For zone areas like support/resistance zones
           if (marker.type === "zone" && marker.points.length >= 4) {
-            const [[x1, y1], [x2, y2], [x3, y3], [x4, y4]] = marker.points;
+            const adjustedPoints = marker.points.map(point => adjustCoordinates(point[0], point[1]));
+            const [[x1, y1], [x2, y2], [x3, y3], [x4, y4]] = adjustedPoints;
+            
             return (
               <g key={idx} style={{ filter: precision === "alta" ? "url(#glow)" : undefined }}>
                 <polygon
