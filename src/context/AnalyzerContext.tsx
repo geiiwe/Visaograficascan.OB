@@ -25,6 +25,7 @@ interface AnalyzerContextType {
   setSelectionMode: (mode: boolean) => void;
   chartRegion: { x: number; y: number; width: number; height: number } | null;
   setChartRegion: (region: { x: number; y: number; width: number; height: number } | null) => void;
+  hasCustomRegion: boolean;
 }
 
 const AnalyzerContext = createContext<AnalyzerContextType | undefined>(undefined);
@@ -47,6 +48,9 @@ export const AnalyzerProvider = ({ children }: { children: ReactNode }) => {
   const [compactMode, setCompactMode] = useState(true);
   const [selectionMode, setSelectionMode] = useState(false);
   const [chartRegion, setChartRegion] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+
+  // Computed property to check if a custom region is set
+  const hasCustomRegion = chartRegion !== null;
 
   const toggleAnalysis = (type: AnalysisType) => {
     if (type === "all") {
@@ -100,7 +104,7 @@ export const AnalyzerProvider = ({ children }: { children: ReactNode }) => {
       dowTheory: false,
       all: false,
     });
-    setChartRegion(null);
+    // Don't reset chartRegion here anymore - keep the user's selection
   };
 
   const toggleVisualMarkers = () => {
@@ -135,6 +139,7 @@ export const AnalyzerProvider = ({ children }: { children: ReactNode }) => {
         setSelectionMode,
         chartRegion,
         setChartRegion,
+        hasCustomRegion,
       }}
     >
       {children}

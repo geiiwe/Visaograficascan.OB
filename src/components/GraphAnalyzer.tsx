@@ -22,7 +22,8 @@ const GraphAnalyzer = () => {
     toggleCompactMode,
     selectionMode,
     setSelectionMode,
-    chartRegion
+    chartRegion,
+    hasCustomRegion
   } = useAnalyzer();
   const [cameraSupported, setCameraSupported] = useState<boolean | null>(null);
 
@@ -76,7 +77,7 @@ const GraphAnalyzer = () => {
     }
     setSelectionMode(!selectionMode);
     if (!selectionMode) {
-      toast.info("Selecione a região exata do gráfico para análise");
+      toast.info("Arraste para selecionar a área exata do gráfico para análise");
     }
   };
 
@@ -141,10 +142,10 @@ const GraphAnalyzer = () => {
                 variant="outline" 
                 size="sm" 
                 onClick={toggleChartSelection}
-                className={`h-8 ${chartRegion ? "bg-trader-blue/20 text-trader-blue border-trader-blue" : ""}`}
+                className={`h-8 ${hasCustomRegion ? "bg-trader-blue/20 text-trader-blue border-trader-blue" : ""}`}
               >
                 <Crop className="h-4 w-4 mr-1" />
-                {chartRegion ? "Editar Região" : "Definir Região"}
+                {hasCustomRegion ? "Editar Região" : "Definir Região"}
               </Button>
             )}
             
@@ -167,6 +168,19 @@ const GraphAnalyzer = () => {
               alt="Gráfico Capturado" 
               className="w-full object-contain" 
             />
+            {hasCustomRegion && !selectionMode && (
+              <div className="absolute inset-0 pointer-events-none">
+                <div 
+                  className="absolute border-2 border-dashed border-trader-blue rounded-sm"
+                  style={{
+                    left: `${(chartRegion?.x || 0) / (imageRef?.current?.naturalWidth || 1) * 100}%`,
+                    top: `${(chartRegion?.y || 0) / (imageRef?.current?.naturalHeight || 1) * 100}%`,
+                    width: `${(chartRegion?.width || 0) / (imageRef?.current?.naturalWidth || 1) * 100}%`,
+                    height: `${(chartRegion?.height || 0) / (imageRef?.current?.naturalHeight || 1) * 100}%`,
+                  }}
+                />
+              </div>
+            )}
             <ResultsOverlay />
             <ChartRegionSelector />
           </div>

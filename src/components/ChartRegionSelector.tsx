@@ -16,30 +16,86 @@ const ChartRegionSelector = () => {
   
   const imageRef = useRef<HTMLImageElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [startPoint, setStartPoint] = useState({ x: 0, y: 0 });
   const [currentPoint, setCurrentPoint] = useState({ x: 0, y: 0 });
+  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
+  
+  // Handle window resize to adjust canvas size
+  useEffect(() => {
+    const handleResize = () => {
+      if (containerRef.current && imageRef.current && canvasRef.current) {
+        const containerRect = containerRef.current.getBoundingClientRect();
+        const canvas = canvasRef.current;
+        
+        // Set canvas size to match container
+        canvas.width = containerRect.width;
+        canvas.height = containerRect.height;
+        
+        // Redraw the selection if it exists
+        if (chartRegion) {
+          const scaleX = canvas.width / imageRef.current.naturalWidth;
+          const scaleY = canvas.height / imageRef.current.naturalHeight;
+          
+          drawSelectionBox(
+            chartRegion.x * scaleX, 
+            chartRegion.y * scaleY, 
+            chartRegion.width * scaleX, 
+            chartRegion.height * scaleY
+          );
+        }
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [chartRegion]);
   
   // Initialize the canvas when selection mode is activated
   useEffect(() => {
-    if (!selectionMode || !imageData || !canvasRef.current || !imageRef.current) return;
+    if (!selectionMode || !imageData) return;
     
-    const canvas = canvasRef.current;
-    const image = imageRef.current;
-    
-    // Set canvas dimensions to match the image
-    canvas.width = image.width;
-    canvas.height = image.height;
-    
-    // If there's already a chartRegion, draw it
-    if (chartRegion) {
-      drawSelectionBox(
-        chartRegion.x, 
-        chartRegion.y, 
-        chartRegion.width, 
-        chartRegion.height
-      );
-    }
+    const img = new Image();
+    img.src = imageData;
+    img.onload = () => {
+      if (!canvasRef.current || !containerRef.current || !imageRef.current) return;
+      
+      const containerRect = containerRef.current.getBoundingClientRect();
+      const canvas = canvasRef.current;
+      
+      // Set canvas dimensions to match the container
+      canvas.width = containerRect.width;
+      canvas.height = containerRect.height;
+      
+      setCanvasSize({
+        width: canvas.width,
+        height: canvas.height
+      });
+      
+      // If there's already a chartRegion, draw it
+      if (chartRegion) {
+        const scaleX = canvas.width / img.naturalWidth;
+        const scaleY = canvas.height / img.naturalHeight;
+        
+        drawSelectionBox(
+          chartRegion.x * scaleX, 
+          chartRegion.y * scaleY, 
+          chartRegion.width * scaleX, 
+          chartRegion.height * scaleY
+        );
+      } else {
+        // Clear the canvas
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          
+          // Draw semi-transparent overlay
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+      }
+    };
   }, [selectionMode, imageData, chartRegion]);
   
   const drawSelectionBox = (x: number, y: number, width: number, height: number) => {
@@ -85,12 +141,20 @@ const ChartRegionSelector = () => {
     
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left) * (canvas.width / rect.width);
-    const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
     
     setStartPoint({ x, y });
     setCurrentPoint({ x, y });
     setIsDragging(true);
+    
+    // Draw initial point
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
   };
   
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -98,8 +162,8 @@ const ChartRegionSelector = () => {
     
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left) * (canvas.width / rect.width);
-    const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
     
     setCurrentPoint({ x, y });
     
@@ -114,11 +178,12 @@ const ChartRegionSelector = () => {
   };
   
   const handleMouseUp = () => {
-    if (!isDragging) return;
+    if (!isDragging || !canvasRef.current || !imageRef.current) return;
     
     setIsDragging(false);
     
     // Calculate final selection rectangle
+    const canvas = canvasRef.current;
     const x = Math.min(startPoint.x, currentPoint.x);
     const y = Math.min(startPoint.y, currentPoint.y);
     const width = Math.abs(currentPoint.x - startPoint.x);
@@ -126,7 +191,21 @@ const ChartRegionSelector = () => {
     
     // Only update if the selection has some size
     if (width > 10 && height > 10) {
-      setChartRegion({ x, y, width, height });
+      // Convert canvas coordinates to original image coordinates
+      const img = imageRef.current;
+      const scaleX = img.naturalWidth / canvas.width;
+      const scaleY = img.naturalHeight / canvas.height;
+      
+      setChartRegion({
+        x: Math.round(x * scaleX),
+        y: Math.round(y * scaleY),
+        width: Math.round(width * scaleX),
+        height: Math.round(height * scaleY)
+      });
+      
+      toast.success("Região selecionada! Clique em 'Confirmar' para analisar.");
+    } else {
+      toast.info("Selecione uma área maior arrastandoo o mouse.");
     }
   };
   
@@ -150,10 +229,60 @@ const ChartRegionSelector = () => {
     }
   };
   
+  const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (!canvasRef.current || e.touches.length === 0) return;
+    
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches[0];
+    const x = touch.clientX - rect.left;
+    const y = touch.clientY - rect.top;
+    
+    setStartPoint({ x, y });
+    setCurrentPoint({ x, y });
+    setIsDragging(true);
+    
+    // Draw initial point
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+  };
+  
+  const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isDragging || !canvasRef.current || e.touches.length === 0) return;
+    
+    // Prevent scrolling while dragging
+    e.preventDefault();
+    
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches[0];
+    const x = touch.clientX - rect.left;
+    const y = touch.clientY - rect.top;
+    
+    setCurrentPoint({ x, y });
+    
+    // Calculate selection rectangle dimensions
+    const selX = Math.min(startPoint.x, x);
+    const selY = Math.min(startPoint.y, y);
+    const selWidth = Math.abs(x - startPoint.x);
+    const selHeight = Math.abs(y - startPoint.y);
+    
+    // Draw the selection rectangle
+    drawSelectionBox(selX, selY, selWidth, selHeight);
+  };
+  
+  const handleTouchEnd = () => {
+    handleMouseUp(); // Reuse the same logic as mouseUp
+  };
+  
   if (!selectionMode || !imageData) return null;
   
   return (
-    <div className="absolute inset-0 flex flex-col">
+    <div className="absolute inset-0 flex flex-col" ref={containerRef}>
       {/* Hidden image to get dimensions */}
       <img 
         ref={imageRef}
@@ -165,11 +294,14 @@ const ChartRegionSelector = () => {
       {/* Selection canvas */}
       <canvas
         ref={canvasRef}
-        className="absolute inset-0 w-full h-full z-20 cursor-crosshair"
+        className="absolute inset-0 w-full h-full z-20 cursor-crosshair touch-none"
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       />
       
       {/* Selection controls */}
@@ -195,7 +327,7 @@ const ChartRegionSelector = () => {
       {/* Instructions overlay */}
       <div className="absolute top-4 left-0 right-0 flex justify-center z-30">
         <div className="bg-black/70 text-white px-4 py-2 rounded-full text-sm">
-          Selecione a região do gráfico para análise
+          Toque e arraste para selecionar a região do gráfico
         </div>
       </div>
     </div>
