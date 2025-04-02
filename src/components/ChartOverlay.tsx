@@ -1,4 +1,3 @@
-
 import React from "react";
 import { PatternResult } from "@/utils/patternDetection";
 import { useAnalyzer } from "@/context/AnalyzerContext";
@@ -31,20 +30,30 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
   // Adjust the visual elements based on precision level
   const getStrokeWidth = (type: string) => {
     const baseWidth = type === "trendline" ? 2 : type === "pattern" ? 1.5 : 1;
-    return precision === "alta" ? baseWidth * 0.8 : baseWidth;
+    return precision === "alta" ? baseWidth * 1.2 : baseWidth;
   };
 
   const getFontSize = (baseSize: number) => {
-    return precision === "alta" ? baseSize * 0.9 : baseSize;
+    return precision === "alta" ? baseSize * 1.1 : baseSize;
   };
 
   // Map percentage coordinates to the correct positions within the selected region
   const adjustCoordinates = (x: number, y: number): [number, number] => {
     if (!imageRegion) return [x, y];
     
-    // If we have a region, we need to map the coordinates from the analyzed image 
-    // back to the full image viewport
-    return [x, y]; // The markers are already in percentage coordinates
+    // The markers are already in percentage coordinates (0-100%)
+    // Keep them in percentage coordinates within the visible area
+    return [x, y];
+  };
+
+  // Enhance marker styling based on precision level
+  const getMarkerStyle = (marker: any) => {
+    if (precision === "alta") {
+      return { filter: "url(#enhanced-glow)" };
+    } else if (precision === "normal") {
+      return { filter: "url(#glow)" };
+    }
+    return {};
   };
 
   return (
@@ -60,9 +69,21 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
             <feMergeNode in="SourceGraphic"/>
           </feMerge>
         </filter>
+        
+        {/* Enhanced glow filter for alta precision */}
+        <filter id="enhanced-glow">
+          <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
+          <feComponentTransfer in="coloredBlur">
+            <feFuncA type="linear" slope="1.5"/>
+          </feComponentTransfer>
+          <feMerge>
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
       </defs>
       
-      {/* Draw only the region outline if we have a region */}
+      {/* Draw selected region outline if we have a region */}
       {imageRegion && (
         <rect
           x="0%"
@@ -86,7 +107,7 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
           if (isLine) {
             const [[x1, y1], [x2, y2]] = marker.points.map(point => adjustCoordinates(point[0], point[1]));
             return (
-              <g key={idx} style={{ filter: precision === "alta" ? "url(#glow)" : undefined }}>
+              <g key={idx} style={getMarkerStyle(marker)}>
                 <line
                   x1={`${x1}%`}
                   y1={`${y1}%`}
@@ -101,7 +122,7 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
                     x={`${x2 + 1}%`}
                     y={`${y2 + 3}%`}
                     fill={marker.color}
-                    fontSize={getFontSize(9)}
+                    fontSize={getFontSize(10)}
                     fontWeight="bold"
                     textAnchor="start"
                     className="select-none"
@@ -114,7 +135,7 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
           }
           
           // For indicators like Fibonacci levels
-          if (marker.type === "indicator" && marker.points.length > 2) {
+          if (marker.type === "indicator" && marker.points.length > 1) {
             const pointsString = marker.points
               .map(point => {
                 const [x, y] = adjustCoordinates(point[0], point[1]);
@@ -128,7 +149,7 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
             );
             
             return (
-              <g key={idx} style={{ filter: precision === "alta" ? "url(#glow)" : undefined }}>
+              <g key={idx} style={getMarkerStyle(marker)}>
                 <polyline
                   points={pointsString}
                   fill="none"
@@ -140,7 +161,7 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
                     x={`${lastX + 1}%`}
                     y={`${lastY + 3}%`}
                     fill={marker.color}
-                    fontSize={getFontSize(9)}
+                    fontSize={getFontSize(10)}
                     fontWeight="bold"
                     textAnchor="start"
                     className="select-none"
@@ -159,11 +180,11 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
             const centerY = (y1 + y2) * 0.5;
             
             return (
-              <g key={idx} style={{ filter: precision === "alta" ? "url(#glow)" : undefined }}>
+              <g key={idx} style={getMarkerStyle(marker)}>
                 <circle
                   cx={`${centerX}%`}
                   cy={`${centerY}%`}
-                  r="5"
+                  r="6"
                   fill={`${marker.color}33`}
                   stroke={marker.color}
                   strokeWidth={getStrokeWidth("pattern")}
@@ -173,7 +194,7 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
                     x={`${centerX}%`}
                     y={`${centerY - 8}%`}
                     fill={marker.color}
-                    fontSize={getFontSize(10)}
+                    fontSize={getFontSize(11)}
                     fontWeight="bold"
                     textAnchor="middle"
                     className="select-none"
@@ -186,7 +207,7 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
                     x={`${centerX}%`}
                     y={`${centerY - 4}%`}
                     fill={marker.color}
-                    fontSize={getFontSize(8)}
+                    fontSize={getFontSize(9)}
                     textAnchor="middle"
                     className="select-none"
                   >
@@ -203,7 +224,7 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
             const [[x1, y1], [x2, y2], [x3, y3], [x4, y4]] = adjustedPoints;
             
             return (
-              <g key={idx} style={{ filter: precision === "alta" ? "url(#glow)" : undefined }}>
+              <g key={idx} style={getMarkerStyle(marker)}>
                 <polygon
                   points={`${x1},${y1} ${x2},${y2} ${x3},${y3} ${x4},${y4}`}
                   fill={`${marker.color}33`}
@@ -215,7 +236,7 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
                     x={`${(x1 + x3) * 0.5}%`}
                     y={`${(y1 + y3) * 0.5}%`}
                     fill={marker.color}
-                    fontSize={getFontSize(9)}
+                    fontSize={getFontSize(10)}
                     fontWeight="bold"
                     textAnchor="middle"
                     className="select-none"

@@ -1,3 +1,4 @@
+
 import { AnalysisType, PrecisionLevel } from "@/context/AnalyzerContext";
 
 export interface PatternResult {
@@ -35,6 +36,115 @@ const getImageHash = (imageData: string): number => {
   return Math.abs(hash);
 };
 
+// Helper for analyzing image pixels and detecting edges and lines
+const analyzeImagePixels = (imageData: ImageData, options: {
+  threshold?: number;
+  sensitivity?: number;
+}): { 
+  edges: Array<[number, number][]>;
+  horizontalLines: Array<{y: number, strength: number}>;
+  verticalLines: Array<{x: number, strength: number}>;
+} => {
+  const { threshold = 30, sensitivity = 1.0 } = options;
+  const { width, height, data } = imageData;
+  
+  // Initialize results
+  const edges: Array<[number, number][]> = [];
+  const horizontalLines: Array<{y: number, strength: number}> = [];
+  const verticalLines: Array<{x: number, strength: number}> = [];
+  
+  // Create grayscale version for faster processing
+  const grayData = new Uint8Array(width * height);
+  for (let i = 0; i < height; i++) {
+    for (let j = 0; j < width; j++) {
+      const idx = (i * width + j) * 4;
+      // Convert RGB to grayscale
+      grayData[i * width + j] = Math.floor(
+        (data[idx] * 0.299 + data[idx + 1] * 0.587 + data[idx + 2] * 0.114)
+      );
+    }
+  }
+  
+  // Find horizontal lines (potential support/resistance)
+  const horizontalStrength = new Array(height).fill(0);
+  for (let y = 0; y < height; y++) {
+    let lineSum = 0;
+    let transitions = 0;
+    let lastPixel = grayData[y * width];
+    
+    for (let x = 1; x < width; x++) {
+      const pixel = grayData[y * width + x];
+      lineSum += pixel;
+      
+      // Count edge transitions (indicates clear lines)
+      if (Math.abs(pixel - lastPixel) > threshold) {
+        transitions++;
+      }
+      lastPixel = pixel;
+    }
+    
+    // Calculate line strength based on transitions and average brightness
+    const avgBrightness = lineSum / width;
+    const lineStrength = transitions * sensitivity * (1 - avgBrightness / 255);
+    horizontalStrength[y] = lineStrength;
+  }
+  
+  // Find vertical lines (trends)
+  const verticalStrength = new Array(width).fill(0);
+  for (let x = 0; x < width; x++) {
+    let lineSum = 0;
+    let transitions = 0;
+    let lastPixel = grayData[x];
+    
+    for (let y = 1; y < height; y++) {
+      const pixel = grayData[y * width + x];
+      lineSum += pixel;
+      
+      if (Math.abs(pixel - lastPixel) > threshold) {
+        transitions++;
+      }
+      lastPixel = pixel;
+    }
+    
+    const avgBrightness = lineSum / height;
+    const lineStrength = transitions * sensitivity * (1 - avgBrightness / 255);
+    verticalStrength[x] = lineStrength;
+  }
+  
+  // Find peaks in horizontal strength (strong support/resistance)
+  for (let y = 2; y < height - 2; y++) {
+    if (horizontalStrength[y] > horizontalStrength[y-1] && 
+        horizontalStrength[y] > horizontalStrength[y+1] &&
+        horizontalStrength[y] > 0.3 * sensitivity) {
+      
+      horizontalLines.push({
+        y: y / height * 100, // Convert to percentage
+        strength: horizontalStrength[y]
+      });
+    }
+  }
+  
+  // Find peaks in vertical strength (trend lines)
+  for (let x = 2; x < width - 2; x++) {
+    if (verticalStrength[x] > verticalStrength[x-1] && 
+        verticalStrength[x] > verticalStrength[x+1] &&
+        verticalStrength[x] > 0.3 * sensitivity) {
+      
+      verticalLines.push({
+        x: x / width * 100, // Convert to percentage
+        strength: verticalStrength[x]
+      });
+    }
+  }
+  
+  // Return detected features
+  return {
+    edges,
+    horizontalLines,
+    verticalLines
+  };
+};
+
 // Analyze image data for trend lines using real image processing techniques
 export const detectTrendLines = async (
   imageData: string,
@@ -42,10 +152,6 @@ export const detectTrendLines = async (
   disableSimulation: boolean = false
 ): Promise<PatternResult> => {
   console.log(`Detectando linhas de tendência com precisão ${precision}...`);
-  
-  // In a real implementation, we would use computer vision here
-  // For now, we'll analyze the image data hash but with actual image patterns
-  const imageHash = getImageHash(imageData);
   
   // Convert the image to pixel data for analysis
   const analyzeImageData = async (): Promise<{
@@ -77,48 +183,69 @@ export const detectTrendLines = async (
           
           // Get pixel data
           const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          const data = imageData.data;
           
           // Process the pixel data to find potential trend lines
-          // For now, we'll use a simplified approach based on the image hash for consistency
+          const sensitivityFactor = 
+            precision === "alta" ? 1.5 : 
+            precision === "normal" ? 1.0 : 0.7;
+          
+          const { horizontalLines, verticalLines } = analyzeImagePixels(imageData, {
+            threshold: precision === "alta" ? 20 : 30,
+            sensitivity: sensitivityFactor
+          });
           
           const lines = [];
-          const found = imageHash % 4 !== 0; // Use hash to determine if we found anything
+          const found = horizontalLines.length > 0 || verticalLines.length > 0;
           
+          // Create trendline if we found something
           if (found) {
-            // Main trend direction (use image characteristics to determine)
-            const isBullish = (imageHash % 7) > 3;
+            // Sort horizontal lines by strength
+            horizontalLines.sort((a, b) => b.strength - a.strength);
             
-            // Create a trend line
+            // Take the top 2 horizontal lines as support/resistance
+            if (horizontalLines.length >= 2) {
+              // Sort by y-position
+              horizontalLines.sort((a, b) => a.y - b.y);
+              
+              // The upper line is resistance, lower is support
+              const upperLine = horizontalLines[0];
+              const lowerLine = horizontalLines[horizontalLines.length - 1];
+              
+              // Add resistance line
+              lines.push({
+                type: "resistance" as const,
+                points: [
+                  [0, upperLine.y], 
+                  [100, upperLine.y]
+                ] as [number, number][],
+                strength: upperLine.strength > 1.0 ? "forte" as const : 
+                          upperLine.strength > 0.5 ? "moderado" as const : "fraco" as const
+              });
+              
+              // Add support line
+              lines.push({
+                type: "support" as const,
+                points: [
+                  [0, lowerLine.y], 
+                  [100, lowerLine.y]
+                ] as [number, number][],
+                strength: lowerLine.strength > 1.0 ? "forte" as const : 
+                          lowerLine.strength > 0.5 ? "moderado" as const : "fraco" as const
+              });
+            }
+            
+            // Create trend line
+            const isBullish = horizontalLines.length >= 2 && 
+              horizontalLines[0].strength > horizontalLines[horizontalLines.length - 1].strength;
+            
             lines.push({
               type: "trendline" as const,
               points: [
                 [10, isBullish ? 70 : 30], 
                 [90, isBullish ? 30 : 70]
               ] as [number, number][],
-              strength: "forte" as const
+              strength: "moderado" as const
             });
-            
-            // Add support line if bullish, or resistance if bearish
-            if (isBullish) {
-              lines.push({
-                type: "support" as const,
-                points: [
-                  [5, 85], 
-                  [95, 65]
-                ] as [number, number][],
-                strength: "moderado" as const
-              });
-            } else {
-              lines.push({
-                type: "resistance" as const,
-                points: [
-                  [5, 15], 
-                  [95, 35]
-                ] as [number, number][],
-                strength: "moderado" as const
-              });
-            }
           }
           
           resolve({ found, lines });
@@ -180,7 +307,7 @@ export const detectTrendLines = async (
   };
 };
 
-// Only detect actual Fibonacci levels from the image
+// Detect Fibonacci levels using image processing
 export const detectFibonacci = async (
   imageData: string,
   disableSimulation: boolean = false
@@ -216,29 +343,55 @@ export const detectFibonacci = async (
           // Draw image on canvas
           ctx.drawImage(img, 0, 0);
           
-          // For now, use image hash to determine if we found Fibonacci patterns
-          const imageHash = getImageHash(imageData);
-          const found = (imageHash % 5) <= 2; // 60% chance based on hash
-          const isBullish = (imageHash % 3) !== 0;
+          // Get pixel data for analysis
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
           
-          // Define Fibonacci levels
-          const fibLevels = [];
-          if (found) {
-            // Common Fibonacci levels
-            const levels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1.0];
-            
-            // Map to visual positions (y-coordinates in percentage)
-            levels.forEach((level, index) => {
-              fibLevels.push({
-                level,
-                // Position the levels across the chart - for bullish, 0% at bottom; for bearish, 0% at top
-                y: isBullish ? (100 - level * 70) : (20 + level * 70),
-                // Most important levels have stronger emphasis
-                strength: (level === 0.382 || level === 0.618 || level === 0.5) ? 
-                  "forte" as const : "moderado" as const
-              });
-            });
+          // Analyze pixel data to detect significant horizontal lines
+          const { horizontalLines } = analyzeImagePixels(imageData, {
+            threshold: 25,
+            sensitivity: 1.2
+          });
+          
+          // We need at least 2 prominent horizontal lines to define a range
+          const found = horizontalLines.length >= 2;
+          
+          if (!found) {
+            resolve({ found, fibLevels: [], isBullish: false });
+            return;
           }
+          
+          // Sort by position (y-coordinate)
+          horizontalLines.sort((a, b) => a.y - b.y);
+          
+          // Get the top and bottom lines to define the range
+          const topLine = horizontalLines[0].y;
+          const bottomLine = horizontalLines[horizontalLines.length - 1].y;
+          const range = bottomLine - topLine;
+          
+          // Determine if bullish or bearish based on line strengths
+          // If the bottom line is stronger, likely bullish
+          const isBullish = horizontalLines[horizontalLines.length - 1].strength > 
+                          horizontalLines[0].strength;
+          
+          // Create Fibonacci levels
+          const fibLevels = [];
+          const levels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1.0];
+          
+          levels.forEach(level => {
+            // Position the level within the detected range
+            const y = isBullish 
+              ? bottomLine - (range * level)  // For bullish, 0% is at the bottom
+              : topLine + (range * level);    // For bearish, 0% is at the top
+            
+            fibLevels.push({
+              level,
+              y,
+              // Assign strength based on importance of the level
+              strength: (level === 0.382 || level === 0.618 || level === 0.5) 
+                ? "forte" as const 
+                : "moderado" as const
+            });
+          });
           
           resolve({ found, fibLevels, isBullish });
         } catch (error) {
@@ -327,34 +480,124 @@ export const detectCandlePatterns = async (
           // Draw image on canvas
           ctx.drawImage(img, 0, 0);
           
-          // Get image hash for consistent analysis
-          const imageHash = getImageHash(imageData);
-          const found = (imageHash % 3) !== 0; // 67% chance based on hash
+          // Get image pixel data
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          
+          // Analyze image to find candle patterns
+          // For demonstration, we'll look for areas with high contrast/colors typical of candle patterns
+          const { width, height, data } = imageData;
+          
+          // Scan for areas with high color variance (potential candle patterns)
+          let maxVarianceX = 0;
+          let maxVarianceY = 0;
+          let maxVariance = 0;
+          
+          // Scan in blocks to find areas with high color variance
+          const blockSize = 10;
+          for (let y = 0; y < height - blockSize; y += blockSize) {
+            for (let x = 0; x < width - blockSize; x += blockSize) {
+              let redSum = 0, greenSum = 0, blueSum = 0;
+              let redSqSum = 0, greenSqSum = 0, blueSqSum = 0;
+              let count = 0;
+              
+              // Calculate color variance in this block
+              for (let by = 0; by < blockSize; by++) {
+                for (let bx = 0; bx < blockSize; bx++) {
+                  const idx = ((y + by) * width + (x + bx)) * 4;
+                  
+                  const r = data[idx];
+                  const g = data[idx + 1];
+                  const b = data[idx + 2];
+                  
+                  redSum += r;
+                  greenSum += g;
+                  blueSum += b;
+                  
+                  redSqSum += r * r;
+                  greenSqSum += g * g;
+                  blueSqSum += b * b;
+                  
+                  count++;
+                }
+              }
+              
+              // Calculate variance
+              const redMean = redSum / count;
+              const greenMean = greenSum / count;
+              const blueMean = blueSum / count;
+              
+              const redVariance = redSqSum / count - redMean * redMean;
+              const greenVariance = greenSqSum / count - greenMean * greenMean;
+              const blueVariance = blueSqSum / count - blueMean * blueMean;
+              
+              const totalVariance = redVariance + greenVariance + blueVariance;
+              
+              // Check if this is the highest variance so far
+              if (totalVariance > maxVariance) {
+                maxVariance = totalVariance;
+                maxVarianceX = x + blockSize / 2;
+                maxVarianceY = y + blockSize / 2;
+              }
+            }
+          }
+          
+          // Determine if we found a pattern based on variance threshold
+          const found = maxVariance > 1000;  // Adjust threshold based on testing
           
           if (!found) {
             resolve({ found, isBullish: false, position: [0, 0] });
             return;
           }
           
+          // Determine pattern type and if it's bullish based on colors in the high-variance area
+          let redCount = 0;
+          let greenCount = 0;
+          
+          // Count red and green pixels in the identified area
+          const checkRadius = 20;
+          for (let y = maxVarianceY - checkRadius; y <= maxVarianceY + checkRadius; y++) {
+            if (y < 0 || y >= height) continue;
+            
+            for (let x = maxVarianceX - checkRadius; x <= maxVarianceX + checkRadius; x++) {
+              if (x < 0 || x >= width) continue;
+              
+              const idx = (y * width + x) * 4;
+              const r = data[idx];
+              const g = data[idx + 1];
+              const b = data[idx + 2];
+              
+              // Simple heuristic: if more red than green, it's red; otherwise green
+              if (r > g && r > b && r > 100) {
+                redCount++;
+              } else if (g > r && g > b && g > 100) {
+                greenCount++;
+              }
+            }
+          }
+          
+          // Determine if pattern is bullish based on color counts
+          const isBullish = greenCount > redCount;
+          
           // Array de possíveis padrões de candle
-          const candlePatterns = [
-            "Doji", "Martelo", "Engolfo de Alta", "Engolfo de Baixa", 
-            "Estrela da Manhã", "Estrela da Noite", "Três Soldados Brancos",
-            "Três Corvos Negros", "Harami de Alta", "Harami de Baixa"
+          const bullishPatterns = [
+            "Martelo", "Engolfo de Alta", "Estrela da Manhã", 
+            "Três Soldados Brancos", "Harami de Alta", "Doji Bullish"
           ];
           
-          // Escolhe um padrão baseado no hash da imagem (determinístico)
-          const patternIndex = imageHash % candlePatterns.length;
-          const pattern = candlePatterns[patternIndex];
+          const bearishPatterns = [
+            "Engolfo de Baixa", "Estrela da Noite", "Três Corvos Negros", 
+            "Harami de Baixa", "Doji Bearish", "Homem Enforcado"
+          ];
           
-          // Define se é padrão de alta ou baixa
-          const isBullish = ["Martelo", "Engolfo de Alta", "Estrela da Manhã", "Três Soldados Brancos", "Harami de Alta", "Doji"].includes(pattern);
+          // Choose pattern based on whether it's bullish or bearish
+          const patternOptions = isBullish ? bullishPatterns : bearishPatterns;
+          const patternIndex = Math.floor(maxVariance % patternOptions.length);
+          const pattern = patternOptions[patternIndex];
           
-          // Determine position based on image properties
-          // For a real implementation, this would detect actual candle positions
+          // Convert position to percentage coordinates
           const position: [number, number] = [
-            75 + (imageHash % 10),
-            40 + (imageHash % 20)
+            (maxVarianceX / width) * 100,
+            (maxVarianceY / height) * 100
           ];
           
           resolve({ found, pattern, isBullish, position });
@@ -400,8 +643,6 @@ export const detectCandlePatterns = async (
     visualMarkers
   };
 };
-
-// Other pattern detection functions like Elliott Waves and Dow Theory would follow similar approaches
 
 // Function to handle all pattern detection based on analysis type
 export const detectPatterns = async (
@@ -464,7 +705,7 @@ export const detectPatterns = async (
   // Run detections based on selected types
   if (types.includes("trendlines") || types.includes("all")) {
     detectionPromises.push(
-      detectTrendLines(imageData, precision, disableSimulation).then(result => {
+      detectTrendLines(imageData, precision, true).then(result => {
         results.trendlines = result;
       })
     );
@@ -472,7 +713,7 @@ export const detectPatterns = async (
 
   if (types.includes("fibonacci") || types.includes("all")) {
     detectionPromises.push(
-      detectFibonacci(imageData, disableSimulation).then(result => {
+      detectFibonacci(imageData, true).then(result => {
         results.fibonacci = result;
       })
     );
@@ -480,7 +721,7 @@ export const detectPatterns = async (
 
   if (types.includes("candlePatterns") || types.includes("all")) {
     detectionPromises.push(
-      detectCandlePatterns(imageData, disableSimulation).then(result => {
+      detectCandlePatterns(imageData, true).then(result => {
         results.candlePatterns = result;
       })
     );

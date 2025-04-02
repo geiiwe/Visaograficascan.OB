@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useAnalyzer } from "@/context/AnalyzerContext";
 import { detectPatterns, PatternResult } from "@/utils/patternDetection";
-import { prepareForAnalysis } from "@/utils/imageProcessing";
+import { prepareForAnalysis, extractRegionFromImage } from "@/utils/imageProcessing";
 import { toast } from "sonner";
 import ChartOverlay from "./ChartOverlay";
 import AnalysisLabels from "./AnalysisLabels";
@@ -24,6 +24,7 @@ const ResultsOverlay = () => {
   
   const [detailedResults, setDetailedResults] = useState<Record<string, PatternResult>>({});
   const [processingStage, setProcessingStage] = useState<string>("");
+  const [analysisImage, setAnalysisImage] = useState<string | null>(null);
   const isMobile = useMediaQuery("(max-width: 768px)");
   const analysisImageRef = useRef<HTMLImageElement | null>(null);
   const processedRegionRef = useRef<string | null>(null);
@@ -34,64 +35,29 @@ const ResultsOverlay = () => {
         try {
           console.log("Starting analysis with chart region:", chartRegion);
           
-          // Create a new image to extract the chart region if needed
-          const extractRegionFromImage = async (): Promise<string> => {
-            return new Promise((resolve, reject) => {
-              const img = new Image();
-              img.onload = () => {
-                try {
-                  // If no region is specified, use the full image
-                  if (!chartRegion) {
-                    console.log("No chart region specified, using full image");
-                    resolve(imageData);
-                    return;
-                  }
-                  
-                  const canvas = document.createElement('canvas');
-                  const ctx = canvas.getContext('2d');
-                  
-                  if (!ctx) {
-                    console.error("Could not get canvas context");
-                    resolve(imageData); // Fallback to full image
-                    return;
-                  }
-                  
-                  // Set canvas size to match the region
-                  canvas.width = chartRegion.width;
-                  canvas.height = chartRegion.height;
-                  
-                  // Draw only the selected region
-                  ctx.drawImage(
-                    img, 
-                    chartRegion.x, chartRegion.y, chartRegion.width, chartRegion.height,
-                    0, 0, canvas.width, canvas.height
-                  );
-                  
-                  // Store for debugging
-                  const regionImage = canvas.toDataURL('image/png');
-                  console.log("Extracted region for analysis");
-                  
-                  // Keep a reference to verify the region
-                  const debugImg = new Image();
-                  debugImg.src = regionImage;
-                  analysisImageRef.current = debugImg;
-                  processedRegionRef.current = regionImage;
-                  
-                  resolve(regionImage);
-                } catch (error) {
-                  console.error("Error extracting region:", error);
-                  resolve(imageData); // Fallback to full image on error
-                }
-              };
+          // Extract the region if specified
+          let regionImage = imageData;
+          
+          if (chartRegion) {
+            setProcessingStage("Extraindo região selecionada");
+            try {
+              regionImage = await extractRegionFromImage(imageData, chartRegion);
               
-              img.onerror = () => {
-                console.error("Failed to load image for region extraction");
-                reject(new Error("Image loading failed"));
-              };
+              // Store for verification
+              const debugImg = new Image();
+              debugImg.src = regionImage;
+              analysisImageRef.current = debugImg;
+              processedRegionRef.current = regionImage;
+              setAnalysisImage(regionImage);
               
-              img.src = imageData;
-            });
-          };
+              console.log("Region extracted successfully");
+            } catch (error) {
+              console.error("Error extracting region:", error);
+              toast.error("Erro ao extrair região selecionada");
+            }
+          } else {
+            setProcessingStage("Processando imagem completa");
+          }
           
           // Configure advanced processing options based on precision level
           const processOptions = {
@@ -103,8 +69,8 @@ const ResultsOverlay = () => {
             
             // Advanced vision options
             adaptiveThreshold: precision !== "baixa",
-            perspectiveCorrection: true, // Always apply perspective correction
-            chartRegionDetection: false, // Don't auto-detect, use the user's region
+            perspectiveCorrection: true,
+            chartRegionDetection: false, // We handle region extraction explicitly
             
             // Pattern recognition enhancements
             edgeEnhancement: precision !== "baixa",
@@ -115,30 +81,25 @@ const ResultsOverlay = () => {
             featureExtraction: precision === "alta",
             histogramEqualization: precision !== "baixa",
             
-            // Human-like analysis properties - don't simulate sensitivity
-            sensitivity: 1.0, // Always use full sensitivity
-            contextAwareness: true, // Always consider surrounding elements
-            patternConfidence: 1.0, // Require high confidence
-            
-            // User-defined chart region
-            chartRegion: chartRegion || undefined,
+            // Analysis properties
+            sensitivity: precision === "alta" ? 1.5 : 
+                        precision === "normal" ? 1.0 : 0.7,
+            contextAwareness: true,
+            patternConfidence: precision === "alta" ? 0.8 : 
+                              precision === "normal" ? 0.7 : 0.6,
             
             // Disable simulation
             disableSimulation: true,
           };
           
-          console.log(`Iniciando análise técnica realística com precisão ${precision}`, processOptions);
+          console.log(`Iniciando análise técnica com precisão ${precision}`, processOptions);
           
-          // Stage 1: Extract the chart region if specified
-          setProcessingStage(chartRegion ? "Processando região selecionada" : "Processando imagem completa");
-          const regionImage = await extractRegionFromImage();
-          
-          // Stage 2: Preprocess the image for analysis
+          // Preprocess the image for analysis
           setProcessingStage("Preparando imagem para análise");
           const processedImage = await prepareForAnalysis(regionImage, processOptions, 
             (stage) => setProcessingStage(stage));
           
-          // Stage 3: Detect patterns with real algorithms
+          // Detect patterns with real algorithms
           setProcessingStage("Analisando padrões técnicos");
           const results = await detectPatterns(processedImage, activeAnalysis, precision, true);
           
