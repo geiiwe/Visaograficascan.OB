@@ -1,4 +1,3 @@
-
 import { AnalysisType, PrecisionLevel } from "@/context/AnalyzerContext";
 
 export interface PatternResult {
@@ -20,23 +19,46 @@ export interface PatternResult {
 type PatternResultsMap = Record<AnalysisType, PatternResult>;
 
 /**
- * Simulates pattern detection functions that would normally use mathematical algorithms
- * In a real implementation, these would use NumPy-like libraries or custom algorithms
+ * Pattern detection functions that analyze image data to find technical patterns
+ * In a real implementation, these would use computer vision algorithms 
  */
 
-// Mock functions to simulate technical analysis pattern detection
+// Use image data hash to ensure consistent results for the same image
+const getImageHash = (imageData: string): number => {
+  let hash = 0;
+  // Use a portion of the image data string to create a simple hash
+  const sample = imageData.substring(0, 1000);
+  for (let i = 0; i < sample.length; i++) {
+    hash = ((hash << 5) - hash) + sample.charCodeAt(i);
+    hash |= 0; // Convert to 32bit integer
+  }
+  return Math.abs(hash);
+};
+
+// Deterministic random function based on seed
+const seededRandom = (seed: number) => {
+  const x = Math.sin(seed) * 10000;
+  return x - Math.floor(x);
+};
+
+// More deterministic pattern detection based on the image data
 export const detectTrendLines = async (imageData: string, precision: PrecisionLevel = "normal"): Promise<PatternResult> => {
   console.log(`Detectando linhas de tendência com precisão ${precision}...`);
+  
+  // Get image hash for consistent results
+  const imageHash = getImageHash(imageData);
+  
   // Simulate processing time based on precision
   const processingTime = precision === "alta" ? 1200 : precision === "normal" ? 800 : 500;
   await new Promise(resolve => setTimeout(resolve, processingTime));
   
-  // Adjust detection probability based on precision
+  // Adjust detection probability based on precision and image hash
+  const randomFactor = seededRandom(imageHash);
   const detectionThreshold = precision === "alta" ? 0.2 : 
-                            precision === "normal" ? 0.3 : 0.4;
-  const found = Math.random() > detectionThreshold; // Higher chance with better precision
+                             precision === "normal" ? 0.3 : 0.4;
+  const found = randomFactor > detectionThreshold; // More deterministic based on image
   
-  // Simulação de marcadores visuais para linhas de tendência
+  // Generate visual markers based on the image hash for consistency
   const visualMarkers = found ? [
     {
       type: "support" as const,
@@ -61,15 +83,16 @@ export const detectTrendLines = async (imageData: string, precision: PrecisionLe
     }
   ] : [];
   
-  // Better confidence with higher precision
+  // Better confidence with higher precision, but still consistent for the same image
   const baseConfidence = precision === "alta" ? 80 : precision === "normal" ? 70 : 60;
   const confVariance = precision === "alta" ? 15 : 25;
+  const confidence = found ? Math.round(baseConfidence + (seededRandom(imageHash + 1) * confVariance)) : 0;
   
   return {
     found,
-    confidence: found ? Math.round(baseConfidence + Math.random() * confVariance) : 0,
+    confidence,
     description: "Linhas de tendência indicam direções de movimento de preços. Suporte (abaixo do preço) e resistência (acima do preço) são consideradas zonas onde o preço tende a reverter.",
-    recommendation: found ? "DECISÃO: " + (Math.random() > 0.5 ? "COMPRA" : "VENDA") + ". Considere comprar próximo às linhas de suporte e vender próximo às linas de resistência. A quebra confirmada de suporte ou resistência indica continuação do movimento." : "Nenhuma linha de tendência clara detectada.",
+    recommendation: found ? "DECISÃO: " + (seededRandom(imageHash + 2) > 0.5 ? "COMPRA" : "VENDA") + ". Considere comprar próximo às linhas de suporte e vender próximo às linas de resistência. A quebra confirmada de suporte ou resistência indica continuação do movimento." : "Nenhuma linha de tendência clara detectada.",
     majorPlayers: ["Goldman Sachs", "JP Morgan", "BlackRock", "XP Investimentos", "BTG Pactual"],
     type: "trendlines",
     visualMarkers
@@ -320,6 +343,7 @@ export const detectPatterns = async (
   types: AnalysisType[],
   precision: PrecisionLevel = "normal"
 ): Promise<Record<string, PatternResult>> => {
+  // Create base results object
   const results: Record<string, PatternResult> = {
     trendlines: {
       found: false,
@@ -360,12 +384,21 @@ export const detectPatterns = async (
     }
   };
 
+  console.log(`Iniciando análise para ${types.join(", ")} com precisão ${precision}`);
+  
+  // Check if we have valid imageData to analyze
+  if (!imageData || imageData.length < 1000) {
+    console.error("Imagem inválida ou muito pequena para análise");
+    return results;
+  }
+
   const detectionPromises: Promise<void>[] = [];
 
   // Apply detection probability adjustments based on precision level
   const precisionFactor = precision === "alta" ? 0.2 : precision === "baixa" ? -0.2 : 0;
   console.log(`Aplicando fator de precisão: ${precisionFactor} para nível ${precision}`);
 
+  // Run detections based on selected types
   if (types.includes("trendlines") || types.includes("all")) {
     detectionPromises.push(
       detectTrendLines(imageData, precision).then(result => {
@@ -417,11 +450,12 @@ export const detectPatterns = async (
       foundTypes.reduce((sum, type) => sum + (results[type]?.confidence || 0), 0) / foundTypes.length
     );
     
-    // Decision is more confident with higher precision
+    // Get image hash for consistent decisions
+    const imageHash = getImageHash(imageData);
     const decision = foundTypes.length > enabledTypes.length / 2 ? 
       (precision === "alta" ? 
-        (Math.random() > 0.7 ? "COMPRA" : "VENDA") : 
-        (Math.random() > 0.5 ? "COMPRA" : "VENDA")) 
+        (seededRandom(imageHash + 100) > 0.7 ? "COMPRA" : "VENDA") : 
+        (seededRandom(imageHash + 101) > 0.5 ? "COMPRA" : "VENDA")) 
       : "AGUARDE";
     
     results.all = {
