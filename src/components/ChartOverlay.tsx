@@ -28,10 +28,6 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
     return precision === "alta" ? baseSize * 0.9 : baseSize;
   };
 
-  const getGlowEffect = (color: string) => {
-    return precision === "alta" ? `drop-shadow(0 0 2px ${color})` : undefined;
-  };
-
   return (
     <svg 
       className="absolute inset-0 w-full h-full pointer-events-none z-10"
@@ -46,21 +42,6 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({ results, showMarkers }) => 
           </feMerge>
         </filter>
       </defs>
-      
-      {/* Chart region indicator */}
-      {chartRegion && (
-        <rect
-          x={`${chartRegion.x / 10}%`}
-          y={`${chartRegion.y / 10}%`}
-          width={`${chartRegion.width / 10}%`}
-          height={`${chartRegion.height / 10}%`}
-          fill="none"
-          stroke="#00aeff"
-          strokeWidth="2"
-          strokeDasharray="5,3"
-          opacity="0.7"
-        />
-      )}
       
       {/* Draw all markers from analysis results */}
       {allMarkers.map((marker, idx) => {

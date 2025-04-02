@@ -33,6 +33,11 @@ const ChartRegionSelector = () => {
         canvas.width = containerRect.width;
         canvas.height = containerRect.height;
         
+        setCanvasSize({
+          width: canvas.width,
+          height: canvas.height
+        });
+        
         // Redraw the selection if it exists
         if (chartRegion) {
           const scaleX = canvas.width / imageRef.current.naturalWidth;
@@ -59,7 +64,7 @@ const ChartRegionSelector = () => {
     const img = new Image();
     img.src = imageData;
     img.onload = () => {
-      if (!canvasRef.current || !containerRef.current || !imageRef.current) return;
+      if (!canvasRef.current || !containerRef.current) return;
       
       const containerRect = containerRef.current.getBoundingClientRect();
       const canvas = canvasRef.current;
@@ -95,6 +100,9 @@ const ChartRegionSelector = () => {
           ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
       }
+      
+      // Store a reference to the image for later use
+      imageRef.current = img;
     };
   }, [selectionMode, imageData, chartRegion]);
   
@@ -205,7 +213,7 @@ const ChartRegionSelector = () => {
       
       toast.success("Região selecionada! Clique em 'Confirmar' para analisar.");
     } else {
-      toast.info("Selecione uma área maior arrastandoo o mouse.");
+      toast.info("Selecione uma área maior arrastando o mouse.");
     }
   };
   

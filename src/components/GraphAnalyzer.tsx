@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useAnalyzer } from "@/context/AnalyzerContext";
 import CameraView from "./CameraView";
 import ControlPanel from "./ControlPanel";
@@ -26,6 +26,7 @@ const GraphAnalyzer = () => {
     hasCustomRegion
   } = useAnalyzer();
   const [cameraSupported, setCameraSupported] = useState<boolean | null>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
 
   useEffect(() => {
     // Check if the device has camera capabilities
@@ -164,19 +165,20 @@ const GraphAnalyzer = () => {
         {imageData && (
           <div className="relative mt-4 rounded-lg overflow-hidden shadow-xl">
             <img 
+              ref={imageRef}
               src={imageData} 
               alt="Gráfico Capturado" 
               className="w-full object-contain" 
             />
-            {hasCustomRegion && !selectionMode && (
+            {hasCustomRegion && !selectionMode && imageRef.current && (
               <div className="absolute inset-0 pointer-events-none">
                 <div 
                   className="absolute border-2 border-dashed border-trader-blue rounded-sm"
                   style={{
-                    left: `${(chartRegion?.x || 0) / (imageRef?.current?.naturalWidth || 1) * 100}%`,
-                    top: `${(chartRegion?.y || 0) / (imageRef?.current?.naturalHeight || 1) * 100}%`,
-                    width: `${(chartRegion?.width || 0) / (imageRef?.current?.naturalWidth || 1) * 100}%`,
-                    height: `${(chartRegion?.height || 0) / (imageRef?.current?.naturalHeight || 1) * 100}%`,
+                    left: `${(chartRegion?.x || 0) / (imageRef.current?.naturalWidth || 1) * 100}%`,
+                    top: `${(chartRegion?.y || 0) / (imageRef.current?.naturalHeight || 1) * 100}%`,
+                    width: `${(chartRegion?.width || 0) / (imageRef.current?.naturalWidth || 1) * 100}%`,
+                    height: `${(chartRegion?.height || 0) / (imageRef.current?.naturalHeight || 1) * 100}%`,
                   }}
                 />
               </div>
