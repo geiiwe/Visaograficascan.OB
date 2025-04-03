@@ -173,6 +173,17 @@ const ResultsOverlay = () => {
 
   return (
     <div className="absolute inset-0 flex flex-col">
+      {/* Exibir somente a região processada quando houver uma região selecionada */}
+      {chartRegion && processedRegionRef.current && (
+        <div className="absolute inset-0 z-10 pointer-events-none">
+          <img 
+            src={processedRegionRef.current}
+            alt="Região processada"
+            className="opacity-0 w-0 h-0"
+          />
+        </div>
+      )}
+      
       {/* Chart overlay with visual markers */}
       <ChartOverlay 
         results={detailedResults} 

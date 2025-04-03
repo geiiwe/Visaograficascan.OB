@@ -27,6 +27,7 @@ const GraphAnalyzer = () => {
   } = useAnalyzer();
   const [cameraSupported, setCameraSupported] = useState<boolean | null>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+  const [croppedImage, setCroppedImage] = useState<string | null>(null);
 
   useEffect(() => {
     // Check if the device has camera capabilities
@@ -65,6 +66,58 @@ const GraphAnalyzer = () => {
 
     checkCameraSupport();
   }, [setCaptureMode]);
+
+  // Extract and display only the selected region
+  useEffect(() => {
+    if (imageData && chartRegion && !selectionMode) {
+      extractSelectedRegion();
+    } else if (imageData && !chartRegion) {
+      // If there's no region selected, use the original image
+      setCroppedImage(null);
+    }
+  }, [imageData, chartRegion, selectionMode]);
+
+  const extractSelectedRegion = () => {
+    if (!imageData || !chartRegion) return;
+    
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        if (!ctx) {
+          console.error("Could not get canvas context");
+          return;
+        }
+        
+        // Set canvas size to match the region
+        canvas.width = chartRegion.width;
+        canvas.height = chartRegion.height;
+        
+        // Draw only the selected region
+        ctx.drawImage(
+          img, 
+          chartRegion.x, chartRegion.y, chartRegion.width, chartRegion.height,
+          0, 0, canvas.width, canvas.height
+        );
+        
+        // Get the region as a new image
+        const regionImage = canvas.toDataURL('image/png');
+        setCroppedImage(regionImage);
+      } catch (error) {
+        console.error("Error extracting region:", error);
+        setCroppedImage(null);
+      }
+    };
+    
+    img.onerror = () => {
+      console.error("Failed to load image for region extraction");
+      setCroppedImage(null);
+    };
+    
+    img.src = imageData;
+  };
 
   const handlePrecisionChange = (level: "baixa" | "normal" | "alta") => {
     setPrecision(level);
@@ -164,23 +217,39 @@ const GraphAnalyzer = () => {
         <CameraView />
         {imageData && (
           <div className="relative mt-4 rounded-lg overflow-hidden shadow-xl">
-            <img 
-              ref={imageRef}
-              src={imageData} 
-              alt="Gráfico Capturado" 
-              className="w-full object-contain" 
-            />
-            {hasCustomRegion && !selectionMode && imageRef.current && (
-              <div className="absolute inset-0 pointer-events-none">
-                <div 
-                  className="absolute border-2 border-dashed border-trader-blue rounded-sm"
-                  style={{
-                    left: `${(chartRegion?.x || 0) / (imageRef.current?.naturalWidth || 1) * 100}%`,
-                    top: `${(chartRegion?.y || 0) / (imageRef.current?.naturalHeight || 1) * 100}%`,
-                    width: `${(chartRegion?.width || 0) / (imageRef.current?.naturalWidth || 1) * 100}%`,
-                    height: `${(chartRegion?.height || 0) / (imageRef.current?.naturalHeight || 1) * 100}%`,
-                  }}
+            {/* Show either cropped image or full image with region indicator */}
+            {croppedImage && hasCustomRegion && !selectionMode ? (
+              <div className="relative">
+                <img 
+                  src={croppedImage} 
+                  alt="Região do Gráfico" 
+                  className="w-full object-contain" 
                 />
+                <div className="absolute top-0 right-0 bg-trader-blue text-white text-xs px-2 py-1 rounded-bl-md">
+                  Região selecionada
+                </div>
+              </div>
+            ) : (
+              <div className="relative">
+                <img 
+                  ref={imageRef}
+                  src={imageData} 
+                  alt="Gráfico Capturado" 
+                  className="w-full object-contain" 
+                />
+                {hasCustomRegion && !selectionMode && imageRef.current && (
+                  <div className="absolute inset-0 pointer-events-none">
+                    <div 
+                      className="absolute border-2 border-dashed border-trader-blue rounded-sm"
+                      style={{
+                        left: `${(chartRegion?.x || 0) / (imageRef.current?.naturalWidth || 1) * 100}%`,
+                        top: `${(chartRegion?.y || 0) / (imageRef.current?.naturalHeight || 1) * 100}%`,
+                        width: `${(chartRegion?.width || 0) / (imageRef.current?.naturalWidth || 1) * 100}%`,
+                        height: `${(chartRegion?.height || 0) / (imageRef.current?.naturalHeight || 1) * 100}%`,
+                      }}
+                    />
+                  </div>
+                )}
               </div>
             )}
             <ResultsOverlay />
