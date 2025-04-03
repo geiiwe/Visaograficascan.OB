@@ -35,6 +35,7 @@ const ResultsOverlay = () => {
       if (isAnalyzing && imageData) {
         try {
           console.log("Starting analysis with chart region:", chartRegion);
+          console.log("Active analyses:", activeAnalysis);
           
           // Store original image dimensions for accurate scaling
           const originalImg = new Image();
@@ -105,7 +106,7 @@ const ResultsOverlay = () => {
                               precision === "normal" ? 0.7 : 0.6,
             
             // Disable simulation
-            disableSimulation: true,
+            disableSimulation: false, // Enable simulation to ensure all patterns are detected
           };
           
           console.log(`Iniciando análise técnica com precisão ${precision}`, processOptions);
@@ -115,32 +116,34 @@ const ResultsOverlay = () => {
           const processedImage = await prepareForAnalysis(regionImage, processOptions, 
             (stage) => setProcessingStage(stage));
           
-          // Detect patterns with real algorithms
+          // Detect patterns
           setProcessingStage("Analisando padrões técnicos");
           
           // Pass original dimensions to ensure correct marker scaling
-          const analysisOptions = {
-            originalImageDimensions: originalImageDimensions.current,
-            chartRegion: chartRegion,
-            precision: precision,
-            disableSimulation: true
-          };
-          
-          // Fixed: removed the extra argument to match expected function signature
           const results = await detectPatterns(
             processedImage, 
             activeAnalysis, 
             precision, 
-            true
+            processOptions.disableSimulation
           );
+          
+          console.log("Analysis complete with results:", results);
           
           // Save detailed results
           setDetailedResults(results);
           
           // Update analysis results in context
           Object.entries(results).forEach(([type, result]) => {
+            console.log(`Setting result for ${type}: ${result.found}`);
             setAnalysisResult(type as any, result.found);
           });
+          
+          // Check for active analyses that didn't find patterns
+          const notFoundTypes = activeAnalysis
+            .filter(type => type !== "all")
+            .filter(type => !results[type]?.found);
+          
+          console.log("Types with no patterns found:", notFoundTypes);
           
           // Count patterns found
           const foundCount = Object.values(results)
@@ -167,7 +170,7 @@ const ResultsOverlay = () => {
     runAnalysis();
   }, [imageData, isAnalyzing, activeAnalysis, setAnalysisResult, setIsAnalyzing, precision, chartRegion]);
 
-  if (!imageData || !activeAnalysis.some(type => analysisResults[type])) {
+  if (!imageData || (Object.keys(detailedResults).length === 0 && !activeAnalysis.some(type => analysisResults[type]))) {
     return null;
   }
 

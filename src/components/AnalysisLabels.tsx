@@ -9,7 +9,8 @@ import {
   TrendingDown,
   BarChart,
   CheckCircle2,
-  Info
+  Info,
+  AlertCircle
 } from "lucide-react";
 import { 
   HoverCard,
@@ -17,6 +18,7 @@ import {
   HoverCardTrigger 
 } from "@/components/ui/hover-card";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { useAnalyzer } from "@/context/AnalyzerContext";
 
 interface AnalysisLabelsProps {
   results: Record<string, PatternResult>;
@@ -25,6 +27,7 @@ interface AnalysisLabelsProps {
 
 const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ results, compact }) => {
   const isMobile = useMediaQuery("(max-width: 768px)");
+  const { activeAnalysis } = useAnalyzer();
   
   // Extract decision from recommendations
   const extractDecision = (recommendation: string): string | null => {
@@ -88,10 +91,35 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ results, compact }) => 
     }
   ];
   
-  // Filter only found results
+  // Get all items for active analyses
+  const activeItems = resultItems.filter(
+    item => activeAnalysis.includes(item.type)
+  );
+  
+  // Filter items with found results
   const foundResults = resultItems.filter(
     item => results[item.type]?.found
   );
+  
+  // Check if we need to show "no patterns found" message
+  const hasActiveAnalysis = activeAnalysis.some(type => type !== "all");
+  const noResultsFound = hasActiveAnalysis && foundResults.length === 0;
+  
+  // Get count of activated vs found analyses
+  const activatedCount = activeItems.length;
+  const foundCount = foundResults.length;
+  
+  // Render message when no patterns were found
+  if (noResultsFound) {
+    return (
+      <div className="flex items-center justify-center p-3 bg-black/70 backdrop-blur-sm rounded-lg border border-trader-panel/50">
+        <div className="flex items-center gap-2 text-trader-gray">
+          <AlertCircle className="h-4 w-4" />
+          <span>Nenhum padrão detectado nas {activatedCount} análises ativadas</span>
+        </div>
+      </div>
+    );
+  }
   
   if (foundResults.length === 0) return null;
 
@@ -102,6 +130,13 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ results, compact }) => 
         flex flex-wrap gap-1 p-2 bg-black/60 backdrop-blur-sm rounded-lg border border-trader-panel/30
         ${isMobile ? 'justify-center' : 'justify-start'}
       `}>
+        {foundCount < activatedCount && activatedCount > 0 && (
+          <div className="text-xs text-trader-gray mr-1 flex items-center">
+            <CheckCircle2 className="h-3 w-3 mr-1 text-trader-green" />
+            <span>{foundCount}/{activatedCount} padrões encontrados</span>
+          </div>
+        )}
+        
         {foundResults.map(({ type, icon: Icon, label, color }) => {
           const decision = extractDecision(results[type]?.recommendation || "");
           const decisionColor = getDecisionColor(decision);
@@ -163,6 +198,13 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ results, compact }) => 
       grid gap-2 p-3 bg-black/70 backdrop-blur-sm rounded-lg border border-trader-panel/50
       ${isMobile ? 'grid-cols-2' : 'grid-cols-4'}
     `}>
+      {foundCount < activatedCount && activatedCount > 0 && (
+        <div className="col-span-full text-xs text-trader-gray mb-1 flex items-center justify-center">
+          <CheckCircle2 className="h-3 w-3 mr-1 text-trader-green" />
+          <span>{foundCount}/{activatedCount} padrões detectados</span>
+        </div>
+      )}
+      
       {foundResults.map(({ type, icon: Icon, label, color }) => {
         const decision = extractDecision(results[type]?.recommendation || "");
         const decisionColor = getDecisionColor(decision);
