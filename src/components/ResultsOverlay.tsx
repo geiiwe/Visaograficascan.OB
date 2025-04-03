@@ -28,12 +28,28 @@ const ResultsOverlay = () => {
   const isMobile = useMediaQuery("(max-width: 768px)");
   const analysisImageRef = useRef<HTMLImageElement | null>(null);
   const processedRegionRef = useRef<string | null>(null);
+  const originalImageDimensions = useRef<{width: number, height: number} | null>(null);
 
   useEffect(() => {
     const runAnalysis = async () => {
       if (isAnalyzing && imageData) {
         try {
           console.log("Starting analysis with chart region:", chartRegion);
+          
+          // Store original image dimensions for accurate scaling
+          const originalImg = new Image();
+          originalImg.src = imageData;
+          await new Promise(resolve => {
+            originalImg.onload = () => {
+              originalImageDimensions.current = {
+                width: originalImg.naturalWidth,
+                height: originalImg.naturalHeight
+              };
+              resolve(null);
+            };
+          });
+          
+          console.log("Original image dimensions:", originalImageDimensions.current);
           
           // Extract the region if specified
           let regionImage = imageData;
@@ -101,7 +117,22 @@ const ResultsOverlay = () => {
           
           // Detect patterns with real algorithms
           setProcessingStage("Analisando padrões técnicos");
-          const results = await detectPatterns(processedImage, activeAnalysis, precision, true);
+          
+          // Pass original dimensions to ensure correct marker scaling
+          const analysisOptions = {
+            originalImageDimensions: originalImageDimensions.current,
+            chartRegion: chartRegion,
+            precision: precision,
+            disableSimulation: true
+          };
+          
+          const results = await detectPatterns(
+            processedImage, 
+            activeAnalysis, 
+            precision, 
+            true,
+            analysisOptions
+          );
           
           // Save detailed results
           setDetailedResults(results);
@@ -148,6 +179,7 @@ const ResultsOverlay = () => {
         showMarkers={showVisualMarkers}
         imageRegion={chartRegion}
         processedImage={processedRegionRef.current}
+        originalDimensions={originalImageDimensions.current}
       />
       
       {/* Analysis labels at the bottom */}

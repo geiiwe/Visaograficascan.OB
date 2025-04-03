@@ -1,3 +1,4 @@
+
 import React from "react";
 import { PatternResult } from "@/utils/patternDetection";
 import { useAnalyzer } from "@/context/AnalyzerContext";
@@ -7,13 +8,15 @@ interface ChartOverlayProps {
   showMarkers: boolean;
   imageRegion: { x: number; y: number; width: number; height: number } | null;
   processedImage: string | null;
+  originalDimensions: { width: number; height: number } | null;
 }
 
 const ChartOverlay: React.FC<ChartOverlayProps> = ({ 
   results, 
   showMarkers, 
   imageRegion,
-  processedImage
+  processedImage,
+  originalDimensions
 }) => {
   const { precision } = useAnalyzer();
   
@@ -39,11 +42,21 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
 
   // Map percentage coordinates to the correct positions within the selected region
   const adjustCoordinates = (x: number, y: number): [number, number] => {
-    if (!imageRegion) return [x, y];
+    if (!imageRegion || !originalDimensions) return [x, y];
     
-    // The markers are already in percentage coordinates (0-100%)
-    // Keep them in percentage coordinates within the visible area
-    return [x, y];
+    // Convert percentage to pixels in original image
+    const pixelX = (x / 100) * originalDimensions.width;
+    const pixelY = (y / 100) * originalDimensions.height;
+    
+    // Calculate the position relative to the region
+    const relX = (pixelX - imageRegion.x) / imageRegion.width * 100;
+    const relY = (pixelY - imageRegion.y) / imageRegion.height * 100;
+    
+    // Ensure coordinates stay within bounds (0-100%)
+    return [
+      Math.max(0, Math.min(100, relX)),
+      Math.max(0, Math.min(100, relY))
+    ];
   };
 
   // Enhance marker styling based on precision level
@@ -136,41 +149,78 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
           
           // For indicators like Fibonacci levels
           if (marker.type === "indicator" && marker.points.length > 1) {
-            const pointsString = marker.points
-              .map(point => {
-                const [x, y] = adjustCoordinates(point[0], point[1]);
-                return `${x},${y}`;
-              })
-              .join(" ");
-            
-            const [lastX, lastY] = adjustCoordinates(
-              marker.points[marker.points.length - 1][0], 
-              marker.points[marker.points.length - 1][1]
-            );
-            
-            return (
-              <g key={idx} style={getMarkerStyle(marker)}>
-                <polyline
-                  points={pointsString}
-                  fill="none"
-                  stroke={marker.color}
-                  strokeWidth={getStrokeWidth("indicator")}
-                />
-                {marker.label && (
-                  <text
-                    x={`${lastX + 1}%`}
-                    y={`${lastY + 3}%`}
-                    fill={marker.color}
-                    fontSize={getFontSize(10)}
-                    fontWeight="bold"
-                    textAnchor="start"
-                    className="select-none"
-                  >
-                    {marker.label} {marker.strength ? `(${marker.strength})` : ""}
-                  </text>
-                )}
-              </g>
-            );
+            // For Fibonacci specifically, ensure all points are properly adjusted
+            if (marker.name === "fibonacci") {
+              const adjustedPoints = marker.points.map(point => adjustCoordinates(point[0], point[1]));
+              
+              // Create the polyline points string with adjusted coordinates
+              const pointsString = adjustedPoints
+                .map(([x, y]) => `${x},${y}`)
+                .join(" ");
+              
+              const [lastX, lastY] = adjustedPoints[adjustedPoints.length - 1];
+              
+              return (
+                <g key={idx} style={getMarkerStyle(marker)}>
+                  <polyline
+                    points={pointsString}
+                    fill="none"
+                    stroke={marker.color}
+                    strokeWidth={getStrokeWidth("indicator")}
+                  />
+                  {marker.label && (
+                    <text
+                      x={`${lastX + 1}%`}
+                      y={`${lastY + 3}%`}
+                      fill={marker.color}
+                      fontSize={getFontSize(10)}
+                      fontWeight="bold"
+                      textAnchor="start"
+                      className="select-none"
+                    >
+                      {marker.label} {marker.strength ? `(${marker.strength})` : ""}
+                    </text>
+                  )}
+                </g>
+              );
+            } else {
+              // Standard indicator rendering for other types
+              const pointsString = marker.points
+                .map(point => {
+                  const [x, y] = adjustCoordinates(point[0], point[1]);
+                  return `${x},${y}`;
+                })
+                .join(" ");
+              
+              const [lastX, lastY] = adjustCoordinates(
+                marker.points[marker.points.length - 1][0], 
+                marker.points[marker.points.length - 1][1]
+              );
+              
+              return (
+                <g key={idx} style={getMarkerStyle(marker)}>
+                  <polyline
+                    points={pointsString}
+                    fill="none"
+                    stroke={marker.color}
+                    strokeWidth={getStrokeWidth("indicator")}
+                  />
+                  {marker.label && (
+                    <text
+                      x={`${lastX + 1}%`}
+                      y={`${lastY + 3}%`}
+                      fill={marker.color}
+                      fontSize={getFontSize(10)}
+                      fontWeight="bold"
+                      textAnchor="start"
+                      className="select-none"
+                    >
+                      {marker.label} {marker.strength ? `(${marker.strength})` : ""}
+                    </text>
+                  )}
+                </g>
+              );
+            }
           }
           
           // For pattern markers
