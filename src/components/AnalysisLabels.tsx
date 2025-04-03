@@ -18,7 +18,7 @@ import {
   HoverCardTrigger 
 } from "@/components/ui/hover-card";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import { useAnalyzer } from "@/context/AnalyzerContext";
+import { useAnalyzer, AnalysisType } from "@/context/AnalyzerContext";
 
 interface AnalysisLabelsProps {
   results: Record<string, PatternResult>;
@@ -55,35 +55,35 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ results, compact }) => 
 
   const resultItems = [
     {
-      type: "trendlines",
+      type: "trendlines" as AnalysisType,
       icon: TrendingUp,
       label: "Linhas de Tendência",
       color: "text-trader-green",
       description: "Níveis de suporte e resistência"
     },
     {
-      type: "fibonacci",
+      type: "fibonacci" as AnalysisType,
       icon: Fingerprint,
       label: "Fibonacci",
       color: "text-[#f97316]",
       description: "Níveis de Fibonacci"
     },
     {
-      type: "candlePatterns",
+      type: "candlePatterns" as AnalysisType,
       icon: CandlestickChart,
       label: "Padrões de Candles",
       color: "text-[#e11d48]",
       description: "Formações de candles específicas"
     },
     {
-      type: "elliottWaves",
+      type: "elliottWaves" as AnalysisType,
       icon: TrendingDown,
       label: "Ondas de Elliott",
       color: "text-[#06b6d4]",
       description: "Padrões de ondas e ciclos"
     },
     {
-      type: "dowTheory",
+      type: "dowTheory" as AnalysisType,
       icon: BarChart,
       label: "Teoria de Dow",
       color: "text-[#d946ef]",
