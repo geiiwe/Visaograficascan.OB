@@ -148,9 +148,12 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
           }
           
           // For indicators like Fibonacci levels
-          if (marker.type === "indicator" && marker.points.length > 1) {
-            // For Fibonacci specifically, ensure all points are properly adjusted
-            if (marker.name === "fibonacci") {
+          if (marker.type === "indicator") {
+            // Fixing the error: Removed accessing "marker.name" since this property doesn't exist
+            // Instead checking directly for Fibonacci in the label
+            const isFibonacci = marker.label && marker.label.toLowerCase().includes("fib");
+            
+            if (isFibonacci && marker.points.length > 1) {
               const adjustedPoints = marker.points.map(point => adjustCoordinates(point[0], point[1]));
               
               // Create the polyline points string with adjusted coordinates

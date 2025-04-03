@@ -126,12 +126,12 @@ const ResultsOverlay = () => {
             disableSimulation: true
           };
           
+          // Fixed line: removed the 5th argument to match expected function signature
           const results = await detectPatterns(
             processedImage, 
             activeAnalysis, 
             precision, 
-            true,
-            analysisOptions
+            true
           );
           
           // Save detailed results
