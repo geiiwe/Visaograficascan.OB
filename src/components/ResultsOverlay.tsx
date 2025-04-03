@@ -86,7 +86,7 @@ const ResultsOverlay = () => {
             // Advanced vision options
             adaptiveThreshold: precision !== "baixa",
             perspectiveCorrection: true,
-            chartRegionDetection: false, // We handle region extraction explicitly
+            chartRegionDetection: false,
             
             // Pattern recognition enhancements
             edgeEnhancement: precision !== "baixa",
@@ -126,7 +126,7 @@ const ResultsOverlay = () => {
             disableSimulation: true
           };
           
-          // Fixed line: removed the 5th argument to match expected function signature
+          // Fixed: removed the extra argument to match expected function signature
           const results = await detectPatterns(
             processedImage, 
             activeAnalysis, 

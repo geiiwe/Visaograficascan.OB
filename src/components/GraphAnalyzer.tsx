@@ -228,6 +228,11 @@ const GraphAnalyzer = () => {
                 <div className="absolute top-0 right-0 bg-trader-blue text-white text-xs px-2 py-1 rounded-bl-md">
                   Região selecionada
                 </div>
+                
+                {/* Show image dimensions for better feedback */}
+                <div className="absolute bottom-0 left-0 bg-black/60 text-white text-xs px-2 py-1 rounded-tr-md">
+                  {chartRegion.width} x {chartRegion.height}px
+                </div>
               </div>
             ) : (
               <div className="relative">

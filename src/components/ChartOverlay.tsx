@@ -149,8 +149,7 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
           
           // For indicators like Fibonacci levels
           if (marker.type === "indicator") {
-            // Fixing the error: Removed accessing "marker.name" since this property doesn't exist
-            // Instead checking directly for Fibonacci in the label
+            // Fixed: Check for Fibonacci in the label instead of using marker.name
             const isFibonacci = marker.label && marker.label.toLowerCase().includes("fib");
             
             if (isFibonacci && marker.points.length > 1) {
