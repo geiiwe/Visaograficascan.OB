@@ -42,26 +42,26 @@ const DirectionIndicator: React.FC<DirectionIndicatorProps> = ({
 }) => {
   return (
     <div className={cn(
-      "flex items-center gap-2 rounded-md p-2 transition-all hover:shadow-lg",
-      direction === "buy" ? "bg-trader-green/20 hover:bg-trader-green/30" : 
-      direction === "sell" ? "bg-trader-red/20 hover:bg-trader-red/30" :
-      "bg-trader-yellow/20 hover:bg-trader-yellow/30",
+      "flex items-center gap-2 rounded-md p-2 transition-all hover:shadow-lg border",
+      direction === "buy" ? "bg-trader-green/30 hover:bg-trader-green/40 border-trader-green/50" : 
+      direction === "sell" ? "bg-trader-red/30 hover:bg-trader-red/40 border-trader-red/50" :
+      "bg-trader-yellow/30 hover:bg-trader-yellow/40 border-trader-yellow/50",
       compact ? "px-2 py-1" : "px-3 py-2"
     )}>
       <div className={cn(
         "flex-shrink-0 p-1.5 rounded-full",
-        direction === "buy" ? "bg-trader-green/30" : 
-        direction === "sell" ? "bg-trader-red/30" :
-        "bg-trader-yellow/30"
+        direction === "buy" ? "bg-trader-green text-white" : 
+        direction === "sell" ? "bg-trader-red text-white" :
+        "bg-trader-yellow text-black"
       )}>
         {direction === "buy" && 
-          <ArrowUp className="h-4 w-4 text-trader-green" />
+          <ArrowUp className="h-4 w-4" />
         }
         {direction === "sell" && 
-          <ArrowDown className="h-4 w-4 text-trader-red" />
+          <ArrowDown className="h-4 w-4" />
         }
         {direction === "neutral" && 
-          <AlertTriangle className="h-4 w-4 text-trader-yellow" />
+          <AlertTriangle className="h-4 w-4" />
         }
       </div>
       
@@ -76,7 +76,7 @@ const DirectionIndicator: React.FC<DirectionIndicatorProps> = ({
         </span>
         {!compact && (
           <div className="flex flex-col">
-            <span className="text-xs text-trader-gray flex items-center">
+            <span className="text-xs text-white flex items-center">
               <Zap className="h-3 w-3 mr-1" />
               {getStrengthLabel(strength)}
             </span>
@@ -95,26 +95,26 @@ const DirectionIndicator: React.FC<DirectionIndicatorProps> = ({
         <div className="ml-auto flex items-center">
           {strength === "strong" && (
             <div className="flex space-x-0.5">
-              <div className="w-1.5 h-6 bg-trader-green/80 rounded-sm"></div>
-              <div className="w-1.5 h-6 bg-trader-green/80 rounded-sm"></div>
-              <div className="w-1.5 h-6 bg-trader-green/80 rounded-sm"></div>
+              <div className="w-1.5 h-6 bg-trader-green rounded-sm"></div>
+              <div className="w-1.5 h-6 bg-trader-green rounded-sm"></div>
+              <div className="w-1.5 h-6 bg-trader-green rounded-sm"></div>
             </div>
           )}
           {strength === "moderate" && (
             <div className="flex space-x-0.5">
-              <div className="w-1.5 h-4 bg-trader-blue/80 rounded-sm"></div>
-              <div className="w-1.5 h-4 bg-trader-blue/80 rounded-sm"></div>
-              <div className="w-1.5 h-4 bg-trader-gray/30 rounded-sm"></div>
+              <div className="w-1.5 h-4 bg-trader-blue rounded-sm"></div>
+              <div className="w-1.5 h-4 bg-trader-blue rounded-sm"></div>
+              <div className="w-1.5 h-4 bg-trader-gray/50 rounded-sm"></div>
             </div>
           )}
           {strength === "weak" && (
             <div className="flex space-x-0.5">
-              <div className="w-1.5 h-2 bg-trader-yellow/80 rounded-sm"></div>
-              <div className="w-1.5 h-2 bg-trader-gray/30 rounded-sm"></div>
-              <div className="w-1.5 h-2 bg-trader-gray/30 rounded-sm"></div>
+              <div className="w-1.5 h-2 bg-trader-yellow rounded-sm"></div>
+              <div className="w-1.5 h-2 bg-trader-gray/50 rounded-sm"></div>
+              <div className="w-1.5 h-2 bg-trader-gray/50 rounded-sm"></div>
             </div>
           )}
-          <BarChart2 className="h-4 w-4 ml-1 text-trader-gray/50" />
+          <BarChart2 className="h-4 w-4 ml-1 text-white/70" />
         </div>
       )}
     </div>

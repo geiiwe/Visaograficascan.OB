@@ -1,4 +1,3 @@
-
 import React from "react";
 import { PatternResult } from "@/utils/patternDetection";
 import { useAnalyzer } from "@/context/AnalyzerContext";
@@ -32,12 +31,12 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
   
   // Adjust the visual elements based on precision level
   const getStrokeWidth = (type: string) => {
-    const baseWidth = type === "trendline" ? 2 : type === "pattern" ? 1.5 : 1;
-    return precision === "alta" ? baseWidth * 1.2 : baseWidth;
+    const baseWidth = type === "trendline" ? 3 : type === "pattern" ? 2.5 : 2;
+    return precision === "alta" ? baseWidth * 1.5 : baseWidth;
   };
 
   const getFontSize = (baseSize: number) => {
-    return precision === "alta" ? baseSize * 1.1 : baseSize;
+    return precision === "alta" ? baseSize * 1.2 : baseSize;
   };
 
   // Map percentage coordinates to the correct positions within the selected region
@@ -76,7 +75,7 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
     >
       <defs>
         <filter id="glow">
-          <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
+          <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
           <feMerge>
             <feMergeNode in="coloredBlur"/>
             <feMergeNode in="SourceGraphic"/>
@@ -85,14 +84,22 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
         
         {/* Enhanced glow filter for alta precision */}
         <filter id="enhanced-glow">
-          <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
+          <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
           <feComponentTransfer in="coloredBlur">
-            <feFuncA type="linear" slope="1.5"/>
+            <feFuncA type="linear" slope="2"/>
           </feComponentTransfer>
           <feMerge>
             <feMergeNode in="coloredBlur"/>
             <feMergeNode in="SourceGraphic"/>
           </feMerge>
+        </filter>
+        
+        {/* Outline filter for better visibility */}
+        <filter id="outline">
+          <feMorphology operator="dilate" radius="1" in="SourceAlpha" result="thicken" />
+          <feFlood flood-color="black" result="outlineColor" />
+          <feComposite in="outlineColor" in2="thicken" operator="in" result="outline" />
+          <feComposite in="SourceGraphic" in2="outline" operator="over" />
         </filter>
       </defs>
       
@@ -105,9 +112,10 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
           height="100%"
           fill="none"
           stroke="#3b82f6"
-          strokeWidth="2"
-          strokeDasharray="5,3"
+          strokeWidth="3"
+          strokeDasharray="5,5"
           className="pointer-events-none"
+          style={{ filter: "url(#glow)" }}
         />
       )}
       
@@ -135,10 +143,11 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
                     x={`${x2 + 1}%`}
                     y={`${y2 + 3}%`}
                     fill={marker.color}
-                    fontSize={getFontSize(10)}
+                    fontSize={getFontSize(11)}
                     fontWeight="bold"
                     textAnchor="start"
                     className="select-none"
+                    style={{ filter: "url(#outline)" }}
                   >
                     {marker.label} {marker.strength ? `(${marker.strength})` : ""}
                   </text>

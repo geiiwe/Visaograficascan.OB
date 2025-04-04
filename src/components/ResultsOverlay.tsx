@@ -219,18 +219,20 @@ const ResultsOverlay = () => {
         originalDimensions={originalImageDimensions.current}
       />
       
-      {/* Analysis labels at the bottom */}
+      {/* Analysis labels at the bottom - AQUI MELHORAMOS A CAIXA DE RESULTADO */}
       <div className={`absolute ${isMobile ? "bottom-0 left-0 right-0" : "bottom-2 left-2 right-2"}`}>
-        <AnalysisLabels 
-          results={detailedResults} 
-          compact={compactMode}
-        />
+        <div className="bg-black/80 backdrop-blur-sm border border-white/10 p-2 rounded-lg shadow-lg">
+          <AnalysisLabels 
+            results={detailedResults} 
+            compact={compactMode}
+          />
+        </div>
       </div>
       
       {/* Processing stage indicator */}
       {processingStage && (
         <div className="absolute top-4 left-0 right-0 flex justify-center">
-          <div className="bg-black/70 text-white px-4 py-2 rounded-full text-sm">
+          <div className="bg-black/80 text-white px-4 py-2 rounded-full text-sm border border-white/20 backdrop-blur-sm shadow-lg">
             {processingStage}
           </div>
         </div>
