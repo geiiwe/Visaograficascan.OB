@@ -6,6 +6,7 @@ import { prepareForAnalysis, extractRegionFromImage } from "@/utils/imageProcess
 import { toast } from "sonner";
 import ChartOverlay from "./ChartOverlay";
 import AnalysisLabels from "./AnalysisLabels";
+import DirectionIndicator from "./DirectionIndicator";
 import { useMediaQuery } from "@/hooks/use-media-query";
 
 const ResultsOverlay = () => {
@@ -117,7 +118,7 @@ const ResultsOverlay = () => {
             (stage) => setProcessingStage(stage));
           
           // Detect patterns
-          setProcessingStage("Analisando padrões técnicos");
+          setProcessingStage("Analisando padrões técnicos e calculando pressão de compra/venda");
           
           // Pass original dimensions to ensure correct marker scaling
           const results = await detectPatterns(
@@ -150,9 +151,31 @@ const ResultsOverlay = () => {
             .filter(r => r.found && r.type !== "all")
             .length;
           
+          // Extract overall buy/sell scores
+          const totalBuyScore = results.all?.buyScore || 0;
+          const totalSellScore = results.all?.sellScore || 0;
+          
+          // Determine market direction for feedback
+          let directionMessage = "";
+          if (totalBuyScore > totalSellScore && totalBuyScore > 1) {
+            directionMessage = "Pressão compradora detectada";
+            if (totalBuyScore > totalSellScore * 2) {
+              directionMessage = "Forte pressão compradora detectada";
+            }
+          } else if (totalSellScore > totalBuyScore && totalSellScore > 1) {
+            directionMessage = "Pressão vendedora detectada";
+            if (totalSellScore > totalBuyScore * 2) {
+              directionMessage = "Forte pressão vendedora detectada";
+            }
+          }
+          
           // Notify user about results
           if (foundCount > 0) {
-            toast.success(`Análise concluída! ${foundCount} padrões detectados.`);
+            if (directionMessage) {
+              toast.success(`Análise concluída! ${foundCount} padrões detectados. ${directionMessage}.`);
+            } else {
+              toast.success(`Análise concluída! ${foundCount} padrões detectados.`);
+            }
           } else {
             toast.info("Análise concluída. Nenhum padrão técnico detectado na região selecionada.");
           }

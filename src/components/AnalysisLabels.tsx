@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useMemo } from "react";
 import { PatternResult } from "@/utils/patternDetection";
 import { cn } from "@/lib/utils";
 import { 
@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/hover-card";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useAnalyzer, AnalysisType } from "@/context/AnalyzerContext";
+import DirectionIndicator, { MarketDirection, SignalStrength } from "./DirectionIndicator";
 
 interface AnalysisLabelsProps {
   results: Record<string, PatternResult>;
@@ -109,6 +110,43 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ results, compact }) => 
   const activatedCount = activeItems.length;
   const foundCount = foundResults.length;
   
+  // Calculate overall market direction based on results
+  const { direction, strength } = useMemo(() => {
+    if (foundCount === 0) return { direction: "neutral" as MarketDirection, strength: "weak" as SignalStrength };
+    
+    let buyScore = 0;
+    let sellScore = 0;
+    
+    // Analyze each result to determine direction
+    Object.values(results).forEach(result => {
+      if (!result.found) return;
+      
+      // Extract decision from recommendation
+      const decision = extractDecision(result.recommendation || "");
+      
+      // Add to score based on confidence and decision
+      if (decision?.includes("COMPRA")) {
+        buyScore += result.confidence / 100;
+      } else if (decision?.includes("VENDA")) {
+        sellScore += result.confidence / 100;
+      }
+    });
+    
+    // Determine direction based on scores
+    let direction: MarketDirection = "neutral";
+    let strength: SignalStrength = "weak";
+    
+    if (buyScore > sellScore && buyScore > 0.5) {
+      direction = "buy";
+      strength = buyScore > 1.5 ? "strong" : buyScore > 0.8 ? "moderate" : "weak";
+    } else if (sellScore > buyScore && sellScore > 0.5) {
+      direction = "sell";
+      strength = sellScore > 1.5 ? "strong" : sellScore > 0.8 ? "moderate" : "weak";
+    }
+    
+    return { direction, strength };
+  }, [results, foundCount]);
+  
   // Render message when no patterns were found
   if (noResultsFound) {
     return (
@@ -130,6 +168,15 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ results, compact }) => 
         flex flex-wrap gap-1 p-2 bg-black/60 backdrop-blur-sm rounded-lg border border-trader-panel/30
         ${isMobile ? 'justify-center' : 'justify-start'}
       `}>
+        {/* Direction indicator */}
+        {foundCount > 0 && (
+          <DirectionIndicator 
+            direction={direction} 
+            strength={strength} 
+            compact={true} 
+          />
+        )}
+        
         {foundCount < activatedCount && activatedCount > 0 && (
           <div className="text-xs text-trader-gray mr-1 flex items-center">
             <CheckCircle2 className="h-3 w-3 mr-1 text-trader-green" />
@@ -194,64 +241,76 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ results, compact }) => 
 
   // Render expanded version
   return (
-    <div className={`
-      grid gap-2 p-3 bg-black/70 backdrop-blur-sm rounded-lg border border-trader-panel/50
-      ${isMobile ? 'grid-cols-2' : 'grid-cols-4'}
-    `}>
-      {foundCount < activatedCount && activatedCount > 0 && (
-        <div className="col-span-full text-xs text-trader-gray mb-1 flex items-center justify-center">
-          <CheckCircle2 className="h-3 w-3 mr-1 text-trader-green" />
-          <span>{foundCount}/{activatedCount} padrões detectados</span>
+    <div className="space-y-3">
+      {/* Direction indicator (in expanded mode, show prominently) */}
+      {foundCount > 0 && (
+        <div className="flex justify-center mb-2">
+          <DirectionIndicator 
+            direction={direction} 
+            strength={strength} 
+          />
         </div>
       )}
       
-      {foundResults.map(({ type, icon: Icon, label, color }) => {
-        const decision = extractDecision(results[type]?.recommendation || "");
-        const decisionColor = getDecisionColor(decision);
-        
-        return (
-          <div 
-            key={type} 
-            className={cn(
-              "flex flex-col p-2 rounded border border-trader-panel/50",
-              getDecisionBgColor(decision)
-            )}
-          >
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-1.5">
-                <Icon className={cn("h-4 w-4", color)} />
-                <h4 className="text-sm font-medium">{label}</h4>
-              </div>
-              <HoverCard>
-                <HoverCardTrigger asChild>
-                  <button className="text-trader-gray hover:text-white transition-colors">
-                    <Info size={14} />
-                  </button>
-                </HoverCardTrigger>
-                <HoverCardContent className="w-72 p-3">
-                  <p className="text-xs">{results[type]?.description}</p>
-                  {results[type]?.majorPlayers && results[type]?.majorPlayers.length > 0 && (
-                    <div className="mt-2 text-xs">
-                      <h5 className="font-medium">Usado por grandes players:</h5>
-                      <ul className="list-disc pl-4 space-y-0.5 mt-1">
-                        {results[type]?.majorPlayers?.map((player, idx) => (
-                          <li key={idx}>{player}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </HoverCardContent>
-              </HoverCard>
-            </div>
-            
-            {decision && (
-              <div className={cn("text-xs font-bold mt-1", decisionColor)}>
-                {decision}
-              </div>
-            )}
+      <div className={`
+        grid gap-2 p-3 bg-black/70 backdrop-blur-sm rounded-lg border border-trader-panel/50
+        ${isMobile ? 'grid-cols-2' : 'grid-cols-4'}
+      `}>
+        {foundCount < activatedCount && activatedCount > 0 && (
+          <div className="col-span-full text-xs text-trader-gray mb-1 flex items-center justify-center">
+            <CheckCircle2 className="h-3 w-3 mr-1 text-trader-green" />
+            <span>{foundCount}/{activatedCount} padrões detectados</span>
           </div>
-        );
-      })}
+        )}
+        
+        {foundResults.map(({ type, icon: Icon, label, color }) => {
+          const decision = extractDecision(results[type]?.recommendation || "");
+          const decisionColor = getDecisionColor(decision);
+          
+          return (
+            <div 
+              key={type} 
+              className={cn(
+                "flex flex-col p-2 rounded border border-trader-panel/50",
+                getDecisionBgColor(decision)
+              )}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-1.5">
+                  <Icon className={cn("h-4 w-4", color)} />
+                  <h4 className="text-sm font-medium">{label}</h4>
+                </div>
+                <HoverCard>
+                  <HoverCardTrigger asChild>
+                    <button className="text-trader-gray hover:text-white transition-colors">
+                      <Info size={14} />
+                    </button>
+                  </HoverCardTrigger>
+                  <HoverCardContent className="w-72 p-3">
+                    <p className="text-xs">{results[type]?.description}</p>
+                    {results[type]?.majorPlayers && results[type]?.majorPlayers.length > 0 && (
+                      <div className="mt-2 text-xs">
+                        <h5 className="font-medium">Usado por grandes players:</h5>
+                        <ul className="list-disc pl-4 space-y-0.5 mt-1">
+                          {results[type]?.majorPlayers?.map((player, idx) => (
+                            <li key={idx}>{player}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </HoverCardContent>
+                </HoverCard>
+              </div>
+              
+              {decision && (
+                <div className={cn("text-xs font-bold mt-1", decisionColor)}>
+                  {decision}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };

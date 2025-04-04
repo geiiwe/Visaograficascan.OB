@@ -1,4 +1,3 @@
-
 import { AnalysisType, PrecisionLevel } from "@/context/AnalyzerContext";
 
 export interface PatternResult {
@@ -6,6 +5,8 @@ export interface PatternResult {
   confidence: number;
   description: string;
   recommendation: string;
+  buyScore?: number;    // Score para pressão de compra
+  sellScore?: number;   // Score para pressão de venda
   majorPlayers?: string[];
   type?: string;
   visualMarkers?: {
@@ -286,10 +287,31 @@ export const detectTrendLines = async (
   
   // Determine buy/sell recommendation based on detected patterns
   let recommendation = "Nenhuma linha de tendência clara detectada.";
+  let buyScore = 0;
+  let sellScore = 0;
+  
   if (found) {
     const hasBullishTrend = lines.some(line => 
       line.type === "trendline" && line.points[0][1] > line.points[1][1]
     );
+    
+    // Calculate scores based on line strength and type
+    const supportCount = lines.filter(l => l.type === "support").length;
+    const resistanceCount = lines.filter(l => l.type === "resistance").length;
+    
+    // Check support/resistance strength
+    const strongSupport = lines.some(l => l.type === "support" && l.strength === "forte");
+    const strongResistance = lines.some(l => l.type === "resistance" && l.strength === "forte");
+    
+    if (hasBullishTrend) {
+      buyScore = 1.0; // Base score for bullish trend
+      if (strongSupport) buyScore += 0.5;
+      if (supportCount > resistanceCount) buyScore += 0.3;
+    } else {
+      sellScore = 1.0; // Base score for bearish trend
+      if (strongResistance) sellScore += 0.5;
+      if (resistanceCount > supportCount) sellScore += 0.3;
+    }
     
     recommendation = `DECISÃO: ${hasBullishTrend ? "COMPRA" : "VENDA"}. ` + 
       `${hasBullishTrend ? 
@@ -303,6 +325,8 @@ export const detectTrendLines = async (
     description: "Linhas de tendência indicam direções de movimento de preços. Suporte (abaixo do preço) e resistência (acima do preço) são consideradas zonas onde o preço tende a reverter.",
     recommendation: found ? recommendation : "Nenhuma linha de tendência clara detectada.",
     type: "trendlines",
+    buyScore,
+    sellScore,
     visualMarkers
   };
 };
@@ -436,6 +460,31 @@ export const detectFibonacci = async (
   // Set confidence based on detection quality
   const confidence = found ? 75 : 0;
   
+  // Calculate buy/sell scores based on detected patterns
+  let buyScore = 0;
+  let sellScore = 0;
+  
+  if (found) {
+    // In a bullish trend with Fibonacci levels, buy score is higher
+    if (isBullish) {
+      buyScore = 0.8;
+      // If we have strong levels at key retracement points (0.382, 0.5, 0.618), increase buy score
+      const hasKeyLevels = fibLevels.some(f => 
+        (Math.abs(f.level - 0.382) < 0.01 || Math.abs(f.level - 0.5) < 0.01 || Math.abs(f.level - 0.618) < 0.01) 
+        && f.strength === "forte"
+      );
+      if (hasKeyLevels) buyScore += 0.4;
+    } else {
+      sellScore = 0.8;
+      // If we have strong levels at key extension points (0.618, 0.786, 1.0), increase sell score
+      const hasKeyLevels = fibLevels.some(f => 
+        (Math.abs(f.level - 0.618) < 0.01 || Math.abs(f.level - 0.786) < 0.01 || Math.abs(f.level - 1.0) < 0.01) 
+        && f.strength === "forte"
+      );
+      if (hasKeyLevels) sellScore += 0.4;
+    }
+  }
+  
   return {
     found,
     confidence,
@@ -443,6 +492,8 @@ export const detectFibonacci = async (
     recommendation: found ? 
       `DECISÃO: ${isBullish ? "COMPRA em retrações" : "VENDA em extensões"}. Observe os níveis de Fibonacci como possíveis zonas de reversão ou continuação. ${isBullish ? "Operações de compra perto de retrações de 38.2% e 50% têm alta probabilidade de sucesso." : "Operações de venda próximas às extensões de 61.8% e 100% têm alta probabilidade de sucesso."}` : 
       "Nenhum padrão de Fibonacci claro identificado.",
+    buyScore,
+    sellScore,
     visualMarkers
   };
 };
@@ -633,6 +684,27 @@ export const detectCandlePatterns = async (
   // Determine confidence based on pattern clarity
   const confidence = found ? 70 : 0;
   
+  // Calculate buy/sell scores based on detected candle patterns
+  let buyScore = 0;
+  let sellScore = 0;
+  
+  if (found && pattern) {
+    // Analisar características do padrão para pontuação
+    // Patterns with high bullish reliability
+    const strongBullishPatterns = ["Martelo", "Três Soldados Brancos", "Engolfo de Alta"];
+    const strongBearishPatterns = ["Engolfo de Baixa", "Homem Enforcado", "Três Corvos Negros"];
+    
+    if (isBullish) {
+      buyScore = 0.7; // Base score for bullish pattern
+      // Higher score for strong bullish patterns
+      if (strongBullishPatterns.includes(pattern)) buyScore += 0.6;
+    } else {
+      sellScore = 0.7; // Base score for bearish pattern
+      // Higher score for strong bearish patterns
+      if (strongBearishPatterns.includes(pattern)) sellScore += 0.6;
+    }
+  }
+  
   return {
     found,
     confidence,
@@ -640,6 +712,8 @@ export const detectCandlePatterns = async (
     recommendation: found && pattern ? 
       `DECISÃO: ${isBullish ? "COMPRA" : "VENDA"}. Padrão de candle "${pattern}" detectado. ${isBullish ? "Este é um padrão de alta, considere uma entrada de compra com stop loss abaixo do padrão." : "Este é um padrão de baixa, considere uma entrada de venda com stop loss acima do padrão."}` : 
       "Nenhum padrão de candle claro identificado.",
+    buyScore,
+    sellScore,
     visualMarkers
   };
 };
@@ -741,25 +815,45 @@ export const detectPatterns = async (
       foundTypes.reduce((sum, type) => sum + (results[type]?.confidence || 0), 0) / foundTypes.length
     );
     
+    // Calculate total buy and sell scores from all analyzed patterns
+    let totalBuyScore = 0;
+    let totalSellScore = 0;
+    
+    foundTypes.forEach(type => {
+      totalBuyScore += results[type]?.buyScore || 0;
+      totalSellScore += results[type]?.sellScore || 0;
+    });
+    
     // Determine overall recommendation based on detected patterns
     let decision = "AGUARDE";
     
-    // If most patterns found are bullish (determined by their recommendations)
-    const bullishPatterns = foundTypes.filter(type => 
-      results[type]?.recommendation && results[type]?.recommendation.includes("COMPRA")
-    );
-    
-    if (bullishPatterns.length > foundTypes.length / 2) {
+    if (totalBuyScore > totalSellScore && totalBuyScore > foundTypes.length * 0.3) {
       decision = "COMPRA";
-    } else if (bullishPatterns.length < foundTypes.length / 2) {
+      // Add strength indication based on score difference
+      if (totalBuyScore > totalSellScore * 2) {
+        decision += " (sinal forte)";
+      }
+    } else if (totalSellScore > totalBuyScore && totalSellScore > foundTypes.length * 0.3) {
       decision = "VENDA";
+      // Add strength indication based on score difference
+      if (totalSellScore > totalBuyScore * 2) {
+        decision += " (sinal forte)";
+      }
     }
     
     results.all = {
       ...results.all,
       found: true,
       confidence: avgConfidence,
-      recommendation: `DECISÃO: ${decision}. Baseado na análise de ${foundTypes.length} padrões detectados. ${decision === "COMPRA" ? "Predominância de sinais de alta." : decision === "VENDA" ? "Predominância de sinais de baixa." : "Sinais mistos, recomenda-se cautela."}`,
+      buyScore: totalBuyScore,
+      sellScore: totalSellScore,
+      recommendation: `DECISÃO: ${decision}. Baseado na análise de ${foundTypes.length} padrões detectados. ${
+        decision === "COMPRA" ? 
+          `Predominância de sinais de alta (força: ${totalBuyScore.toFixed(1)}).` : 
+        decision === "VENDA" ? 
+          `Predominância de sinais de baixa (força: ${totalSellScore.toFixed(1)}).` : 
+          "Sinais mistos, recomenda-se cautela."
+      }`,
       type: "all"
     };
   }
