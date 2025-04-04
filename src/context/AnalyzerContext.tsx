@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, ReactNode } from "react";
 
 export type AnalysisType = "trendlines" | "fibonacci" | "candlePatterns" | "elliottWaves" | "dowTheory" | "all";
@@ -26,6 +27,8 @@ interface AnalyzerContextType {
   chartRegion: { x: number; y: number; width: number; height: number } | null;
   setChartRegion: (region: { x: number; y: number; width: number; height: number } | null) => void;
   hasCustomRegion: boolean;
+  indicatorPosition: { x: number; y: number; };
+  setIndicatorPosition: (position: { x: number; y: number }) => void;
 }
 
 const AnalyzerContext = createContext<AnalyzerContextType | undefined>(undefined);
@@ -48,6 +51,7 @@ export const AnalyzerProvider = ({ children }: { children: ReactNode }) => {
   const [compactMode, setCompactMode] = useState(true);
   const [selectionMode, setSelectionMode] = useState(false);
   const [chartRegion, setChartRegion] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  const [indicatorPosition, setIndicatorPosition] = useState<{ x: number; y: number }>({ x: 20, y: 20 });
 
   // Computed property to check if a custom region is set
   const hasCustomRegion = chartRegion !== null;
@@ -140,6 +144,8 @@ export const AnalyzerProvider = ({ children }: { children: ReactNode }) => {
         chartRegion,
         setChartRegion,
         hasCustomRegion,
+        indicatorPosition,
+        setIndicatorPosition,
       }}
     >
       {children}

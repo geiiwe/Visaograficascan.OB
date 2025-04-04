@@ -39,7 +39,7 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ results, compact }) => 
   };
 
   const getDecisionColor = (decision: string | null): string => {
-    if (!decision) return "text-trader-gray";
+    if (!decision) return "text-gray-600";
     
     if (decision.includes("COMPRA")) return "text-trader-green";
     if (decision.includes("VENDA")) return "text-trader-red";
@@ -47,11 +47,11 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ results, compact }) => 
   };
 
   const getDecisionBgColor = (decision: string | null): string => {
-    if (!decision) return "bg-trader-panel/30";
+    if (!decision) return "bg-gray-100";
     
-    if (decision.includes("COMPRA")) return "bg-trader-green/10";
-    if (decision.includes("VENDA")) return "bg-trader-red/10";
-    return "bg-trader-yellow/10";
+    if (decision.includes("COMPRA")) return "bg-trader-green/20";
+    if (decision.includes("VENDA")) return "bg-trader-red/20";
+    return "bg-trader-yellow/20";
   };
 
   const resultItems = [
@@ -150,8 +150,8 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ results, compact }) => 
   // Render message when no patterns were found
   if (noResultsFound) {
     return (
-      <div className="flex items-center justify-center p-3 bg-black/70 backdrop-blur-sm rounded-lg border border-trader-panel/50">
-        <div className="flex items-center gap-2 text-trader-gray">
+      <div className="flex items-center justify-center p-3 bg-white/70 rounded-lg border border-gray-300">
+        <div className="flex items-center gap-2 text-gray-600">
           <AlertCircle className="h-4 w-4" />
           <span>Nenhum padrão detectado nas {activatedCount} análises ativadas</span>
         </div>
@@ -165,20 +165,11 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ results, compact }) => 
   if (compact) {
     return (
       <div className={`
-        flex flex-wrap gap-1 p-2 bg-black/60 backdrop-blur-sm rounded-lg border border-trader-panel/30
+        flex flex-wrap gap-1 p-2 bg-white/70 backdrop-blur-sm rounded-lg border border-gray-300
         ${isMobile ? 'justify-center' : 'justify-start'}
       `}>
-        {/* Direction indicator */}
-        {foundCount > 0 && (
-          <DirectionIndicator 
-            direction={direction} 
-            strength={strength} 
-            compact={true} 
-          />
-        )}
-        
         {foundCount < activatedCount && activatedCount > 0 && (
-          <div className="text-xs text-trader-gray mr-1 flex items-center">
+          <div className="text-xs text-gray-700 mr-1 flex items-center">
             <CheckCircle2 className="h-3 w-3 mr-1 text-trader-green" />
             <span>{foundCount}/{activatedCount} padrões encontrados</span>
           </div>
@@ -193,11 +184,11 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ results, compact }) => 
               <HoverCardTrigger asChild>
                 <button className={cn(
                   "flex items-center space-x-1 px-2 py-1 rounded-full",
-                  "bg-trader-dark/80 border border-trader-panel/60",
+                  "bg-white border border-gray-300",
                   decision ? decisionColor : ""
                 )}>
                   <Icon className={cn("h-3 w-3", color)} />
-                  <span className="text-xs font-medium">{label}</span>
+                  <span className="text-xs font-medium text-gray-800">{label}</span>
                   {decision && (
                     <span className={cn("text-[10px] font-bold", decisionColor)}>
                       {decision}
@@ -205,17 +196,17 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ results, compact }) => 
                   )}
                 </button>
               </HoverCardTrigger>
-              <HoverCardContent className="w-72 p-3">
+              <HoverCardContent className="w-72 p-3 bg-white border border-gray-200">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Icon className={cn("h-5 w-5", color)} />
-                      <h4 className="font-medium">{label}</h4>
+                      <h4 className="font-medium text-gray-900">{label}</h4>
                     </div>
                     <CheckCircle2 className="h-4 w-4 text-trader-green" />
                   </div>
                   
-                  <p className="text-xs text-trader-gray">{results[type]?.description}</p>
+                  <p className="text-xs text-gray-600">{results[type]?.description}</p>
                   
                   {decision && (
                     <div className={cn(
@@ -227,7 +218,7 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ results, compact }) => 
                     </div>
                   )}
                   
-                  <p className="text-xs text-trader-blue mt-1">
+                  <p className="text-xs text-blue-600 mt-1">
                     {results[type]?.recommendation?.replace(/DECISÃO:\s+(COMPRA|VENDA|AGUARDE|ESPERE|MANTENHA POSIÇÃO|REALIZE LUCROS|PREPARE-SE PARA COMPRA)/i, '')}
                   </p>
                 </div>
@@ -241,23 +232,13 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ results, compact }) => 
 
   // Render expanded version
   return (
-    <div className="space-y-3">
-      {/* Direction indicator (in expanded mode, show prominently) */}
-      {foundCount > 0 && (
-        <div className="flex justify-center mb-2">
-          <DirectionIndicator 
-            direction={direction} 
-            strength={strength} 
-          />
-        </div>
-      )}
-      
+    <div className="space-y-3">      
       <div className={`
-        grid gap-2 p-3 bg-black/70 backdrop-blur-sm rounded-lg border border-trader-panel/50
+        grid gap-2 p-3 bg-white/80 backdrop-blur-sm rounded-lg border border-gray-300
         ${isMobile ? 'grid-cols-2' : 'grid-cols-4'}
       `}>
         {foundCount < activatedCount && activatedCount > 0 && (
-          <div className="col-span-full text-xs text-trader-gray mb-1 flex items-center justify-center">
+          <div className="col-span-full text-xs text-gray-700 mb-1 flex items-center justify-center">
             <CheckCircle2 className="h-3 w-3 mr-1 text-trader-green" />
             <span>{foundCount}/{activatedCount} padrões detectados</span>
           </div>
@@ -271,27 +252,27 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ results, compact }) => 
             <div 
               key={type} 
               className={cn(
-                "flex flex-col p-2 rounded border border-trader-panel/50",
+                "flex flex-col p-2 rounded border border-gray-300",
                 getDecisionBgColor(decision)
               )}
             >
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-1.5">
                   <Icon className={cn("h-4 w-4", color)} />
-                  <h4 className="text-sm font-medium">{label}</h4>
+                  <h4 className="text-sm font-medium text-gray-900">{label}</h4>
                 </div>
                 <HoverCard>
                   <HoverCardTrigger asChild>
-                    <button className="text-trader-gray hover:text-white transition-colors">
+                    <button className="text-gray-500 hover:text-gray-700 transition-colors">
                       <Info size={14} />
                     </button>
                   </HoverCardTrigger>
-                  <HoverCardContent className="w-72 p-3">
-                    <p className="text-xs">{results[type]?.description}</p>
+                  <HoverCardContent className="w-72 p-3 bg-white">
+                    <p className="text-xs text-gray-700">{results[type]?.description}</p>
                     {results[type]?.majorPlayers && results[type]?.majorPlayers.length > 0 && (
                       <div className="mt-2 text-xs">
-                        <h5 className="font-medium">Usado por grandes players:</h5>
-                        <ul className="list-disc pl-4 space-y-0.5 mt-1">
+                        <h5 className="font-medium text-gray-900">Usado por grandes players:</h5>
+                        <ul className="list-disc pl-4 space-y-0.5 mt-1 text-gray-700">
                           {results[type]?.majorPlayers?.map((player, idx) => (
                             <li key={idx}>{player}</li>
                           ))}

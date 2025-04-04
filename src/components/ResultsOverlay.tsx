@@ -9,6 +9,12 @@ import AnalysisLabels from "./AnalysisLabels";
 import DirectionIndicator from "./DirectionIndicator";
 import { useMediaQuery } from "@/hooks/use-media-query";
 
+interface IndicatorPosition {
+  x: number;
+  y: number;
+  isDragging: boolean;
+}
+
 const ResultsOverlay = () => {
   const { 
     imageData, 
@@ -26,10 +32,51 @@ const ResultsOverlay = () => {
   const [detailedResults, setDetailedResults] = useState<Record<string, PatternResult>>({});
   const [processingStage, setProcessingStage] = useState<string>("");
   const [analysisImage, setAnalysisImage] = useState<string | null>(null);
+  const [indicatorPosition, setIndicatorPosition] = useState<IndicatorPosition>({
+    x: 20,
+    y: 20,
+    isDragging: false
+  });
+  
   const isMobile = useMediaQuery("(max-width: 768px)");
   const analysisImageRef = useRef<HTMLImageElement | null>(null);
   const processedRegionRef = useRef<string | null>(null);
   const originalImageDimensions = useRef<{width: number, height: number} | null>(null);
+  const resultsPanelRef = useRef<HTMLDivElement | null>(null);
+
+  // Handle dragging of the indicator
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIndicatorPosition(prev => ({ ...prev, isDragging: true }));
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (indicatorPosition.isDragging && resultsPanelRef.current) {
+      const rect = resultsPanelRef.current.getBoundingClientRect();
+      // Calculate position as percentage of container
+      const x = Math.min(Math.max(0, ((e.clientX - rect.left) / rect.width) * 100), 90);
+      const y = Math.min(Math.max(0, ((e.clientY - rect.top) / rect.height) * 100), 90);
+      
+      setIndicatorPosition(prev => ({ ...prev, x, y }));
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIndicatorPosition(prev => ({ ...prev, isDragging: false }));
+  };
+
+  // Add event listeners for dragging
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      setIndicatorPosition(prev => ({ ...prev, isDragging: false }));
+    };
+    
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    
+    return () => {
+      window.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, []);
 
   useEffect(() => {
     const runAnalysis = async () => {
@@ -197,8 +244,22 @@ const ResultsOverlay = () => {
     return null;
   }
 
+  // Calculate styles for the draggable indicator
+  const indicatorStyle = {
+    position: 'absolute',
+    left: `${indicatorPosition.x}%`,
+    top: `${indicatorPosition.y}%`,
+    cursor: indicatorPosition.isDragging ? 'grabbing' : 'grab',
+    zIndex: 30
+  };
+
   return (
-    <div className="absolute inset-0 flex flex-col">
+    <div 
+      className="absolute inset-0 flex flex-col"
+      ref={resultsPanelRef}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+    >
       {/* Exibir somente a região processada quando houver uma região selecionada */}
       {chartRegion && processedRegionRef.current && (
         <div className="absolute inset-0 z-10 pointer-events-none">
@@ -219,9 +280,22 @@ const ResultsOverlay = () => {
         originalDimensions={originalImageDimensions.current}
       />
       
-      {/* Analysis labels at the bottom - AQUI MELHORAMOS A CAIXA DE RESULTADO */}
+      {/* Draggable direction indicator */}
+      {detailedResults.all?.found && (
+        <DirectionIndicator 
+          direction={detailedResults.all?.buyScore > detailedResults.all?.sellScore ? "buy" : 
+                     detailedResults.all?.sellScore > detailedResults.all?.buyScore ? "sell" : "neutral"} 
+          strength={detailedResults.all?.buyScore > 1.5 || detailedResults.all?.sellScore > 1.5 ? "strong" : 
+                    detailedResults.all?.buyScore > 0.8 || detailedResults.all?.sellScore > 0.8 ? "moderate" : "weak"}
+          className="drag-handle"
+          style={indicatorStyle as React.CSSProperties}
+          onMouseDown={handleMouseDown}
+        />
+      )}
+      
+      {/* Analysis labels at the bottom */}
       <div className={`absolute ${isMobile ? "bottom-0 left-0 right-0" : "bottom-2 left-2 right-2"}`}>
-        <div className="bg-black/80 backdrop-blur-sm border border-white/10 p-2 rounded-lg shadow-lg">
+        <div className="bg-white/90 backdrop-blur-sm border border-gray-200 p-2 rounded-lg shadow-lg">
           <AnalysisLabels 
             results={detailedResults} 
             compact={compactMode}
@@ -232,7 +306,7 @@ const ResultsOverlay = () => {
       {/* Processing stage indicator */}
       {processingStage && (
         <div className="absolute top-4 left-0 right-0 flex justify-center">
-          <div className="bg-black/80 text-white px-4 py-2 rounded-full text-sm border border-white/20 backdrop-blur-sm shadow-lg">
+          <div className="bg-white/90 text-black px-4 py-2 rounded-full text-sm border border-gray-300 backdrop-blur-sm shadow-lg">
             {processingStage}
           </div>
         </div>

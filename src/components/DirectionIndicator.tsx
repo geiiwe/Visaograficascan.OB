@@ -11,6 +11,8 @@ interface DirectionIndicatorProps {
   strength: SignalStrength;
   compact?: boolean;
   accuracy?: number;
+  className?: string;
+  style?: React.CSSProperties;
 }
 
 const getDirectionLabel = (direction: MarketDirection): string => {
@@ -38,16 +40,22 @@ const DirectionIndicator: React.FC<DirectionIndicatorProps> = ({
   direction, 
   strength,
   compact = false,
-  accuracy
+  accuracy,
+  className,
+  style
 }) => {
   return (
-    <div className={cn(
-      "flex items-center gap-2 rounded-md p-2 transition-all hover:shadow-lg border",
-      direction === "buy" ? "bg-trader-green/30 hover:bg-trader-green/40 border-trader-green/50" : 
-      direction === "sell" ? "bg-trader-red/30 hover:bg-trader-red/40 border-trader-red/50" :
-      "bg-trader-yellow/30 hover:bg-trader-yellow/40 border-trader-yellow/50",
-      compact ? "px-2 py-1" : "px-3 py-2"
-    )}>
+    <div 
+      className={cn(
+        "flex items-center gap-2 rounded-md p-2 transition-all hover:shadow-lg border",
+        direction === "buy" ? "bg-trader-green/80 hover:bg-trader-green/90 border-trader-green/70" : 
+        direction === "sell" ? "bg-trader-red/80 hover:bg-trader-red/90 border-trader-red/70" :
+        "bg-trader-yellow/80 hover:bg-trader-yellow/90 border-trader-yellow/70",
+        compact ? "px-2 py-1" : "px-3 py-2",
+        className
+      )}
+      style={style}
+    >
       <div className={cn(
         "flex-shrink-0 p-1.5 rounded-full",
         direction === "buy" ? "bg-trader-green text-white" : 
@@ -68,9 +76,9 @@ const DirectionIndicator: React.FC<DirectionIndicatorProps> = ({
       <div className="flex flex-col">
         <span className={cn(
           "font-bold text-sm",
-          direction === "buy" ? "text-trader-green" : 
-          direction === "sell" ? "text-trader-red" :
-          "text-trader-yellow"
+          direction === "buy" ? "text-white" : 
+          direction === "sell" ? "text-white" :
+          "text-black"
         )}>
           {getDirectionLabel(direction)}
         </span>
@@ -82,7 +90,7 @@ const DirectionIndicator: React.FC<DirectionIndicatorProps> = ({
             </span>
             
             {accuracy && (
-              <span className="text-xs text-trader-blue flex items-center mt-0.5">
+              <span className="text-xs text-white flex items-center mt-0.5">
                 <Percent className="h-3 w-3 mr-1" />
                 {getAccuracyLabel(accuracy)}
               </span>
@@ -95,23 +103,23 @@ const DirectionIndicator: React.FC<DirectionIndicatorProps> = ({
         <div className="ml-auto flex items-center">
           {strength === "strong" && (
             <div className="flex space-x-0.5">
-              <div className="w-1.5 h-6 bg-trader-green rounded-sm"></div>
-              <div className="w-1.5 h-6 bg-trader-green rounded-sm"></div>
-              <div className="w-1.5 h-6 bg-trader-green rounded-sm"></div>
+              <div className="w-1.5 h-6 bg-white rounded-sm"></div>
+              <div className="w-1.5 h-6 bg-white rounded-sm"></div>
+              <div className="w-1.5 h-6 bg-white rounded-sm"></div>
             </div>
           )}
           {strength === "moderate" && (
             <div className="flex space-x-0.5">
-              <div className="w-1.5 h-4 bg-trader-blue rounded-sm"></div>
-              <div className="w-1.5 h-4 bg-trader-blue rounded-sm"></div>
-              <div className="w-1.5 h-4 bg-trader-gray/50 rounded-sm"></div>
+              <div className="w-1.5 h-4 bg-white rounded-sm"></div>
+              <div className="w-1.5 h-4 bg-white rounded-sm"></div>
+              <div className="w-1.5 h-4 bg-white/50 rounded-sm"></div>
             </div>
           )}
           {strength === "weak" && (
             <div className="flex space-x-0.5">
-              <div className="w-1.5 h-2 bg-trader-yellow rounded-sm"></div>
-              <div className="w-1.5 h-2 bg-trader-gray/50 rounded-sm"></div>
-              <div className="w-1.5 h-2 bg-trader-gray/50 rounded-sm"></div>
+              <div className="w-1.5 h-2 bg-white rounded-sm"></div>
+              <div className="w-1.5 h-2 bg-white/50 rounded-sm"></div>
+              <div className="w-1.5 h-2 bg-white/50 rounded-sm"></div>
             </div>
           )}
           <BarChart2 className="h-4 w-4 ml-1 text-white/70" />
