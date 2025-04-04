@@ -13,6 +13,7 @@ interface DirectionIndicatorProps {
   accuracy?: number;
   className?: string;
   style?: React.CSSProperties;
+  onMouseDown?: (e: React.MouseEvent) => void;
 }
 
 const getDirectionLabel = (direction: MarketDirection): string => {
@@ -42,7 +43,8 @@ const DirectionIndicator: React.FC<DirectionIndicatorProps> = ({
   compact = false,
   accuracy,
   className,
-  style
+  style,
+  onMouseDown
 }) => {
   return (
     <div 
@@ -55,6 +57,7 @@ const DirectionIndicator: React.FC<DirectionIndicatorProps> = ({
         className
       )}
       style={style}
+      onMouseDown={onMouseDown}
     >
       <div className={cn(
         "flex-shrink-0 p-1.5 rounded-full",
