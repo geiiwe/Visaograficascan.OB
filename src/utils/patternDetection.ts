@@ -977,7 +977,9 @@ export const detectDowTheory = async (
             bottomHalf > topHalf * 1.5 ? "alta" : 
             topHalf > bottomHalf * 1.5 ? "baixa" : "indefinido";
             
-          const found = primaryTrend !== "indefinido";
+          // Check if we found a recognizable pattern
+          // This fixes the type error by explicitly checking values
+          const found = primaryTrend === "alta" || primaryTrend === "baixa";
           
           // Create trend lines based on primary trend
           let trendPoints: Array<[number, number]> = [];
@@ -986,7 +988,7 @@ export const detectDowTheory = async (
           
           if (found) {
             // Calculate relative confidence
-            confidence = primaryTrend === "indefinido" ? 0 : 75;
+            confidence = 75;
             
             // Create trend points showing primary and secondary trends
             if (primaryTrend === "alta") {
