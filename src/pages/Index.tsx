@@ -2,6 +2,7 @@
 import React from "react";
 import { AnalyzerProvider } from "@/context/AnalyzerContext";
 import GraphAnalyzer from "@/components/GraphAnalyzer";
+import DisclaimerAlert from "@/components/DisclaimerAlert";
 import { BarChart3, Camera, ChartLine, TrendingUp, LineChart, Activity, BarChart4, Fingerprint, CandlestickChart, TrendingDown, BarChart, ShieldCheck, Star, Award, Clock } from "lucide-react";
 
 const Index = () => {
@@ -24,6 +25,7 @@ const Index = () => {
 
         <main className="py-4">
           <GraphAnalyzer />
+          <DisclaimerAlert showOnStartup={true} />
         </main>
 
         <footer className="py-4">
@@ -85,6 +87,15 @@ const Index = () => {
                   <BarChart className="h-5 w-5 mb-1 text-[#d946ef]" />
                   <span className="text-xs">Dow</span>
                 </div>
+              </div>
+              
+              {/* Disclaimers */}
+              <div className="mt-6 border-t border-trader-panel pt-4 text-trader-gray/80 text-xs">
+                <p className="mb-2">
+                  <strong>Aviso de Risco:</strong> Investimentos em mercados financeiros envolvem riscos. 
+                  Resultados passados não garantem retornos futuros. Use esta ferramenta apenas como 
+                  complemento para sua estratégia de investimento.
+                </p>
               </div>
               
               {/* Testimonials/Social Proof */}
