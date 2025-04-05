@@ -977,7 +977,7 @@ export const detectDowTheory = async (
             bottomHalf > topHalf * 1.5 ? "alta" : 
             topHalf > bottomHalf * 1.5 ? "baixa" : "indefinido";
             
-          const found = primaryTrend !== "indefinido";
+          const found = primaryTrend === "alta" || primaryTrend === "baixa";
           
           // Create trend lines based on primary trend
           let trendPoints: Array<[number, number]> = [];
@@ -1062,7 +1062,7 @@ export const detectDowTheory = async (
     {
       type: "pattern" as const,
       color: "#d946ef", // Purple color for Dow Theory
-      points: [[trendPoints[0][0], trendPoints[0][1]], [trendPoints[1][0], trendPoints[1][1]]],
+      points: [[trendPoints[0][0], trendPoints[0][1]], [trendPoints[1][0], trendPoints[1][1]]] as [number, number][],
       label: `Tendência Primária: ${primaryTrend === "alta" ? "Alta" : "Baixa"}`,
       strength: "forte" as const
     }
@@ -1071,10 +1071,13 @@ export const detectDowTheory = async (
   // If we have secondary trend points, add them too
   if (found && trendPoints.length > 2) {
     for (let i = 2; i < trendPoints.length - 1; i += 2) {
+      const currentPoint = trendPoints[i];
+      const nextPoint = trendPoints[i+1] || trendPoints[i];
+      
       visualMarkers.push({
         type: "pattern" as const,
         color: "#d946ef80", // Semi-transparent purple
-        points: [[i, trendPoints[i][1]], [i + 1, trendPoints[i+1]?.[1] || trendPoints[i][1]]],
+        points: [[currentPoint[0], currentPoint[1]], [nextPoint[0], nextPoint[1]]] as [number, number][],
         label: "Correção",
         strength: "moderado" as const
       });
