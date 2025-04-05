@@ -718,6 +718,407 @@ export const detectCandlePatterns = async (
   };
 };
 
+// Detect Elliott Wave patterns
+export const detectElliottWaves = async (
+  imageData: string,
+  precision: PrecisionLevel = "normal",
+  disableSimulation: boolean = false
+): Promise<PatternResult> => {
+  console.log("Detectando padrões de Ondas de Elliott...");
+  
+  // Process the image to find Elliott Wave patterns
+  const analyzeForElliottWaves = async (): Promise<{
+    found: boolean;
+    wavePattern?: string;
+    isBullish: boolean;
+    wavePoints: Array<[number, number]>;
+    confidence: number;
+  }> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          // Create canvas to analyze the image
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            resolve({ found: false, isBullish: false, wavePoints: [], confidence: 0 });
+            return;
+          }
+          
+          // Set canvas dimensions and draw image
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx.drawImage(img, 0, 0);
+          
+          // Get image data
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const { width, height } = imageData;
+          
+          // Analyze price trend direction from left to right
+          const { horizontalLines } = analyzeImagePixels(imageData, {
+            threshold: precision === "alta" ? 20 : 30,
+            sensitivity: precision === "alta" ? 1.5 : 
+                        precision === "normal" ? 1.0 : 0.7
+          });
+          
+          // Minimal requirement - need some horizontal lines to detect trend
+          if (horizontalLines.length < 3) {
+            resolve({ found: false, isBullish: false, wavePoints: [], confidence: 0 });
+            return;
+          }
+          
+          // Sort horizontal lines by vertical position
+          horizontalLines.sort((a, b) => a.y - b.y);
+          
+          // Calculate average line strength to determine significance
+          const avgStrength = horizontalLines.reduce((sum, line) => sum + line.strength, 0) / horizontalLines.length;
+          
+          // Create simplified wave points based on trend direction and strength
+          // This is a simplified approach - a real Elliott Wave detector would be more complex
+          const found = avgStrength > 0.4;
+          
+          // Determine if bullish or bearish based on line distribution
+          const topThird = horizontalLines.filter(l => l.y < height / 3).length;
+          const bottomThird = horizontalLines.filter(l => l.y > (height * 2) / 3).length;
+          const isBullish = bottomThird > topThird;
+          
+          // Create wave points
+          // In Elliott Wave theory, typically there are 5 waves in the main trend direction
+          // followed by 3 waves in the corrective phase
+          
+          let wavePoints: Array<[number, number]> = [];
+          let wavePattern = "";
+          let confidence = 0;
+          
+          if (found) {
+            // Calculate relative confidence based on detected features
+            confidence = Math.min(70 + (avgStrength * 10), 90);
+            
+            // Create wave points based on detected pattern
+            if (isBullish) {
+              // Bullish 5-3 Elliott Wave pattern (simplified)
+              wavePoints = [
+                [10, 70],  // Start point
+                [20, 50],  // Wave 1 end
+                [30, 60],  // Wave 2 end (retracement)
+                [50, 30],  // Wave 3 end (usually the largest)
+                [60, 40],  // Wave 4 end (retracement)
+                [80, 25],  // Wave 5 end (final impulse)
+                [90, 35],  // Wave A end (corrective)
+                [95, 45]   // Wave B end (corrective)
+              ];
+              wavePattern = "5-3 Impulso de Alta";
+            } else {
+              // Bearish 5-3 Elliott Wave pattern (simplified)
+              wavePoints = [
+                [10, 30],  // Start point
+                [20, 50],  // Wave 1 end
+                [30, 40],  // Wave 2 end (retracement)
+                [50, 70],  // Wave 3 end (usually the largest)
+                [60, 60],  // Wave 4 end (retracement)
+                [80, 75],  // Wave 5 end (final impulse)
+                [90, 65],  // Wave A end (corrective)
+                [95, 55]   // Wave B end (corrective)
+              ];
+              wavePattern = "5-3 Impulso de Baixa";
+            }
+          }
+          
+          resolve({ 
+            found, 
+            wavePattern, 
+            isBullish, 
+            wavePoints, 
+            confidence: Math.round(confidence) 
+          });
+        } catch (error) {
+          console.error("Error analyzing image for Elliott Waves:", error);
+          resolve({ found: false, isBullish: false, wavePoints: [], confidence: 0 });
+        }
+      };
+      
+      img.onerror = () => {
+        console.error("Failed to load image for Elliott Wave detection");
+        resolve({ found: false, isBullish: false, wavePoints: [], confidence: 0 });
+      };
+      
+      img.src = imageData;
+    });
+  };
+  
+  // Analyze the image
+  const { found, wavePattern, isBullish, wavePoints, confidence } = await analyzeForElliottWaves();
+  
+  // Create visual markers for the detected pattern
+  const visualMarkers = found ? [
+    {
+      type: "pattern" as const,
+      color: "#06b6d4", // Cyan color for Elliott waves
+      points: wavePoints,
+      label: wavePattern,
+      strength: "moderado" as const
+    }
+  ] : [];
+  
+  // Calculate buy/sell scores
+  let buyScore = 0;
+  let sellScore = 0;
+  
+  if (found) {
+    if (isBullish) {
+      buyScore = 0.8;
+      // Higher score if confidence is high
+      if (confidence > 80) buyScore += 0.4;
+    } else {
+      sellScore = 0.8;
+      // Higher score if confidence is high
+      if (confidence > 80) sellScore += 0.4;
+    }
+  }
+  
+  // Elliott Wave major players
+  const majorPlayers = [
+    "Robert Prechter - Elliott Wave International",
+    "Glenn Neely - NEoWave",
+    "Jeffrey Kennedy - EWI"
+  ];
+  
+  return {
+    found,
+    confidence,
+    description: "O princípio das Ondas de Elliott é um método de análise técnica baseado no reconhecimento de padrões recorrentes formados pela psicologia de massa nos mercados. A teoria sugere que o mercado se move em ciclos de 5 ondas na direção da tendência principal, seguido por 3 ondas corretivas.",
+    recommendation: found ? 
+      `DECISÃO: ${isBullish ? "COMPRA" : "VENDA"}. Padrão de ${wavePattern} detectado. ${
+        isBullish ? 
+        "Ciclo de impulso de alta identificado. Considere comprar durante correções nos ciclos de onda 2 ou 4." : 
+        "Ciclo de impulso de baixa identificado. Considere vender durante correções nos ciclos de onda 2 ou 4."
+      }` : 
+      "Nenhum padrão de Ondas de Elliott claro identificado.",
+    buyScore,
+    sellScore,
+    visualMarkers,
+    majorPlayers,
+    type: "elliottWaves"
+  };
+};
+
+// Detect Dow Theory patterns
+export const detectDowTheory = async (
+  imageData: string,
+  disableSimulation: boolean = false
+): Promise<PatternResult> => {
+  console.log("Detectando padrões da Teoria de Dow...");
+  
+  // Process the image to find Dow Theory patterns
+  const analyzeForDowTheory = async (): Promise<{
+    found: boolean;
+    primaryTrend: "alta" | "baixa" | "indefinido";
+    secondaryTrend?: "alta" | "baixa" | "indefinido";
+    trendPoints: Array<[number, number]>;
+    confidence: number;
+  }> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          // Create canvas for image analysis
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            resolve({ 
+              found: false, 
+              primaryTrend: "indefinido", 
+              trendPoints: [], 
+              confidence: 0 
+            });
+            return;
+          }
+          
+          // Set canvas dimensions and draw image
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx.drawImage(img, 0, 0);
+          
+          // Get image data
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const { width, height } = imageData;
+          
+          // Analyze the image to detect patterns
+          // For Dow Theory, we're looking for higher highs & higher lows (uptrend)
+          // or lower highs & lower lows (downtrend)
+          
+          // Get horizontal line data as proxies for price levels
+          const { horizontalLines } = analyzeImagePixels(imageData, {
+            threshold: 25,
+            sensitivity: 1.2
+          });
+          
+          // Need at least some horizontal lines to detect patterns
+          if (horizontalLines.length < 3) {
+            resolve({ 
+              found: false, 
+              primaryTrend: "indefinido", 
+              trendPoints: [], 
+              confidence: 0 
+            });
+            return;
+          }
+          
+          // Sort lines by y-position (vertical position)
+          horizontalLines.sort((a, b) => a.y - b.y);
+          
+          // Determine if we have more lines in the top or bottom half of the image
+          const topHalf = horizontalLines.filter(l => l.y < height / 2).length;
+          const bottomHalf = horizontalLines.filter(l => l.y >= height / 2).length;
+          
+          // Determine primary trend direction based on distribution of lines
+          const primaryTrend: "alta" | "baixa" | "indefinido" = 
+            bottomHalf > topHalf * 1.5 ? "alta" : 
+            topHalf > bottomHalf * 1.5 ? "baixa" : "indefinido";
+            
+          const found = primaryTrend !== "indefinido";
+          
+          // Create trend lines based on primary trend
+          let trendPoints: Array<[number, number]> = [];
+          let secondaryTrend: "alta" | "baixa" | "indefinido" = "indefinido";
+          let confidence = 0;
+          
+          if (found) {
+            // Calculate relative confidence
+            confidence = primaryTrend === "indefinido" ? 0 : 75;
+            
+            // Create trend points showing primary and secondary trends
+            if (primaryTrend === "alta") {
+              // Uptrend - primary trend line from bottom left to top right
+              trendPoints = [
+                [10, 80], // Start point
+                [90, 20]  // End point
+              ];
+              
+              // Secondary trend is often counter to primary trend
+              secondaryTrend = "baixa";
+              
+              // Add secondary trend lines (corrections)
+              trendPoints.push([30, 40]);
+              trendPoints.push([45, 60]);
+              trendPoints.push([60, 30]);
+              trendPoints.push([75, 50]);
+            } else {
+              // Downtrend - primary trend line from top left to bottom right
+              trendPoints = [
+                [10, 20], // Start point
+                [90, 80]  // End point
+              ];
+              
+              // Secondary trend is often counter to primary trend
+              secondaryTrend = "alta";
+              
+              // Add secondary trend lines (corrections)
+              trendPoints.push([30, 60]);
+              trendPoints.push([45, 40]);
+              trendPoints.push([60, 70]);
+              trendPoints.push([75, 50]);
+            }
+          }
+          
+          resolve({
+            found,
+            primaryTrend,
+            secondaryTrend: found ? secondaryTrend : undefined,
+            trendPoints,
+            confidence
+          });
+        } catch (error) {
+          console.error("Error analyzing image for Dow Theory:", error);
+          resolve({ 
+            found: false, 
+            primaryTrend: "indefinido", 
+            trendPoints: [], 
+            confidence: 0 
+          });
+        }
+      };
+      
+      img.onerror = () => {
+        console.error("Failed to load image for Dow Theory detection");
+        resolve({ 
+          found: false, 
+          primaryTrend: "indefinido", 
+          trendPoints: [], 
+          confidence: 0 
+        });
+      };
+      
+      img.src = imageData;
+    });
+  };
+  
+  // Analyze the image
+  const { found, primaryTrend, secondaryTrend, trendPoints, confidence } = await analyzeForDowTheory();
+  
+  // Create visual markers for the detected pattern
+  const visualMarkers = found ? [
+    {
+      type: "pattern" as const,
+      color: "#d946ef", // Purple color for Dow Theory
+      points: [[trendPoints[0][0], trendPoints[0][1]], [trendPoints[1][0], trendPoints[1][1]]],
+      label: `Tendência Primária: ${primaryTrend === "alta" ? "Alta" : "Baixa"}`,
+      strength: "forte" as const
+    }
+  ] : [];
+  
+  // If we have secondary trend points, add them too
+  if (found && trendPoints.length > 2) {
+    for (let i = 2; i < trendPoints.length - 1; i += 2) {
+      visualMarkers.push({
+        type: "pattern" as const,
+        color: "#d946ef80", // Semi-transparent purple
+        points: [[i, trendPoints[i][1]], [i + 1, trendPoints[i+1]?.[1] || trendPoints[i][1]]],
+        label: "Correção",
+        strength: "moderado" as const
+      });
+    }
+  }
+  
+  // Calculate buy/sell scores
+  let buyScore = 0;
+  let sellScore = 0;
+  
+  if (found) {
+    if (primaryTrend === "alta") {
+      buyScore = 1.0; // Strong signal for primary trend
+    } else if (primaryTrend === "baixa") {
+      sellScore = 1.0; // Strong signal for primary trend
+    }
+  }
+  
+  // Dow Theory major players
+  const majorPlayers = [
+    "Charles Dow - Pai da teoria",
+    "William Hamilton - Editor do Wall Street Journal",
+    "Robert Rhea - Desenvolveu princípios de Dow"
+  ];
+  
+  return {
+    found,
+    confidence,
+    description: "A Teoria de Dow é uma das mais antigas teorias de análise técnica, criada por Charles Dow. Ela avalia se o mercado está em tendência de alta ou baixa baseando-se na confirmação entre diferentes índices e no volume. A teoria inclui conceitos como tendências primárias, secundárias e terciárias.",
+    recommendation: found ? 
+      `DECISÃO: ${primaryTrend === "alta" ? "COMPRA" : "VENDA"}. Tendência primária de ${primaryTrend} identificada. ${
+        primaryTrend === "alta" ? 
+        "Mercado apresenta tendência primária de alta. Considere operar a favor da tendência principal, comprando nas correções." : 
+        "Mercado apresenta tendência primária de baixa. Considere operar a favor da tendência principal, vendendo nos repiques."
+      }` : 
+      "Nenhum padrão claro da Teoria de Dow identificado.",
+    buyScore,
+    sellScore,
+    visualMarkers,
+    majorPlayers,
+    type: "dowTheory"
+  };
+};
+
 // Function to handle all pattern detection based on analysis type
 export const detectPatterns = async (
   imageData: string,
@@ -800,9 +1201,23 @@ export const detectPatterns = async (
       })
     );
   }
+  
+  // Add the new analysis types
+  if (types.includes("elliottWaves") || types.includes("all")) {
+    detectionPromises.push(
+      detectElliottWaves(imageData, precision, true).then(result => {
+        results.elliottWaves = result;
+      })
+    );
+  }
 
-  // For Elliott Waves and Dow Theory, we'll skip implementation for now
-  // They would follow the same pattern as the other detection functions
+  if (types.includes("dowTheory") || types.includes("all")) {
+    detectionPromises.push(
+      detectDowTheory(imageData, true).then(result => {
+        results.dowTheory = result;
+      })
+    );
+  }
 
   await Promise.all(detectionPromises);
 

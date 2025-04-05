@@ -3,7 +3,7 @@ import React from "react";
 import { AnalyzerProvider } from "@/context/AnalyzerContext";
 import GraphAnalyzer from "@/components/GraphAnalyzer";
 import DisclaimerAlert from "@/components/DisclaimerAlert";
-import { BarChart3, Camera, ChartLine, TrendingUp, LineChart, Activity, BarChart4, Fingerprint, CandlestickChart, TrendingDown, BarChart, ShieldCheck, Star, Award, Clock } from "lucide-react";
+import { BarChart3, Camera, ChartLine, TrendingUp, LineChart, Activity, BarChart4, Fingerprint, CandlestickChart, TrendingDown, BarChart, ShieldCheck, Star, Award, Clock, BookOpen, AlertTriangle, HelpCircle } from "lucide-react";
 
 const Index = () => {
   return (
@@ -17,7 +17,7 @@ const Index = () => {
             </div>
             <div className="flex items-center space-x-1 text-trader-gray text-sm">
               <Camera className="h-4 w-4" />
-              <span>v1.3</span>
+              <span>v1.4</span>
               <span className="ml-2 bg-trader-blue/20 text-trader-blue text-xs px-2 py-0.5 rounded-full">PRO</span>
             </div>
           </div>
@@ -26,6 +26,24 @@ const Index = () => {
         <main className="py-4">
           <GraphAnalyzer />
           <DisclaimerAlert showOnStartup={true} />
+          
+          {/* Educational Tooltip Section */}
+          <div className="max-w-4xl mx-auto px-4 mt-4">
+            <div className="bg-trader-panel rounded-lg p-4 border-l-4 border-trader-blue">
+              <div className="flex items-start">
+                <HelpCircle className="h-5 w-5 text-trader-blue mr-3 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="font-medium text-white mb-1">Dicas de Uso</h3>
+                  <p className="text-xs text-trader-gray">
+                    Esta ferramenta analisa imagens de gráficos financeiros para identificar padrões técnicos. 
+                    Para melhores resultados, capture apenas a região com o gráfico de preços. 
+                    Os resultados são aproximações baseadas em análise de imagem e devem ser usados como 
+                    complemento, não como única fonte para decisões de investimento.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
         </main>
 
         <footer className="py-4">
@@ -53,7 +71,66 @@ const Index = () => {
                   <p className="text-xs text-trader-gray mt-1">Resultados instantâneos para decisões rápidas</p>
                 </div>
               </div>
+
+              {/* Educational Resources Section */}
+              <div className="mt-8 mb-6">
+                <div className="flex items-center justify-center space-x-2 mb-4">
+                  <BookOpen className="h-5 w-5 text-trader-blue" />
+                  <h3 className="text-lg font-medium text-white">Entenda as Análises</h3>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+                  <div className="bg-trader-panel p-4 rounded-lg">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <TrendingUp className="h-4 w-4 text-trader-green" />
+                      <h4 className="font-medium text-white">Linhas de Tendência</h4>
+                    </div>
+                    <p className="text-xs text-trader-gray">Indicam direções de movimento de preços. Suportes e resistências são níveis onde o preço tende a reverter.</p>
+                  </div>
+                  
+                  <div className="bg-trader-panel p-4 rounded-lg">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <Fingerprint className="h-4 w-4 text-[#f97316]" />
+                      <h4 className="font-medium text-white">Fibonacci</h4>
+                    </div>
+                    <p className="text-xs text-trader-gray">Níveis utilizados para identificar possíveis pontos de reversão, continuação e alvos de preço.</p>
+                  </div>
+                  
+                  <div className="bg-trader-panel p-4 rounded-lg">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <CandlestickChart className="h-4 w-4 text-[#e11d48]" />
+                      <h4 className="font-medium text-white">Padrões de Candles</h4>
+                    </div>
+                    <p className="text-xs text-trader-gray">Formações específicas que indicam possíveis reversões ou continuações de tendência.</p>
+                  </div>
+                  
+                  <div className="bg-trader-panel p-4 rounded-lg">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <TrendingDown className="h-4 w-4 text-[#06b6d4]" />
+                      <h4 className="font-medium text-white">Ondas de Elliott</h4>
+                    </div>
+                    <p className="text-xs text-trader-gray">Método baseado na psicologia de massa que sugere que o mercado se move em ciclos de 5 ondas na direção da tendência principal, seguido por 3 ondas corretivas.</p>
+                  </div>
+                  
+                  <div className="bg-trader-panel p-4 rounded-lg">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <BarChart className="h-4 w-4 text-[#d946ef]" />
+                      <h4 className="font-medium text-white">Teoria de Dow</h4>
+                    </div>
+                    <p className="text-xs text-trader-gray">Teoria clássica que avalia tendências de mercado baseando-se na confirmação entre diferentes índices e no volume.</p>
+                  </div>
+                  
+                  <div className="bg-trader-panel p-4 rounded-lg border border-trader-yellow">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <AlertTriangle className="h-4 w-4 text-trader-yellow" />
+                      <h4 className="font-medium text-white">Limitações</h4>
+                    </div>
+                    <p className="text-xs text-trader-gray">A análise técnica não considera fatores fundamentais, eventos econômicos ou contexto macroeconômico que podem afetar significativamente os preços.</p>
+                  </div>
+                </div>
+              </div>
               
+              {/* Available Tools Section */}
               <div className="grid grid-cols-4 md:grid-cols-8 gap-3 mt-4">
                 <div className="flex flex-col items-center">
                   <TrendingUp className="h-5 w-5 mb-1 text-trader-green" />
@@ -89,13 +166,25 @@ const Index = () => {
                 </div>
               </div>
               
-              {/* Disclaimers */}
+              {/* Enhanced Disclaimers */}
               <div className="mt-6 border-t border-trader-panel pt-4 text-trader-gray/80 text-xs">
-                <p className="mb-2">
-                  <strong>Aviso de Risco:</strong> Investimentos em mercados financeiros envolvem riscos. 
-                  Resultados passados não garantem retornos futuros. Use esta ferramenta apenas como 
-                  complemento para sua estratégia de investimento.
-                </p>
+                <div className="bg-trader-panel/50 p-3 rounded-lg">
+                  <p className="mb-2 flex items-start">
+                    <AlertTriangle className="h-4 w-4 text-trader-yellow mr-2 mt-0.5 flex-shrink-0" />
+                    <span>
+                      <strong>Aviso de Risco:</strong> Investimentos em mercados financeiros envolvem riscos significativos de perda. 
+                      Resultados passados não garantem retornos futuros. Esta ferramenta oferece apenas análise técnica
+                      e deve ser usada como complemento, nunca como única base para decisões de investimento.
+                    </span>
+                  </p>
+                  <p className="mb-1">
+                    <strong>Antes de investir:</strong> Estude o ativo, considere fatores fundamentais, notícias de mercado, 
+                    e sua própria situação financeira. É recomendado consultar um profissional financeiro antes de tomar decisões.
+                  </p>
+                  <p className="text-trader-gray/60 mt-2">
+                    Este aplicativo não fornece aconselhamento financeiro, recomendações de investimento ou serviços de corretagem.
+                  </p>
+                </div>
               </div>
               
               {/* Testimonials/Social Proof */}
