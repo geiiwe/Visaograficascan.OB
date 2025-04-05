@@ -1,3 +1,4 @@
+
 import React from "react";
 import { PatternResult } from "@/utils/patternDetection";
 import { useAnalyzer } from "@/context/AnalyzerContext";
@@ -68,6 +69,69 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
     return {};
   };
 
+  // Renderizar candles individuais quando eles estiverem disponíveis
+  const renderCandleMarkers = () => {
+    // Verificar se temos resultados de candles
+    const candleResult = results.candlePatterns;
+    if (!candleResult?.visualMarkers || candleResult.visualMarkers.length === 0) return null;
+    
+    // Filtrar marcadores que representam candles individuais
+    const candleMarkers = candleResult.visualMarkers.filter(
+      marker => marker.type === "pattern" && 
+      (marker.label === "Bullish" || marker.label === "Bearish")
+    );
+    
+    if (candleMarkers.length === 0) return null;
+    
+    return candleMarkers.map((marker, idx) => {
+      // Usar os pontos para desenhar retângulos representando candles
+      if (marker.points && marker.points.length >= 2) {
+        const [[x1, y1], [x2, y2]] = marker.points.map(point => adjustCoordinates(point[0], point[1]));
+        const isBullish = marker.label === "Bullish";
+        
+        return (
+          <g key={`candle-${idx}`} style={getMarkerStyle(marker)}>
+            {/* Corpo do candle */}
+            <rect
+              x={`${Math.min(x1, x2)}%`}
+              y={`${Math.min(y1, y2)}%`}
+              width={`${Math.abs(x2 - x1)}%`}
+              height={`${Math.abs(y2 - y1)}%`}
+              fill={isBullish ? "#22c55e80" : "#ef444480"} // Semi-transparente
+              stroke={isBullish ? "#22c55e" : "#ef4444"}
+              strokeWidth={getStrokeWidth("pattern") * 0.5}
+            />
+            
+            {/* Pavio superior (simulado) */}
+            {precision === "alta" && (
+              <line
+                x1={`${(x1 + x2) / 2}%`}
+                y1={`${Math.min(y1, y2) - 2}%`}
+                x2={`${(x1 + x2) / 2}%`}
+                y2={`${Math.min(y1, y2)}%`}
+                stroke={isBullish ? "#22c55e" : "#ef4444"}
+                strokeWidth={getStrokeWidth("pattern") * 0.3}
+              />
+            )}
+            
+            {/* Pavio inferior (simulado) */}
+            {precision === "alta" && (
+              <line
+                x1={`${(x1 + x2) / 2}%`}
+                y1={`${Math.max(y1, y2)}%`}
+                x2={`${(x1 + x2) / 2}%`}
+                y2={`${Math.max(y1, y2) + 2}%`}
+                stroke={isBullish ? "#22c55e" : "#ef4444"}
+                strokeWidth={getStrokeWidth("pattern") * 0.3}
+              />
+            )}
+          </g>
+        );
+      }
+      return null;
+    });
+  };
+
   return (
     <svg 
       className="absolute inset-0 w-full h-full pointer-events-none z-10"
@@ -101,6 +165,18 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
           <feComposite in="outlineColor" in2="thicken" operator="in" result="outline" />
           <feComposite in="SourceGraphic" in2="outline" operator="over" />
         </filter>
+        
+        {/* Candle highlight filter */}
+        <filter id="candle-highlight">
+          <feGaussianBlur stdDeviation="1" result="blur"/>
+          <feComponentTransfer in="blur">
+            <feFuncA type="linear" slope="1.5"/>
+          </feComponentTransfer>
+          <feMerge>
+            <feMergeNode in="blur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
       </defs>
       
       {/* Draw selected region outline if we have a region */}
@@ -118,6 +194,9 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
           style={{ filter: "url(#glow)" }}
         />
       )}
+      
+      {/* Renderizar candles individuais */}
+      {renderCandleMarkers()}
       
       {/* Draw all markers from analysis results */}
       {allMarkers.map((marker, idx) => {
@@ -236,6 +315,11 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
           
           // For pattern markers
           if (marker.type === "pattern") {
+            // Skip individual candles, they're rendered separately
+            if (marker.label === "Bullish" || marker.label === "Bearish") {
+              return null;
+            }
+            
             const [[x1, y1], [x2, y2]] = marker.points.map(point => adjustCoordinates(point[0], point[1]));
             const centerX = (x1 + x2) * 0.5;
             const centerY = (y1 + y2) * 0.5;

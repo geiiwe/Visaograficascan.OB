@@ -511,6 +511,14 @@ export const detectCandlePatterns = async (
     pattern?: string;
     isBullish: boolean;
     position: [number, number];
+    candlePositions: Array<{
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      isBullish: boolean;
+      intensity: number;
+    }>;
   }> => {
     return new Promise((resolve) => {
       const img = new Image();
@@ -520,7 +528,12 @@ export const detectCandlePatterns = async (
           const canvas = document.createElement("canvas");
           const ctx = canvas.getContext("2d");
           if (!ctx) {
-            resolve({ found: false, isBullish: false, position: [0, 0] });
+            resolve({ 
+              found: false, 
+              isBullish: false, 
+              position: [0, 0],
+              candlePositions: []
+            });
             return;
           }
           
@@ -533,101 +546,282 @@ export const detectCandlePatterns = async (
           
           // Get image pixel data
           const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          
-          // Analyze image to find candle patterns
-          // For demonstration, we'll look for areas with high contrast/colors typical of candle patterns
           const { width, height, data } = imageData;
           
-          // Scan for areas with high color variance (potential candle patterns)
-          let maxVarianceX = 0;
-          let maxVarianceY = 0;
-          let maxVariance = 0;
+          // Array para armazenar possíveis velas
+          const candidateCandles = [];
+          const detectedCandles = [];
           
-          // Scan in blocks to find areas with high color variance
-          const blockSize = 10;
-          for (let y = 0; y < height - blockSize; y += blockSize) {
-            for (let x = 0; x < width - blockSize; x += blockSize) {
-              let redSum = 0, greenSum = 0, blueSum = 0;
-              let redSqSum = 0, greenSqSum = 0, blueSqSum = 0;
-              let count = 0;
+          // ETAPA 1: Detecção de bordas para encontrar contornos de candles
+          // Implementar um detector de bordas Sobel simplificado
+          const sobelData = new Uint8Array(width * height);
+          for (let y = 1; y < height - 1; y++) {
+            for (let x = 1; x < width - 1; x++) {
+              // Calcular gradientes nos eixos X e Y
+              let gx = 0, gy = 0;
               
-              // Calculate color variance in this block
-              for (let by = 0; by < blockSize; by++) {
-                for (let bx = 0; bx < blockSize; bx++) {
-                  const idx = ((y + by) * width + (x + bx)) * 4;
+              for (let j = -1; j <= 1; j++) {
+                for (let i = -1; i <= 1; i++) {
+                  const pixelIdx = ((y + j) * width + (x + i)) * 4;
+                  const intensity = (data[pixelIdx] + data[pixelIdx + 1] + data[pixelIdx + 2]) / 3;
                   
-                  const r = data[idx];
-                  const g = data[idx + 1];
-                  const b = data[idx + 2];
-                  
-                  redSum += r;
-                  greenSum += g;
-                  blueSum += b;
-                  
-                  redSqSum += r * r;
-                  greenSqSum += g * g;
-                  blueSqSum += b * b;
-                  
-                  count++;
+                  // Kernel Sobel para detecção de bordas
+                  gx += intensity * ((i === -1) ? -1 : (i === 1) ? 1 : 0) * ((j === 0) ? 2 : 1);
+                  gy += intensity * ((j === -1) ? -1 : (j === 1) ? 1 : 0) * ((i === 0) ? 2 : 1);
                 }
               }
               
-              // Calculate variance
-              const redMean = redSum / count;
-              const greenMean = greenSum / count;
-              const blueMean = blueSum / count;
+              // Magnitude do gradiente
+              const g = Math.sqrt(gx * gx + gy * gy);
+              sobelData[y * width + x] = g > 50 ? 255 : 0; // Threshold para detecção de borda
+            }
+          }
+          
+          // ETAPA 2: Analisar linhas verticais para encontrar possíveis velas
+          // Procurar por linhas verticais que poderiam ser corpos de candles
+          for (let x = 5; x < width - 5; x += 3) { // Salto para análise mais rápida
+            let runStart = -1;
+            let inRun = false;
+            
+            for (let y = 0; y < height; y++) {
+              const isEdge = sobelData[y * width + x] > 128;
               
-              const redVariance = redSqSum / count - redMean * redMean;
-              const greenVariance = greenSqSum / count - greenMean * greenMean;
-              const blueVariance = blueSqSum / count - blueMean * blueMean;
-              
-              const totalVariance = redVariance + greenVariance + blueVariance;
-              
-              // Check if this is the highest variance so far
-              if (totalVariance > maxVariance) {
-                maxVariance = totalVariance;
-                maxVarianceX = x + blockSize / 2;
-                maxVarianceY = y + blockSize / 2;
+              // Início de uma possível vela
+              if (isEdge && !inRun) {
+                runStart = y;
+                inRun = true;
+              }
+              // Fim de uma possível vela
+              else if (!isEdge && inRun && y - runStart > 5) { // Velas devem ter altura mínima
+                // Verificar se há linhas horizontais próximas (pavios)
+                let hasWicks = false;
+                let wickTop = runStart, wickBottom = y;
+                
+                // Verificar pavios acima do corpo
+                for (let checkY = Math.max(0, runStart - 10); checkY < runStart; checkY++) {
+                  let horizontalEdgeCount = 0;
+                  for (let checkX = Math.max(0, x - 5); checkX < Math.min(width, x + 5); checkX++) {
+                    if (sobelData[checkY * width + checkX] > 128) {
+                      horizontalEdgeCount++;
+                    }
+                  }
+                  if (horizontalEdgeCount > 3) {
+                    hasWicks = true;
+                    wickTop = checkY;
+                    break;
+                  }
+                }
+                
+                // Verificar pavios abaixo do corpo
+                for (let checkY = y; checkY < Math.min(height, y + 10); checkY++) {
+                  let horizontalEdgeCount = 0;
+                  for (let checkX = Math.max(0, x - 5); checkX < Math.min(width, x + 5); checkX++) {
+                    if (sobelData[checkY * width + checkX] > 128) {
+                      horizontalEdgeCount++;
+                    }
+                  }
+                  if (horizontalEdgeCount > 3) {
+                    hasWicks = true;
+                    wickBottom = checkY;
+                    break;
+                  }
+                }
+                
+                // Adicionamos o candle candidato com uma pontuação baseada em seus atributos
+                candidateCandles.push({
+                  x,
+                  y: runStart,
+                  width: 1, // Inicialmente 1 pixel, será expandido em próxima etapa
+                  height: y - runStart,
+                  hasWicks,
+                  wickHeight: wickBottom - wickTop,
+                  score: (y - runStart) * (hasWicks ? 1.5 : 1.0) // Pontuação baseada na altura e presença de pavios
+                });
+                
+                inRun = false;
+              }
+              // Reset se a borda for muito longa
+              else if (inRun && y - runStart > height / 3) {
+                inRun = false;
               }
             }
           }
           
-          // Determine if we found a pattern based on variance threshold
-          const found = maxVariance > 1000;  // Adjust threshold based on testing
+          // ETAPA 3: Expandir candidatos horizontalmente para determinar a largura real
+          candidateCandles.forEach(candle => {
+            // Verificar largura à esquerda
+            let leftX = candle.x;
+            while (leftX > 0) {
+              let edgeCount = 0;
+              for (let y = candle.y; y < candle.y + candle.height; y++) {
+                if (y >= 0 && y < height && sobelData[y * width + leftX - 1] > 128) {
+                  edgeCount++;
+                }
+              }
+              if (edgeCount < candle.height * 0.3) break;
+              leftX--;
+            }
+            
+            // Verificar largura à direita
+            let rightX = candle.x;
+            while (rightX < width - 1) {
+              let edgeCount = 0;
+              for (let y = candle.y; y < candle.y + candle.height; y++) {
+                if (y >= 0 && y < height && sobelData[y * width + rightX + 1] > 128) {
+                  edgeCount++;
+                }
+              }
+              if (edgeCount < candle.height * 0.3) break;
+              rightX++;
+            }
+            
+            // Atualizar largura
+            candle.x = leftX;
+            candle.width = rightX - leftX + 1;
+            
+            // Melhorar a pontuação com base na largura
+            candle.score *= (candle.width > 1) ? Math.min(candle.width, 10) * 0.2 : 1;
+          });
+          
+          // ETAPA 4: Verificar a cor dominante para determinar se é de alta ou baixa
+          candidateCandles.forEach(candle => {
+            let redSum = 0, greenSum = 0, blueSum = 0;
+            let pixelCount = 0;
+            
+            for (let y = candle.y; y < candle.y + candle.height; y++) {
+              for (let x = candle.x; x < candle.x + candle.width; x++) {
+                if (x >= 0 && x < width && y >= 0 && y < height) {
+                  const idx = (y * width + x) * 4;
+                  redSum += data[idx];
+                  greenSum += data[idx + 1];
+                  blueSum += data[idx + 2];
+                  pixelCount++;
+                }
+              }
+            }
+            
+            if (pixelCount > 0) {
+              const avgRed = redSum / pixelCount;
+              const avgGreen = greenSum / pixelCount;
+              const avgBlue = blueSum / pixelCount;
+              
+              // Determinar se é bullish (verde) ou bearish (vermelho)
+              candle.isBullish = avgGreen > avgRed;
+              
+              // Calcular intensidade da cor (saturação)
+              const maxChannel = Math.max(avgRed, avgGreen, avgBlue);
+              const minChannel = Math.min(avgRed, avgGreen, avgBlue);
+              candle.intensity = (maxChannel - minChannel) / (maxChannel > 0 ? maxChannel : 1);
+              
+              // Ajustar pontuação com base na intensidade da cor
+              candle.score *= (1 + candle.intensity);
+            } else {
+              candle.isBullish = false;
+              candle.intensity = 0;
+            }
+          });
+          
+          // ETAPA 5: Filtrar e ordenar candidatos por pontuação
+          candidateCandles
+            .filter(candle => 
+              candle.score > 50 && // Pontuação mínima
+              candle.height > 5 && // Altura mínima 
+              candle.width > 0 // Largura mínima
+            )
+            .sort((a, b) => b.score - a.score) // Ordenar por pontuação
+            .slice(0, 20) // Pegar os 20 melhores candidatos
+            .forEach(candle => {
+              detectedCandles.push({
+                x: candle.x,
+                y: candle.y,
+                width: candle.width,
+                height: candle.height,
+                isBullish: candle.isBullish,
+                intensity: candle.intensity
+              });
+            });
+          
+          // ETAPA 6: Analisar padrões com os candles detectados
+          const found = detectedCandles.length >= 3; // Precisamos de pelo menos 3 candles para formar um padrão
           
           if (!found) {
-            resolve({ found, isBullish: false, position: [0, 0] });
+            resolve({ 
+              found, 
+              isBullish: false, 
+              position: [0, 0],
+              candlePositions: detectedCandles
+            });
             return;
           }
           
-          // Determine pattern type and if it's bullish based on colors in the high-variance area
-          let redCount = 0;
-          let greenCount = 0;
+          // ETAPA 7: Identificar padrões com os candles detectados
+          // Grupos de candles próximos podem formar padrões
+          const patternGroups = [];
+          let currentGroup = [];
           
-          // Count red and green pixels in the identified area
-          const checkRadius = 20;
-          for (let y = maxVarianceY - checkRadius; y <= maxVarianceY + checkRadius; y++) {
-            if (y < 0 || y >= height) continue;
+          // Agrupar candles próximos
+          const sortedByX = [...detectedCandles].sort((a, b) => a.x - b.x);
+          
+          for (let i = 0; i < sortedByX.length; i++) {
+            const candle = sortedByX[i];
             
-            for (let x = maxVarianceX - checkRadius; x <= maxVarianceX + checkRadius; x++) {
-              if (x < 0 || x >= width) continue;
-              
-              const idx = (y * width + x) * 4;
-              const r = data[idx];
-              const g = data[idx + 1];
-              const b = data[idx + 2];
-              
-              // Simple heuristic: if more red than green, it's red; otherwise green
-              if (r > g && r > b && r > 100) {
-                redCount++;
-              } else if (g > r && g > b && g > 100) {
-                greenCount++;
+            if (i === 0 || candle.x - sortedByX[i-1].x < candle.width * 3) {
+              // Mesmo grupo
+              currentGroup.push(candle);
+            } else {
+              // Novo grupo
+              if (currentGroup.length >= 2) {
+                patternGroups.push([...currentGroup]);
               }
+              currentGroup = [candle];
             }
           }
           
-          // Determine if pattern is bullish based on color counts
-          const isBullish = greenCount > redCount;
+          if (currentGroup.length >= 2) {
+            patternGroups.push(currentGroup);
+          }
+          
+          // Encontrar o melhor grupo de padrões
+          let bestPattern = null;
+          let bestPatternScore = 0;
+          let bestPatternPosition: [number, number] = [0, 0];
+          let bestPatternIsBullish = false;
+          
+          for (const group of patternGroups) {
+            if (group.length < 2) continue;
+            
+            // Calcular pontuação do grupo
+            const groupScore = group.reduce((sum, c) => sum + c.height * c.intensity, 0);
+            
+            // Verificar sequência de candles bullish/bearish
+            let bullishCount = group.filter(c => c.isBullish).length;
+            let bearishCount = group.length - bullishCount;
+            
+            // Determinar padrão com base na sequência
+            const patternStrength = groupScore * (0.5 + group.length * 0.1);
+            
+            if (patternStrength > bestPatternScore) {
+              bestPatternScore = patternStrength;
+              
+              // Calcular o centro do grupo para posicionar o marcador
+              const centerX = group.reduce((sum, c) => sum + c.x + c.width/2, 0) / group.length;
+              const centerY = group.reduce((sum, c) => sum + c.y + c.height/2, 0) / group.length;
+              
+              bestPatternPosition = [
+                (centerX / width) * 100, // Converter para percentagem
+                (centerY / height) * 100  // Converter para percentagem
+              ];
+              
+              bestPatternIsBullish = bullishCount > bearishCount;
+              
+              // Tipo de padrão a ser definido posteriormente
+              bestPattern = {
+                isBullish: bestPatternIsBullish,
+                strength: patternStrength,
+                candleCount: group.length
+              };
+            }
+          }
           
           // Array de possíveis padrões de candle
           const bullishPatterns = [
@@ -640,27 +834,47 @@ export const detectCandlePatterns = async (
             "Harami de Baixa", "Doji Bearish", "Homem Enforcado"
           ];
           
-          // Choose pattern based on whether it's bullish or bearish
-          const patternOptions = isBullish ? bullishPatterns : bearishPatterns;
-          const patternIndex = Math.floor(maxVariance % patternOptions.length);
-          const pattern = patternOptions[patternIndex];
-          
-          // Convert position to percentage coordinates
-          const position: [number, number] = [
-            (maxVarianceX / width) * 100,
-            (maxVarianceY / height) * 100
-          ];
-          
-          resolve({ found, pattern, isBullish, position });
+          // Se encontramos um padrão bom o suficiente
+          if (bestPattern && bestPatternScore > 100) {
+            // Escolher padrão baseado na orientação bullish/bearish
+            const patternOptions = bestPattern.isBullish ? bullishPatterns : bearishPatterns;
+            
+            // Escolher padrão com base na pontuação
+            // Se tivermos muitos candles, favorecemos padrões como "Três Soldados/Corvos"
+            let patternIndex = 0;
+            if (bestPattern.candleCount >= 3) {
+              patternIndex = bestPattern.isBullish ? 3 : 2; // Índice dos padrões de múltiplos candles
+            } else {
+              // Usar modulo hash para outros padrões
+              patternIndex = Math.floor(bestPatternScore % patternOptions.length);
+            }
+            
+            const pattern = patternOptions[patternIndex];
+            
+            resolve({
+              found: true,
+              pattern,
+              isBullish: bestPattern.isBullish,
+              position: bestPatternPosition,
+              candlePositions: detectedCandles
+            });
+          } else {
+            resolve({
+              found: false,
+              isBullish: false,
+              position: [0, 0],
+              candlePositions: detectedCandles
+            });
+          }
         } catch (error) {
           console.error("Error analyzing image for candle patterns:", error);
-          resolve({ found: false, isBullish: false, position: [0, 0] });
+          resolve({ found: false, isBullish: false, position: [0, 0], candlePositions: [] });
         }
       };
       
       img.onerror = () => {
         console.error("Failed to load image for candle pattern detection");
-        resolve({ found: false, isBullish: false, position: [0, 0] });
+        resolve({ found: false, isBullish: false, position: [0, 0], candlePositions: [] });
       };
       
       img.src = imageData;
@@ -668,7 +882,7 @@ export const detectCandlePatterns = async (
   };
   
   // Analyze the image
-  const { found, pattern, isBullish, position } = await analyzeForCandlePatterns();
+  const { found, pattern, isBullish, position, candlePositions } = await analyzeForCandlePatterns();
   
   // Create visual markers for the detected pattern
   const visualMarkers = found && pattern ? [
@@ -677,12 +891,29 @@ export const detectCandlePatterns = async (
       color: isBullish ? "#22c55e" : "#ef4444",
       points: [[position[0] - 5, position[1]], [position[0] + 5, position[1]]] as [number, number][],
       label: pattern,
-      strength: "moderado" as const
+      strength: "forte" as const
     }
   ] : [];
   
+  // Add markers for individual candles if we found them but no pattern
+  if (!found && candlePositions.length > 0) {
+    // Only add individual candle markers if we didn't find a pattern
+    candlePositions.slice(0, 5).forEach((candle, index) => {
+      visualMarkers.push({
+        type: "pattern" as const,
+        color: candle.isBullish ? "#22c55e80" : "#ef444480", // Semi-transparent
+        points: [
+          [(candle.x / candle.width) * 100, (candle.y / candle.height) * 100], 
+          [((candle.x + candle.width) / candle.width) * 100, ((candle.y + candle.height) / candle.height) * 100]
+        ] as [number, number][],
+        label: candle.isBullish ? "Bullish" : "Bearish",
+        strength: "moderado" as const
+      });
+    });
+  }
+  
   // Determine confidence based on pattern clarity
-  const confidence = found ? 70 : 0;
+  const confidence = found ? 70 + Math.min(candlePositions.length * 2, 20) : 0;
   
   // Calculate buy/sell scores based on detected candle patterns
   let buyScore = 0;
@@ -742,7 +973,12 @@ export const detectElliottWaves = async (
           const canvas = document.createElement("canvas");
           const ctx = canvas.getContext("2d");
           if (!ctx) {
-            resolve({ found: false, isBullish: false, wavePoints: [], confidence: 0 });
+            resolve({ 
+              found: false, 
+              isBullish: false, 
+              wavePoints: [], 
+              confidence: 0 
+            });
             return;
           }
           
@@ -764,7 +1000,12 @@ export const detectElliottWaves = async (
           
           // Minimal requirement - need some horizontal lines to detect trend
           if (horizontalLines.length < 3) {
-            resolve({ found: false, isBullish: false, wavePoints: [], confidence: 0 });
+            resolve({ 
+              found: false, 
+              isBullish: false, 
+              wavePoints: [], 
+              confidence: 0 
+            });
             return;
           }
           
@@ -834,13 +1075,23 @@ export const detectElliottWaves = async (
           });
         } catch (error) {
           console.error("Error analyzing image for Elliott Waves:", error);
-          resolve({ found: false, isBullish: false, wavePoints: [], confidence: 0 });
+          resolve({ 
+            found: false, 
+            isBullish: false, 
+            wavePoints: [], 
+            confidence: 0 
+          });
         }
       };
       
       img.onerror = () => {
         console.error("Failed to load image for Elliott Wave detection");
-        resolve({ found: false, isBullish: false, wavePoints: [], confidence: 0 });
+        resolve({ 
+          found: false, 
+          isBullish: false, 
+          wavePoints: [], 
+          confidence: 0 
+        });
       };
       
       img.src = imageData;
