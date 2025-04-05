@@ -977,7 +977,7 @@ export const detectDowTheory = async (
             bottomHalf > topHalf * 1.5 ? "alta" : 
             topHalf > bottomHalf * 1.5 ? "baixa" : "indefinido";
             
-          const found = primaryTrend === "alta" || primaryTrend === "baixa";
+          const found = primaryTrend !== "indefinido";
           
           // Create trend lines based on primary trend
           let trendPoints: Array<[number, number]> = [];
@@ -1079,7 +1079,7 @@ export const detectDowTheory = async (
         color: "#d946ef80", // Semi-transparent purple
         points: [[currentPoint[0], currentPoint[1]], [nextPoint[0], nextPoint[1]]] as [number, number][],
         label: "Correção",
-        strength: "moderado" as const
+        strength: "forte" as const
       });
     }
   }
