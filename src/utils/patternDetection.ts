@@ -1,4 +1,3 @@
-
 import { AnalysisType, PrecisionLevel } from "@/context/AnalyzerContext";
 
 export interface PatternResult {
@@ -291,7 +290,7 @@ export const detectTrendLines = async (
   let recommendation = "Nenhuma linha de tendência clara detectada.";
   let buyScore = 0;
   let sellScore = 0;
-  let timeframeRecommendation: "1min" | "5min" | null = null;
+  let timeframeRecommendation: "1min" | "5min" | null = "1min"; // Default to 1min
   
   if (found) {
     const hasBullishTrend = lines.some(line => 
@@ -311,15 +310,15 @@ export const detectTrendLines = async (
       if (strongSupport) buyScore += 0.5;
       if (supportCount > resistanceCount) buyScore += 0.3;
       
-      // Determine timeframe based on trend strength
-      timeframeRecommendation = strongSupport ? "5min" : "1min";
+      // Always use 1min timeframe as requested
+      timeframeRecommendation = "1min";
     } else {
       sellScore = 1.0; // Base score for bearish trend
       if (strongResistance) sellScore += 0.5;
       if (resistanceCount > supportCount) sellScore += 0.3;
       
-      // Determine timeframe based on trend strength
-      timeframeRecommendation = strongResistance ? "5min" : "1min";
+      // Always use 1min timeframe as requested
+      timeframeRecommendation = "1min";
     }
     
     recommendation = `DECISÃO: ${hasBullishTrend ? "COMPRA" : "VENDA"}. ` + 
@@ -473,7 +472,7 @@ export const detectFibonacci = async (
   // Calculate buy/sell scores based on detected patterns
   let buyScore = 0;
   let sellScore = 0;
-  let timeframeRecommendation: "1min" | "5min" | null = null;
+  let timeframeRecommendation: "1min" | "5min" | null = "1min"; // Default to 1min
   
   if (found) {
     // In a bullish trend with Fibonacci levels, buy score is higher
@@ -486,11 +485,9 @@ export const detectFibonacci = async (
       );
       if (hasKeyLevels) {
         buyScore += 0.4;
-        // Stronger signals suggest longer timeframes
-        timeframeRecommendation = "5min";
-      } else {
-        timeframeRecommendation = "1min";
       }
+      // Always use 1min timeframe as requested
+      timeframeRecommendation = "1min";
     } else {
       sellScore = 0.8;
       // If we have strong levels at key extension points (0.618, 0.786, 1.0), increase sell score
@@ -500,11 +497,9 @@ export const detectFibonacci = async (
       );
       if (hasKeyLevels) {
         sellScore += 0.4;
-        // Stronger signals suggest longer timeframes
-        timeframeRecommendation = "5min";
-      } else {
-        timeframeRecommendation = "1min";
       }
+      // Always use 1min timeframe as requested
+      timeframeRecommendation = "1min";
     }
   }
   
@@ -880,7 +875,7 @@ export const detectCandlePatterns = async (
   // Calculate buy/sell scores based on detected patterns
   let buyScore = 0;
   let sellScore = 0;
-  let timeframeRecommendation: "1min" | "5min" | null = null;
+  let timeframeRecommendation: "1min" | "5min" | null = "1min"; // Default to 1min
   
   if (found) {
     // Analisar padrões específicos
@@ -890,7 +885,7 @@ export const detectCandlePatterns = async (
     } 
     else if (pattern === "continuação de alta") {
       buyScore = 0.8;
-      timeframeRecommendation = "5min"; // Configurar para operação mais longa em caso de continuação
+      timeframeRecommendation = "1min"; // Configurar para operação mais longa em caso de continuação
     }
     else if (pattern === "reversão de baixa") {
       sellScore = 1.2;
@@ -898,7 +893,7 @@ export const detectCandlePatterns = async (
     }
     else if (pattern === "continuação de baixa") {
       sellScore = 0.8;
-      timeframeRecommendation = "5min";
+      timeframeRecommendation = "1min";
     }
     // Se não temos um padrão específico, usar contagem de velas
     else {
@@ -906,11 +901,11 @@ export const detectCandlePatterns = async (
       
       if (bullishRatio > 0.6) {
         buyScore = 0.7;
-        timeframeRecommendation = bullishRatio > 0.8 ? "5min" : "1min";
+        timeframeRecommendation = bullishRatio > 0.8 ? "1min" : "1min"; // Default to 1min
       } 
       else if (bullishRatio < 0.4) {
         sellScore = 0.7;
-        timeframeRecommendation = bullishRatio < 0.2 ? "5min" : "1min";
+        timeframeRecommendation = bullishRatio < 0.2 ? "1min" : "1min";
       }
     }
   }
@@ -966,7 +961,9 @@ export const detectPatterns = async (
             found: false,
             confidence: 0,
             description: "Análise de Ondas de Elliott não implementada.",
-            recommendation: "Esta análise será implementada em breve."
+            recommendation: "Esta análise será implementada em breve.",
+            timeframeRecommendation: "1min", // Default to 1min
+            type: "elliottWaves"
           };
           break;
         case "dowTheory":
@@ -975,7 +972,9 @@ export const detectPatterns = async (
             found: false,
             confidence: 0,
             description: "Análise de Teoria de Dow não implementada.",
-            recommendation: "Esta análise será implementada em breve."
+            recommendation: "Esta análise será implementada em breve.",
+            timeframeRecommendation: "1min", // Default to 1min
+            type: "dowTheory"
           };
           break;
         case "all":
@@ -993,7 +992,9 @@ export const detectPatterns = async (
         found: false,
         confidence: 0,
         description: `Error during ${type} analysis.`,
-        recommendation: "Try again with a clearer chart image."
+        recommendation: "Try again with a clearer chart image.",
+        timeframeRecommendation: "1min", // Default to 1min even for errors
+        type: type
       };
     }
   };
@@ -1024,8 +1025,9 @@ export const detectPatterns = async (
     let totalBuyScore = 0;
     let totalSellScore = 0;
     let highestConfidence = 0;
-    let bestTimeframeRecommendation: "1min" | "5min" | null = null;
-    let bestTimeframeScore = 0;
+    
+    // Always use 1min timeframe for combined analysis
+    const bestTimeframeRecommendation: "1min" | "5min" | null = "1min";
     
     // Combine the results of all analyses
     for (const type of allTypes) {
@@ -1035,22 +1037,9 @@ export const detectPatterns = async (
         if (result.buyScore) totalBuyScore += result.buyScore;
         if (result.sellScore) totalSellScore += result.sellScore;
         
-        // Track highest confidence for determining best timeframe
+        // Track highest confidence
         if (result.confidence > highestConfidence) {
           highestConfidence = result.confidence;
-          if (result.timeframeRecommendation) {
-            // Use timeframe from highest confidence analysis
-            bestTimeframeRecommendation = result.timeframeRecommendation;
-            bestTimeframeScore = result.buyScore || result.sellScore || 0;
-          }
-        }
-        // If same confidence but higher score, prefer that timeframe
-        else if (result.confidence === highestConfidence && result.timeframeRecommendation) {
-          const score = result.buyScore || result.sellScore || 0;
-          if (score > bestTimeframeScore) {
-            bestTimeframeRecommendation = result.timeframeRecommendation;
-            bestTimeframeScore = score;
-          }
         }
       }
     }
