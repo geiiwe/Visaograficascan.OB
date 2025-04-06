@@ -1,4 +1,3 @@
-
 import { AnalysisType, PrecisionLevel } from "@/context/AnalyzerContext";
 
 export interface PatternResult {
@@ -926,7 +925,7 @@ export const detectCandlePatterns = async (
     buyScore,
     sellScore,
     visualMarkers,
-    type: "candles"
+    type: "candlePatterns"
   };
 };
 
@@ -957,7 +956,7 @@ export const detectPatterns = async (
         case "fibonacci":
           result = await detectFibonacci(imageData, disableSimulation);
           break;
-        case "candlepatterns":
+        case "candlePatterns":
           result = await detectCandlePatterns(imageData, disableSimulation);
           break;
         case "all":
@@ -993,7 +992,7 @@ export const detectPatterns = async (
   // If "all" analysis was requested, combine the results
   if (analysisTypes.includes("all")) {
     // Wait for individual analyses first
-    const allTypes: AnalysisType[] = ["trendlines", "fibonacci", "candlepatterns"];
+    const allTypes: AnalysisType[] = ["trendlines", "fibonacci", "candlePatterns"];
     
     // For any requested analyses that weren't already processed, process them now
     for (const type of allTypes) {
