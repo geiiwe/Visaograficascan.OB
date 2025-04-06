@@ -168,6 +168,9 @@ const ResultsOverlay = () => {
           // Detect patterns
           setProcessingStage("Analisando padrões técnicos e calculando pressão de compra/venda");
           
+          // Ensure we're passing the correct analysis types with proper capitalization
+          console.log("Active analysis types before detection:", activeAnalysis);
+          
           // Pass original dimensions to ensure correct marker scaling
           const results = await detectPatterns(
             processedImage, 

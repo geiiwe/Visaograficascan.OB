@@ -1,3 +1,4 @@
+
 import { AnalysisType, PrecisionLevel } from "@/context/AnalyzerContext";
 
 export interface PatternResult {
@@ -935,11 +936,11 @@ export const detectPatterns = async (
   analysisTypes: AnalysisType[],
   precision: PrecisionLevel = "normal",
   disableSimulation: boolean = false
-): Promise<PatternResultsMap> => {
+): Promise<Record<AnalysisType, PatternResult>> => {
   console.log(`Starting pattern detection for types: ${analysisTypes.join(", ")}`);
   
   // Initialize results object
-  const results: Partial<PatternResultsMap> = {};
+  const results: Partial<Record<AnalysisType, PatternResult>> = {};
   
   // Execute each requested analysis
   const analysisPromises: Array<Promise<void>> = [];
@@ -958,6 +959,24 @@ export const detectPatterns = async (
           break;
         case "candlePatterns":
           result = await detectCandlePatterns(imageData, disableSimulation);
+          break;
+        case "elliottWaves":
+          // Add placeholder for elliottWaves analysis
+          result = {
+            found: false,
+            confidence: 0,
+            description: "Análise de Ondas de Elliott não implementada.",
+            recommendation: "Esta análise será implementada em breve."
+          };
+          break;
+        case "dowTheory":
+          // Add placeholder for dowTheory analysis
+          result = {
+            found: false,
+            confidence: 0,
+            description: "Análise de Teoria de Dow não implementada.",
+            recommendation: "Esta análise será implementada em breve."
+          };
           break;
         case "all":
           // For "all", wait until individual analyses are done
@@ -992,7 +1011,7 @@ export const detectPatterns = async (
   // If "all" analysis was requested, combine the results
   if (analysisTypes.includes("all")) {
     // Wait for individual analyses first
-    const allTypes: AnalysisType[] = ["trendlines", "fibonacci", "candlePatterns"];
+    const allTypes: AnalysisType[] = ["trendlines", "fibonacci", "candlePatterns", "elliottWaves", "dowTheory"];
     
     // For any requested analyses that weren't already processed, process them now
     for (const type of allTypes) {
@@ -1050,10 +1069,11 @@ export const detectPatterns = async (
         : "Sem sinal claro de compra ou venda.",
       buyScore: totalBuyScore,
       sellScore: totalSellScore,
-      timeframeRecommendation: bestTimeframeRecommendation
+      timeframeRecommendation: bestTimeframeRecommendation,
+      type: "all"
     };
   }
   
   // Return all results
-  return results as PatternResultsMap;
+  return results as Record<AnalysisType, PatternResult>;
 };
