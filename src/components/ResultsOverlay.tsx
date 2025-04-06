@@ -8,6 +8,7 @@ import ChartOverlay from "./ChartOverlay";
 import AnalysisLabels from "./AnalysisLabels";
 import DirectionIndicator from "./DirectionIndicator";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { Clock } from "lucide-react";
 
 interface IndicatorPosition {
   x: number;
@@ -202,6 +203,11 @@ const ResultsOverlay = () => {
           const totalBuyScore = results.all?.buyScore || 0;
           const totalSellScore = results.all?.sellScore || 0;
           
+          // Get the recommended timeframe
+          const timeframeRecommendation = results.all?.timeframeRecommendation;
+          const timeframeText = timeframeRecommendation ? 
+            ` Timeframe recomendado: ${timeframeRecommendation === "1min" ? "1 minuto" : "5 minutos"}.` : "";
+          
           // Determine market direction for feedback
           let directionMessage = "";
           if (totalBuyScore > totalSellScore && totalBuyScore > 1) {
@@ -219,9 +225,9 @@ const ResultsOverlay = () => {
           // Notify user about results
           if (foundCount > 0) {
             if (directionMessage) {
-              toast.success(`Análise concluída! ${foundCount} padrões detectados. ${directionMessage}.`);
+              toast.success(`Análise concluída! ${foundCount} padrões detectados. ${directionMessage}.${timeframeText}`);
             } else {
-              toast.success(`Análise concluída! ${foundCount} padrões detectados.`);
+              toast.success(`Análise concluída! ${foundCount} padrões detectados.${timeframeText}`);
             }
           } else {
             toast.info("Análise concluída. Nenhum padrão técnico detectado na região selecionada.");
@@ -252,6 +258,9 @@ const ResultsOverlay = () => {
     cursor: indicatorPosition.isDragging ? 'grabbing' : 'grab',
     zIndex: 30
   };
+
+  // Get timeframe recommendation
+  const timeframeRecommendation = detailedResults.all?.timeframeRecommendation;
 
   return (
     <div 
@@ -291,6 +300,16 @@ const ResultsOverlay = () => {
           style={indicatorStyle as React.CSSProperties}
           onMouseDown={handleMouseDown}
         />
+      )}
+      
+      {/* Timeframe recommendation indicator */}
+      {timeframeRecommendation && (
+        <div className="absolute top-2 right-2 z-30 bg-blue-100 text-blue-800 px-3 py-1.5 rounded-full flex items-center shadow-md">
+          <Clock className="h-4 w-4 mr-2" />
+          <span className="font-medium">
+            {timeframeRecommendation === "1min" ? "Operar em 1 minuto" : "Operar em 5 minutos"}
+          </span>
+        </div>
       )}
       
       {/* Analysis labels at the bottom */}

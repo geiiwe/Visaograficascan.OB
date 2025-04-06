@@ -10,7 +10,8 @@ import {
   BarChart,
   CheckCircle2,
   Info,
-  AlertCircle
+  AlertCircle,
+  Clock
 } from "lucide-react";
 import { 
   HoverCard,
@@ -52,6 +53,24 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ results, compact }) => 
     if (decision.includes("COMPRA")) return "bg-trader-green/20";
     if (decision.includes("VENDA")) return "bg-trader-red/20";
     return "bg-trader-yellow/20";
+  };
+
+  // Get timeframe recommendation text
+  const getTimeframeText = (timeframe: "1min" | "5min" | null): string => {
+    if (!timeframe) return "";
+    return timeframe === "1min" ? "1 minuto" : "5 minutos";
+  };
+
+  // Format timeframe display
+  const formatTimeframeDisplay = (timeframe: "1min" | "5min" | null): JSX.Element | null => {
+    if (!timeframe) return null;
+    
+    return (
+      <span className="flex items-center gap-1 text-blue-700 text-xs">
+        <Clock className="h-3 w-3" />
+        <span>{timeframe === "1min" ? "1 min" : "5 min"}</span>
+      </span>
+    );
   };
 
   const resultItems = [
@@ -147,6 +166,9 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ results, compact }) => 
     return { direction, strength };
   }, [results, foundCount]);
   
+  // Get overall timeframe recommendation
+  const overallTimeframe = results.all?.timeframeRecommendation;
+  
   // Render message when no patterns were found
   if (noResultsFound) {
     return (
@@ -175,9 +197,18 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ results, compact }) => 
           </div>
         )}
         
+        {/* Overall timeframe recommendation */}
+        {overallTimeframe && (
+          <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full flex items-center mr-1">
+            <Clock className="h-3 w-3 mr-1" />
+            <span>Timeframe: {getTimeframeText(overallTimeframe)}</span>
+          </div>
+        )}
+        
         {foundResults.map(({ type, icon: Icon, label, color }) => {
           const decision = extractDecision(results[type]?.recommendation || "");
           const decisionColor = getDecisionColor(decision);
+          const timeframe = results[type]?.timeframeRecommendation;
           
           return (
             <HoverCard key={type}>
@@ -194,6 +225,7 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ results, compact }) => 
                       {decision}
                     </span>
                   )}
+                  {timeframe && formatTimeframeDisplay(timeframe)}
                 </button>
               </HoverCardTrigger>
               <HoverCardContent className="w-72 p-3 bg-white border border-gray-200">
@@ -218,6 +250,13 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ results, compact }) => 
                     </div>
                   )}
                   
+                  {timeframe && (
+                    <div className="mt-2 p-2 bg-blue-50 rounded-sm text-sm font-medium text-blue-700 flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
+                      <span>Timeframe recomendado: {getTimeframeText(timeframe)}</span>
+                    </div>
+                  )}
+                  
                   <p className="text-xs text-blue-600 mt-1">
                     {results[type]?.recommendation?.replace(/DECISÃO:\s+(COMPRA|VENDA|AGUARDE|ESPERE|MANTENHA POSIÇÃO|REALIZE LUCROS|PREPARE-SE PARA COMPRA)/i, '')}
                   </p>
@@ -237,16 +276,27 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ results, compact }) => 
         grid gap-2 p-3 bg-white/80 backdrop-blur-sm rounded-lg border border-gray-300
         ${isMobile ? 'grid-cols-2' : 'grid-cols-4'}
       `}>
-        {foundCount < activatedCount && activatedCount > 0 && (
-          <div className="col-span-full text-xs text-gray-700 mb-1 flex items-center justify-center">
-            <CheckCircle2 className="h-3 w-3 mr-1 text-trader-green" />
-            <span>{foundCount}/{activatedCount} padrões detectados</span>
-          </div>
-        )}
+        <div className="col-span-full flex flex-wrap gap-2 items-center justify-between mb-1">
+          {foundCount < activatedCount && activatedCount > 0 && (
+            <div className="text-xs text-gray-700 flex items-center">
+              <CheckCircle2 className="h-3 w-3 mr-1 text-trader-green" />
+              <span>{foundCount}/{activatedCount} padrões detectados</span>
+            </div>
+          )}
+          
+          {/* Overall timeframe recommendation */}
+          {overallTimeframe && (
+            <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full flex items-center">
+              <Clock className="h-3 w-3 mr-1" />
+              <span>Timeframe recomendado: {getTimeframeText(overallTimeframe)}</span>
+            </div>
+          )}
+        </div>
         
         {foundResults.map(({ type, icon: Icon, label, color }) => {
           const decision = extractDecision(results[type]?.recommendation || "");
           const decisionColor = getDecisionColor(decision);
+          const timeframe = results[type]?.timeframeRecommendation;
           
           return (
             <div 
@@ -283,11 +333,15 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ results, compact }) => 
                 </HoverCard>
               </div>
               
-              {decision && (
-                <div className={cn("text-xs font-bold mt-1", decisionColor)}>
-                  {decision}
-                </div>
-              )}
+              <div className="flex items-center justify-between mt-1">
+                {decision && (
+                  <div className={cn("text-xs font-bold", decisionColor)}>
+                    {decision}
+                  </div>
+                )}
+                
+                {timeframe && formatTimeframeDisplay(timeframe)}
+              </div>
             </div>
           );
         })}
