@@ -1,3 +1,4 @@
+
 import { AnalysisType, PrecisionLevel } from "@/context/AnalyzerContext";
 
 export interface PatternResult {
@@ -732,4 +733,328 @@ export const detectCandlePatterns = async (
               candle.isBullish = avgGreen > avgRed;
               
               // Calcular intensidade da cor (saturação)
-              const maxChannel = Math.max(avgRed, avgGreen
+              const maxChannel = Math.max(avgRed, avgGreen, avgBlue);
+              const minChannel = Math.min(avgRed, avgGreen, avgBlue);
+              candle.intensity = maxChannel > 0 ? (maxChannel - minChannel) / maxChannel : 0;
+            }
+          });
+          
+          // Fix the incomplete part at line 736
+          
+          // ETAPA 5: Filtrar candidatos por pontuação e verificar relações/padrões
+          // Ordenar candidatos por pontuação
+          candidateCandles.sort((a, b) => b.score - a.score);
+          
+          // Pegar os candidatos mais fortes (até 20)
+          const topCandidates = candidateCandles.slice(0, 20);
+          
+          // Filtrar mais ainda com base em características de candles reais
+          const realCandles = topCandidates.filter(candle => 
+            // Proporções típicas de candles (altura/largura)
+            (candle.height > candle.width * 1.5 || candle.hasWicks) && 
+            // Intensidade mínima de cor
+            candle.intensity > 0.1
+          );
+          
+          // Verificar se encontramos candles suficientes
+          const found = realCandles.length >= 3;
+          
+          // Determinar direção do mercado com base nos candles encontrados
+          let bullishCount = 0;
+          let bearishCount = 0;
+          
+          realCandles.forEach(candle => {
+            if (candle.isBullish) bullishCount++;
+            else bearishCount++;
+            
+            // Converter para percentual da imagem para visualização
+            detectedCandles.push({
+              x: candle.x / width * 100,
+              y: candle.y / height * 100,
+              width: candle.width / width * 100,
+              height: candle.height / height * 100,
+              isBullish: candle.isBullish,
+              intensity: candle.intensity
+            });
+          });
+          
+          // Detectar padrão específico se houver candles suficientes
+          let pattern = undefined;
+          let patternPosition: [number, number] = [0, 0];
+          
+          if (found && realCandles.length >= 3) {
+            // Ordenar candles da esquerda para a direita (temporal)
+            const sortedCandles = [...realCandles].sort((a, b) => a.x - b.x);
+            
+            // Verificar padrões de candles: três candles consecutivos
+            const lastThree = sortedCandles.slice(-3);
+            
+            // Verificar padrão de alta (Engolfo de alta, Martelo, etc.)
+            if (lastThree[2].isBullish && !lastThree[0].isBullish && !lastThree[1].isBullish) {
+              pattern = "reversão de alta";
+              patternPosition = [lastThree[2].x / width * 100, lastThree[2].y / height * 100];
+            }
+            // Verificar padrão de baixa (Engolfo de baixa, Enforcado, etc.)
+            else if (!lastThree[2].isBullish && lastThree[0].isBullish && lastThree[1].isBullish) {
+              pattern = "reversão de baixa";
+              patternPosition = [lastThree[2].x / width * 100, lastThree[2].y / height * 100];
+            }
+            // Verificar continuação de tendência
+            else if (lastThree[0].isBullish === lastThree[1].isBullish && 
+                    lastThree[1].isBullish === lastThree[2].isBullish) {
+              pattern = lastThree[0].isBullish ? "continuação de alta" : "continuação de baixa";
+              patternPosition = [lastThree[1].x / width * 100, lastThree[1].y / height * 100];
+            }
+          }
+          
+          resolve({
+            found,
+            pattern,
+            isBullish: bullishCount > bearishCount,
+            position: patternPosition,
+            candlePositions: detectedCandles
+          });
+          
+        } catch (error) {
+          console.error("Error analyzing image for candle patterns:", error);
+          resolve({ 
+            found: false, 
+            isBullish: false, 
+            position: [0, 0],
+            candlePositions: []
+          });
+        }
+      };
+      
+      img.onerror = () => {
+        console.error("Failed to load image for candle pattern detection");
+        resolve({ 
+          found: false, 
+          isBullish: false, 
+          position: [0, 0],
+          candlePositions: []
+        });
+      };
+      
+      img.src = imageData;
+    });
+  };
+  
+  // Analyze the image for candle patterns
+  const { found, pattern, isBullish, position, candlePositions } = await analyzeForCandlePatterns();
+  
+  // Create visual markers from detected candle patterns
+  const visualMarkers = [];
+  
+  // Add candle pattern marker if a specific pattern was found
+  if (found && pattern) {
+    visualMarkers.push({
+      type: "pattern" as const,
+      color: isBullish ? "#22c55e" : "#ef4444", // green for bullish, red for bearish
+      points: [[position[0] - 5, position[1]], [position[0] + 5, position[1]]] as [number, number][],
+      label: `Padrão: ${pattern}`,
+      strength: "forte" as const
+    });
+  }
+  
+  // Add individual candle markers
+  candlePositions.forEach(candle => {
+    visualMarkers.push({
+      type: "pattern" as const,
+      color: candle.isBullish ? "rgba(34, 197, 94, 0.5)" : "rgba(239, 68, 68, 0.5)",
+      points: [
+        [candle.x, candle.y],
+        [candle.x + candle.width, candle.y],
+        [candle.x + candle.width, candle.y + candle.height],
+        [candle.x, candle.y + candle.height],
+        [candle.x, candle.y]
+      ] as [number, number][],
+      strength: candle.intensity > 0.5 ? "forte" as const : 
+                candle.intensity > 0.3 ? "moderado" as const : "fraco" as const
+    });
+  });
+  
+  // Set confidence based on detection quality
+  const confidence = found ? (pattern ? 80 : 65) : 0;
+  
+  // Calculate buy/sell scores based on detected patterns
+  let buyScore = 0;
+  let sellScore = 0;
+  let timeframeRecommendation: "1min" | "5min" | null = null;
+  
+  if (found) {
+    // Analisar padrões específicos
+    if (pattern === "reversão de alta") {
+      buyScore = 1.2;
+      timeframeRecommendation = "1min"; // Configurar para operação mais rápida em caso de reversão
+    } 
+    else if (pattern === "continuação de alta") {
+      buyScore = 0.8;
+      timeframeRecommendation = "5min"; // Configurar para operação mais longa em caso de continuação
+    }
+    else if (pattern === "reversão de baixa") {
+      sellScore = 1.2;
+      timeframeRecommendation = "1min";
+    }
+    else if (pattern === "continuação de baixa") {
+      sellScore = 0.8;
+      timeframeRecommendation = "5min";
+    }
+    // Se não temos um padrão específico, usar contagem de velas
+    else {
+      const bullishRatio = candlePositions.filter(c => c.isBullish).length / candlePositions.length;
+      
+      if (bullishRatio > 0.6) {
+        buyScore = 0.7;
+        timeframeRecommendation = bullishRatio > 0.8 ? "5min" : "1min";
+      } 
+      else if (bullishRatio < 0.4) {
+        sellScore = 0.7;
+        timeframeRecommendation = bullishRatio < 0.2 ? "5min" : "1min";
+      }
+    }
+  }
+  
+  return {
+    found,
+    confidence,
+    description: "Padrões de candles são formações específicas que indicam possíveis reversões ou continuações de tendência. Exemplos incluem engolfo, martelo, estrela cadente, etc.",
+    recommendation: found ? 
+      `DECISÃO: ${buyScore > sellScore ? "COMPRA" : "VENDA"}. ${pattern ? `Padrão de ${pattern} identificado. ` : ""}${isBullish ? "A pressão compradora parece mais forte que a vendedora." : "A pressão vendedora parece mais forte que a compradora."}` : 
+      "Nenhum padrão de candles claro identificado.",
+    timeframeRecommendation,
+    buyScore,
+    sellScore,
+    visualMarkers,
+    type: "candles"
+  };
+};
+
+// Main function to detect patterns based on analysis types
+export const detectPatterns = async (
+  imageData: string,
+  analysisTypes: AnalysisType[],
+  precision: PrecisionLevel = "normal",
+  disableSimulation: boolean = false
+): Promise<PatternResultsMap> => {
+  console.log(`Starting pattern detection for types: ${analysisTypes.join(", ")}`);
+  
+  // Initialize results object
+  const results: Partial<PatternResultsMap> = {};
+  
+  // Execute each requested analysis
+  const analysisPromises: Array<Promise<void>> = [];
+  
+  // Helper function to process an analysis type
+  const processAnalysisType = async (type: AnalysisType) => {
+    try {
+      let result: PatternResult | null = null;
+      
+      switch (type) {
+        case "trendlines":
+          result = await detectTrendLines(imageData, precision, disableSimulation);
+          break;
+        case "fibonacci":
+          result = await detectFibonacci(imageData, disableSimulation);
+          break;
+        case "candlepatterns":
+          result = await detectCandlePatterns(imageData, disableSimulation);
+          break;
+        case "all":
+          // For "all", wait until individual analyses are done
+          break;
+      }
+      
+      if (result) {
+        results[type] = result;
+        console.log(`Completed analysis for ${type}: ${result.found ? "Patterns found" : "No patterns"}`);
+      }
+    } catch (error) {
+      console.error(`Error during ${type} analysis:`, error);
+      results[type] = {
+        found: false,
+        confidence: 0,
+        description: `Error during ${type} analysis.`,
+        recommendation: "Try again with a clearer chart image."
+      };
+    }
+  };
+  
+  // Process all selected analysis types except "all"
+  for (const type of analysisTypes) {
+    if (type !== "all") {
+      analysisPromises.push(processAnalysisType(type));
+    }
+  }
+  
+  // Wait for all individual analyses to complete
+  await Promise.all(analysisPromises);
+  
+  // If "all" analysis was requested, combine the results
+  if (analysisTypes.includes("all")) {
+    // Wait for individual analyses first
+    const allTypes: AnalysisType[] = ["trendlines", "fibonacci", "candlepatterns"];
+    
+    // For any requested analyses that weren't already processed, process them now
+    for (const type of allTypes) {
+      if (!results[type] && !analysisTypes.includes(type)) {
+        await processAnalysisType(type);
+      }
+    }
+    
+    // Aggregate scores from all analyses
+    let totalBuyScore = 0;
+    let totalSellScore = 0;
+    let highestConfidence = 0;
+    let bestTimeframeRecommendation: "1min" | "5min" | null = null;
+    let bestTimeframeScore = 0;
+    
+    // Combine the results of all analyses
+    for (const type of allTypes) {
+      const result = results[type];
+      if (result?.found) {
+        // Add buy/sell scores
+        if (result.buyScore) totalBuyScore += result.buyScore;
+        if (result.sellScore) totalSellScore += result.sellScore;
+        
+        // Track highest confidence for determining best timeframe
+        if (result.confidence > highestConfidence) {
+          highestConfidence = result.confidence;
+          if (result.timeframeRecommendation) {
+            // Use timeframe from highest confidence analysis
+            bestTimeframeRecommendation = result.timeframeRecommendation;
+            bestTimeframeScore = result.buyScore || result.sellScore || 0;
+          }
+        }
+        // If same confidence but higher score, prefer that timeframe
+        else if (result.confidence === highestConfidence && result.timeframeRecommendation) {
+          const score = result.buyScore || result.sellScore || 0;
+          if (score > bestTimeframeScore) {
+            bestTimeframeRecommendation = result.timeframeRecommendation;
+            bestTimeframeScore = score;
+          }
+        }
+      }
+    }
+    
+    // Create combined result for "all"
+    results.all = {
+      found: totalBuyScore > 0 || totalSellScore > 0,
+      confidence: Math.min(95, Math.floor(Math.max(...Object.values(results)
+        .filter(r => r?.confidence !== undefined)
+        .map(r => r.confidence)))),
+      description: "Análise combinada de todos os indicadores técnicos.",
+      recommendation: totalBuyScore > totalSellScore 
+        ? `DECISÃO: COMPRA. Pressão compradora identificada com score ${totalBuyScore.toFixed(1)}/3.` 
+        : totalSellScore > totalBuyScore
+        ? `DECISÃO: VENDA. Pressão vendedora identificada com score ${totalSellScore.toFixed(1)}/3.`
+        : "Sem sinal claro de compra ou venda.",
+      buyScore: totalBuyScore,
+      sellScore: totalSellScore,
+      timeframeRecommendation: bestTimeframeRecommendation
+    };
+  }
+  
+  // Return all results
+  return results as PatternResultsMap;
+};
