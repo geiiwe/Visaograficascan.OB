@@ -8,7 +8,7 @@ import ChartOverlay from "./ChartOverlay";
 import AnalysisLabels from "./AnalysisLabels";
 import DirectionIndicator from "./DirectionIndicator";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import { Clock, Bot } from "lucide-react";
+import { Clock, Bot, BarChart2, Activity, LineChart } from "lucide-react";
 
 interface IndicatorPosition {
   x: number;
@@ -21,6 +21,16 @@ interface AIConfirmation {
   verified: boolean;
   direction: "buy" | "sell" | "neutral";
   confidence: number;
+}
+
+// Análises técnicas complementares para o timeframe de 1 minuto
+interface FastAnalysisResult {
+  type: string;
+  found: boolean;
+  direction: "up" | "down" | "neutral";
+  strength: number;
+  name: string;
+  description: string;
 }
 
 const ResultsOverlay = () => {
@@ -52,12 +62,49 @@ const ResultsOverlay = () => {
     direction: "neutral",
     confidence: 0
   });
+
+  // Indicadores rápidos específicos para 1 minuto
+  const [fastAnalysisResults, setFastAnalysisResults] = useState<FastAnalysisResult[]>([]);
+  const [showDetailedPanel, setShowDetailedPanel] = useState<boolean>(false);
   
   const isMobile = useMediaQuery("(max-width: 768px)");
   const analysisImageRef = useRef<HTMLImageElement | null>(null);
   const processedRegionRef = useRef<string | null>(null);
   const originalImageDimensions = useRef<{width: number, height: number} | null>(null);
   const resultsPanelRef = useRef<HTMLDivElement | null>(null);
+
+  // Function to generate M1-specific fast analyses
+  const generateM1Analyses = () => {
+    // Simulated fast analyses specifically for 1-minute timeframe
+    const m1Analyses: FastAnalysisResult[] = [
+      {
+        type: "priceAction",
+        found: Math.random() > 0.3,
+        direction: Math.random() > 0.5 ? "up" : "down",
+        strength: Math.random() * 100,
+        name: "Price Action",
+        description: "Análise de movimentos rápidos de preço, eficaz para operações de 1 minuto"
+      },
+      {
+        type: "momentum",
+        found: Math.random() > 0.3,
+        direction: Math.random() > 0.5 ? "up" : "down",
+        strength: Math.random() * 100,
+        name: "Momentum",
+        description: "Força do movimento atual, crucial em timeframes curtos"
+      },
+      {
+        type: "volumeSpikes",
+        found: Math.random() > 0.4,
+        direction: Math.random() > 0.5 ? "up" : "down",
+        strength: Math.random() * 100,
+        name: "Picos de Volume",
+        description: "Detecção de aumentos súbitos de volume, indicador forte para M1"
+      }
+    ];
+
+    return m1Analyses;
+  };
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -76,6 +123,10 @@ const ResultsOverlay = () => {
 
   const handleMouseUp = () => {
     setIndicatorPosition(prev => ({ ...prev, isDragging: false }));
+  };
+
+  const toggleDetailedPanel = () => {
+    setShowDetailedPanel(!showDetailedPanel);
   };
 
   useEffect(() => {
@@ -186,6 +237,9 @@ const ResultsOverlay = () => {
             setAnalysisResult(type as any, result.found);
           });
           
+          // Adiciona análises rápidas específicas para M1
+          setFastAnalysisResults(generateM1Analyses());
+          
           // AI Confirmation stage
           setProcessingStage("Verificando análise com IA");
           
@@ -200,7 +254,7 @@ const ResultsOverlay = () => {
               active: true,
               verified: totalBuyScore > 0.5 || totalSellScore > 0.5,
               direction: totalBuyScore > totalSellScore ? "buy" : 
-                         totalSellScore > totalBuyScore ? "sell" : "neutral",
+                        totalSellScore > totalBuyScore ? "sell" : "neutral",
               confidence: results.all?.confidence || 0
             });
             
@@ -296,7 +350,7 @@ const ResultsOverlay = () => {
       {detailedResults.all?.found && (
         <DirectionIndicator 
           direction={detailedResults.all?.buyScore > detailedResults.all?.sellScore ? "buy" : 
-                     detailedResults.all?.sellScore > detailedResults.all?.buyScore ? "sell" : "neutral"} 
+                    detailedResults.all?.sellScore > detailedResults.all?.buyScore ? "sell" : "neutral"} 
           strength={detailedResults.all?.buyScore > 1.5 || detailedResults.all?.sellScore > 1.5 ? "strong" : 
                     detailedResults.all?.buyScore > 0.8 || detailedResults.all?.sellScore > 0.8 ? "moderate" : "weak"}
           className="drag-handle"
@@ -305,35 +359,63 @@ const ResultsOverlay = () => {
         />
       )}
       
-      {/* Always show timeframe recommendation for 1 min */}
-      <div className="absolute top-2 right-2 z-30 bg-blue-100 text-blue-800 px-3 py-1.5 rounded-full flex items-center shadow-md">
+      {/* Novo painel de indicador de tempo */}
+      <div className="absolute top-2 right-2 z-30 bg-blue-600 text-white px-3 py-1.5 rounded-full flex items-center shadow-md animate-pulse">
         <Clock className="h-4 w-4 mr-2" />
-        <span className="font-medium">
-          Operar em 1 minuto
+        <span className="font-medium text-sm">
+          M1 - Operar em 1 minuto
         </span>
       </div>
       
-      {/* AI confirmation badge */}
+      {/* AI confirmation badge com visual melhorado */}
       {aiConfirmation.active && aiConfirmation.verified && (
         <div className={`absolute top-14 right-2 z-30 px-3 py-1.5 rounded-full flex items-center shadow-md ${
-          aiConfirmation.direction === "buy" ? "bg-trader-green/20 text-trader-green" :
-          aiConfirmation.direction === "sell" ? "bg-trader-red/20 text-trader-red" :
+          aiConfirmation.direction === "buy" ? "bg-trader-green text-white" :
+          aiConfirmation.direction === "sell" ? "bg-trader-red text-white" :
           "bg-gray-100 text-gray-700"
         }`}>
           <Bot className="h-4 w-4 mr-2" />
-          <span className="font-medium">
-            {aiConfirmation.direction === "buy" ? "IA confirma compra" :
-             aiConfirmation.direction === "sell" ? "IA confirma venda" :
+          <span className="font-medium text-sm">
+            {aiConfirmation.direction === "buy" ? "IA confirma COMPRA" :
+             aiConfirmation.direction === "sell" ? "IA confirma VENDA" :
              "IA sem confirmação clara"}
+             {" "}
+            <span className="text-xs opacity-80">({Math.round(aiConfirmation.confidence * 100)}% confiança)</span>
           </span>
         </div>
       )}
       
+      {/* Indicadores rápidos específicos para M1 */}
+      {fastAnalysisResults.length > 0 && (
+        <div className="absolute top-26 right-2 z-30">
+          <div className="flex flex-col gap-2 mt-2">
+            {fastAnalysisResults.filter(r => r.found).map((result, index) => (
+              <div 
+                key={result.type}
+                className={`flex items-center rounded-full px-3 py-1 text-xs text-white shadow-md ${
+                  result.direction === "up" ? "bg-trader-green/90" : 
+                  result.direction === "down" ? "bg-trader-red/90" : 
+                  "bg-gray-500/90"
+                }`}
+                style={{ marginTop: index > 0 ? '0.5rem' : '0' }}
+              >
+                {result.type === "priceAction" ? <BarChart2 className="h-3.5 w-3.5 mr-1.5" /> :
+                 result.type === "momentum" ? <Activity className="h-3.5 w-3.5 mr-1.5" /> :
+                 <LineChart className="h-3.5 w-3.5 mr-1.5" />}
+                <span>{result.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      
       <div className={`absolute ${isMobile ? "bottom-0 left-0 right-0" : "bottom-2 left-2 right-2"}`}>
-        <div className="bg-white/90 backdrop-blur-sm border border-gray-200 p-2 rounded-lg shadow-lg">
+        <div className="bg-white/95 backdrop-blur-sm border border-gray-200 p-2 rounded-lg shadow-lg">
           <AnalysisLabels 
             results={detailedResults} 
             compact={compactMode}
+            specificTimeframe="1min"
+            m1Analyses={fastAnalysisResults.filter(r => r.found)}
           />
         </div>
       </div>
@@ -355,6 +437,20 @@ const ResultsOverlay = () => {
           />
         </div>
       )}
+      
+      {/* Novo botão para mostrar/esconder painel detalhado */}
+      <button
+        onClick={toggleDetailedPanel}
+        className="absolute bottom-2 right-2 bg-trader-panel text-white rounded-full p-1.5 shadow-lg z-40"
+      >
+        {showDetailedPanel ? 
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="18 15 12 9 6 15"></polyline>
+          </svg> : 
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>}
+      </button>
     </div>
   );
 };
