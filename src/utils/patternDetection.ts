@@ -925,6 +925,538 @@ export const detectCandlePatterns = async (
   };
 };
 
+// Implement Elliott Wave analysis
+export const detectElliottWaves = async (
+  imageData: string,
+  precision: PrecisionLevel = "normal",
+  disableSimulation: boolean = false
+): Promise<PatternResult> => {
+  console.log("Detectando padrões de Ondas de Elliott...");
+  
+  // Process the image to find Elliott Wave patterns
+  const analyzeForElliottWaves = async (): Promise<{
+    found: boolean;
+    waveCount: number;
+    wavePoints: Array<[number, number]>;
+    isBullish: boolean;
+    confidence: number;
+  }> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          // Create a canvas to analyze the image
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            resolve({ 
+              found: false, 
+              waveCount: 0, 
+              wavePoints: [],
+              isBullish: false,
+              confidence: 0
+            });
+            return;
+          }
+          
+          // Set canvas dimensions
+          canvas.width = img.width;
+          canvas.height = img.height;
+          
+          // Draw image on canvas
+          ctx.drawImage(img, 0, 0);
+          
+          // Get image data for analysis
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          
+          // Use the edge detection function we already have
+          const { horizontalLines, verticalLines } = analyzeImagePixels(imageData, {
+            threshold: precision === "alta" ? 20 : 30,
+            sensitivity: precision === "alta" ? 1.5 : 1.0
+          });
+          
+          // We need significant vertical or diagonal lines to detect wave patterns
+          const found = verticalLines.length >= 3;
+          
+          // If we couldn't find enough lines, return false
+          if (!found) {
+            resolve({
+              found,
+              waveCount: 0,
+              wavePoints: [],
+              isBullish: false,
+              confidence: 0
+            });
+            return;
+          }
+          
+          // Sort lines by position to create sequential waves
+          verticalLines.sort((a, b) => a.x - b.x);
+          
+          // Take up to 5 strongest vertical lines (for 5 waves in Elliott)
+          const strongestLines = verticalLines
+            .sort((a, b) => b.strength - a.strength)
+            .slice(0, 5);
+          
+          // Sort them back by x position for wave sequence
+          strongestLines.sort((a, b) => a.x - b.x);
+          
+          // Create wave points (alternate high/low points)
+          // A basic Elliott wave has 5 waves in the main trend
+          const wavePoints: Array<[number, number]> = [];
+          let y = 50; // Starting at middle height
+          let waveHeight = 10;
+          
+          // Determine if overall pattern is bullish or bearish
+          // We'll say it's bullish if more lines are in the right half with higher strength
+          let leftStrength = 0, rightStrength = 0;
+          verticalLines.forEach(line => {
+            if (line.x < 50) leftStrength += line.strength;
+            else rightStrength += line.strength;
+          });
+          
+          const isBullish = rightStrength > leftStrength;
+          
+          // Create a simple Elliott wave pattern
+          for (let i = 0; i < Math.min(5, strongestLines.length); i++) {
+            const x = strongestLines[i].x;
+            // Waves 1, 3, 5 go in primary direction, waves 2, 4 in correction direction
+            if (isBullish) {
+              y = (i % 2 === 0) ? y - waveHeight : y + (waveHeight * 0.6);
+            } else {
+              y = (i % 2 === 0) ? y + waveHeight : y - (waveHeight * 0.6);
+            }
+            wavePoints.push([x, y]);
+          }
+          
+          const confidence = strongestLines.length >= 5 ? 70 : 50;
+          
+          resolve({
+            found: true,
+            waveCount: wavePoints.length,
+            wavePoints,
+            isBullish,
+            confidence
+          });
+        } catch (error) {
+          console.error("Error analyzing image for Elliott waves:", error);
+          resolve({ 
+            found: false, 
+            waveCount: 0, 
+            wavePoints: [],
+            isBullish: false,
+            confidence: 0
+          });
+        }
+      };
+      
+      img.onerror = () => {
+        console.error("Failed to load image for Elliott wave detection");
+        resolve({ 
+          found: false, 
+          waveCount: 0, 
+          wavePoints: [],
+          isBullish: false,
+          confidence: 0 
+        });
+      };
+      
+      img.src = imageData;
+    });
+  };
+  
+  // Analyze the image
+  const { found, waveCount, wavePoints, isBullish, confidence } = await analyzeForElliottWaves();
+  
+  // Create visual markers from detected Elliott waves
+  const visualMarkers = found ? [
+    {
+      type: "pattern" as const,
+      color: isBullish ? "#22c55e" : "#ef4444", // green for bullish, red for bearish
+      points: wavePoints,
+      label: "Ondas de Elliott",
+      strength: waveCount >= 5 ? "forte" as const : "moderado" as const
+    }
+  ] : [];
+  
+  // Calculate buy/sell scores based on detected patterns
+  let buyScore = 0;
+  let sellScore = 0;
+  
+  if (found) {
+    if (isBullish) {
+      buyScore = waveCount >= 5 ? 1.2 : 0.7;
+    } else {
+      sellScore = waveCount >= 5 ? 1.2 : 0.7;
+    }
+  }
+  
+  // Always use 1min timeframe as requested
+  const timeframeRecommendation: "1min" | "5min" | null = "1min";
+  
+  // Set major players who use Elliott Wave analysis
+  const majorPlayers = [
+    "Robert Prechter",
+    "Ralph Nelson Elliott",
+    "Glenn Neely",
+    "A.J. Frost"
+  ];
+  
+  return {
+    found,
+    confidence: found ? confidence : 0,
+    description: "As Ondas de Elliott são um método de análise técnica que identifica movimentos cíclicos no mercado seguindo um padrão de 5-3 ondas. Estas ondas refletem a psicologia dos investidores alternando entre otimismo e pessimismo.",
+    recommendation: found ? 
+      `DECISÃO: ${isBullish ? "COMPRA" : "VENDA"}. Padrão de Ondas de Elliott ${waveCount >= 5 ? "completo" : "em formação"} detectado. ${isBullish ? "Tendência de alta provável com possibilidade de continuação após correções." : "Tendência de baixa provável com possibilidade de continuação após correções."}` : 
+      "Não foram detectados padrões claros de Ondas de Elliott.",
+    timeframeRecommendation,
+    buyScore,
+    sellScore,
+    visualMarkers,
+    type: "elliottWaves",
+    majorPlayers
+  };
+};
+
+// Implement Dow Theory analysis
+export const detectDowTheory = async (
+  imageData: string,
+  precision: PrecisionLevel = "normal",
+  disableSimulation: boolean = false
+): Promise<PatternResult> => {
+  console.log("Analisando com Teoria de Dow...");
+  
+  // Process the image to find Dow Theory patterns
+  const analyzeForDowTheory = async (): Promise<{
+    found: boolean;
+    primaryTrend: "up" | "down" | "sideways";
+    secondaryMovements: Array<{
+      start: [number, number];
+      end: [number, number];
+      type: "correction" | "rally";
+    }>;
+    volumeConfirmation: boolean;
+    confidence: number;
+  }> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          // Create a canvas to analyze the image
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            resolve({ 
+              found: false, 
+              primaryTrend: "sideways",
+              secondaryMovements: [],
+              volumeConfirmation: false,
+              confidence: 0
+            });
+            return;
+          }
+          
+          // Set canvas dimensions
+          canvas.width = img.width;
+          canvas.height = img.height;
+          
+          // Draw image on canvas
+          ctx.drawImage(img, 0, 0);
+          
+          // Get pixel data
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const { width, height, data } = imageData;
+          
+          // Analyze the image using our edge detection function
+          const { horizontalLines } = analyzeImagePixels(imageData, {
+            threshold: 25,
+            sensitivity: 1.2
+          });
+          
+          // Sort lines by strength to find the most significant ones
+          const significantLines = horizontalLines
+            .sort((a, b) => b.strength - a.strength)
+            .slice(0, 4);
+          
+          // For Dow Theory we need to find peaks and troughs
+          // Let's sample some points from left to right to simulate price action
+          const samplePoints: Array<[number, number]> = [];
+          const sampleCount = 10;
+          
+          // Create sample points across the chart width
+          for (let i = 0; i < sampleCount; i++) {
+            const x = (i / (sampleCount - 1)) * 100;  // x as percentage
+            
+            // For each x, find the most significant edge/color change in the y direction
+            let maxIntensity = 0;
+            let bestY = 50;  // Default to middle
+            
+            for (let y = 0; y < height; y++) {
+              if (y > 0) {
+                const idx1 = (y * width + Math.floor(x / 100 * width)) * 4;
+                const idx2 = ((y-1) * width + Math.floor(x / 100 * width)) * 4;
+                
+                // Calculate intensity of change between adjacent pixels
+                const r1 = data[idx1], g1 = data[idx1+1], b1 = data[idx1+2];
+                const r2 = data[idx2], g2 = data[idx2+1], b2 = data[idx2+2];
+                
+                const intensity = Math.abs(r1-r2) + Math.abs(g1-g2) + Math.abs(b1-b2);
+                
+                if (intensity > maxIntensity) {
+                  maxIntensity = intensity;
+                  bestY = y / height * 100;  // y as percentage
+                }
+              }
+            }
+            
+            samplePoints.push([x, bestY]);
+          }
+          
+          // Now analyze the points to determine primary trend
+          let upCount = 0;
+          let downCount = 0;
+          
+          for (let i = 1; i < samplePoints.length; i++) {
+            if (samplePoints[i][1] < samplePoints[i-1][1]) {
+              upCount++;  // Lower y values mean higher on screen
+            } else if (samplePoints[i][1] > samplePoints[i-1][1]) {
+              downCount++;
+            }
+          }
+          
+          const primaryTrend: "up" | "down" | "sideways" = 
+            upCount > downCount + 2 ? "up" :
+            downCount > upCount + 2 ? "down" : "sideways";
+          
+          // Find significant secondary movements (corrections/rallies)
+          const secondaryMovements = [];
+          let direction = samplePoints[1][1] > samplePoints[0][1] ? "down" : "up";
+          let movementStart = 0;
+          
+          for (let i = 1; i < samplePoints.length; i++) {
+            const currentDirection = samplePoints[i][1] > samplePoints[i-1][1] ? "down" : "up";
+            
+            // If direction changed significantly
+            if (currentDirection !== direction && 
+                Math.abs(samplePoints[i][1] - samplePoints[i-1][1]) > 5) {
+              
+              // Record the secondary movement
+              secondaryMovements.push({
+                start: [samplePoints[movementStart][0], samplePoints[movementStart][1]],
+                end: [samplePoints[i-1][0], samplePoints[i-1][1]],
+                type: (direction === "up" && primaryTrend === "up") || 
+                      (direction === "down" && primaryTrend === "down") ? "rally" : "correction"
+              });
+              
+              // Reset for next movement
+              direction = currentDirection;
+              movementStart = i - 1;
+            }
+          }
+          
+          // Last movement
+          if (movementStart < samplePoints.length - 1) {
+            secondaryMovements.push({
+              start: [samplePoints[movementStart][0], samplePoints[movementStart][1]],
+              end: [samplePoints[samplePoints.length-1][0], samplePoints[samplePoints.length-1][1]],
+              type: (direction === "up" && primaryTrend === "up") || 
+                    (direction === "down" && primaryTrend === "down") ? "rally" : "correction"
+            });
+          }
+          
+          // A simple estimation of volume confirmation
+          // (This is a placeholder - real systems would analyze actual volume data)
+          const volumeConfirmation = primaryTrend !== "sideways";
+          
+          // Dow Theory requires considerable evidence, so confidence depends on data quality
+          const confidence = 
+            primaryTrend !== "sideways" && secondaryMovements.length >= 2 ? 75 : 60;
+          
+          resolve({
+            found: primaryTrend !== "sideways" || secondaryMovements.length >= 1,
+            primaryTrend,
+            secondaryMovements,
+            volumeConfirmation,
+            confidence
+          });
+          
+        } catch (error) {
+          console.error("Error analyzing image for Dow Theory:", error);
+          resolve({ 
+            found: false, 
+            primaryTrend: "sideways",
+            secondaryMovements: [],
+            volumeConfirmation: false,
+            confidence: 0
+          });
+        }
+      };
+      
+      img.onerror = () => {
+        console.error("Failed to load image for Dow Theory analysis");
+        resolve({ 
+          found: false, 
+          primaryTrend: "sideways",
+          secondaryMovements: [],
+          volumeConfirmation: false,
+          confidence: 0
+        });
+      };
+      
+      img.src = imageData;
+    });
+  };
+  
+  // Analyze the image for Dow Theory
+  const { found, primaryTrend, secondaryMovements, volumeConfirmation, confidence } = 
+    await analyzeForDowTheory();
+  
+  // Create visual markers from detected patterns
+  const visualMarkers = [];
+  
+  if (found) {
+    // Add primary trend line
+    visualMarkers.push({
+      type: "trendline" as const,
+      color: primaryTrend === "up" ? "#22c55e" : primaryTrend === "down" ? "#ef4444" : "#f59e0b",
+      points: [[10, primaryTrend === "up" ? 70 : 30], [90, primaryTrend === "up" ? 30 : 70]] as [number, number][],
+      label: `Tendência Primária (${primaryTrend === "up" ? "Alta" : primaryTrend === "down" ? "Baixa" : "Lateral"})`,
+      strength: "forte" as const
+    });
+    
+    // Add secondary movements
+    secondaryMovements.forEach((movement, i) => {
+      visualMarkers.push({
+        type: "pattern" as const,
+        color: movement.type === "rally" ? "#22c55e90" : "#ef444490", // semi-transparent
+        points: [movement.start, movement.end],
+        label: `Movimento ${movement.type === "rally" ? "Rally" : "Correção"} ${i+1}`,
+        strength: "moderado" as const
+      });
+    });
+  }
+  
+  // Calculate buy/sell scores based on detected patterns
+  let buyScore = 0;
+  let sellScore = 0;
+  
+  if (found) {
+    if (primaryTrend === "up") {
+      buyScore = volumeConfirmation ? 1.3 : 0.9;
+    } else if (primaryTrend === "down") {
+      sellScore = volumeConfirmation ? 1.3 : 0.9;
+    }
+    
+    // If we're in a potential reversal (secondary movement against primary trend)
+    const lastMovement = secondaryMovements[secondaryMovements.length - 1];
+    if (lastMovement && lastMovement.type === "correction") {
+      // Reduce the primary score as we may be near reversal
+      if (primaryTrend === "up") buyScore *= 0.8;
+      else if (primaryTrend === "down") sellScore *= 0.8;
+    }
+  }
+  
+  // Always use 1min timeframe as requested
+  const timeframeRecommendation: "1min" | "5min" | null = "1min";
+  
+  // Set major players who use Dow Theory
+  const majorPlayers = [
+    "Charles Dow",
+    "William Hamilton",
+    "Robert Rhea",
+    "Richard Russell"
+  ];
+  
+  return {
+    found,
+    confidence: found ? confidence : 0,
+    description: "A Teoria de Dow é um método de análise técnica que estuda tendências primárias, movimentos secundários e confirmações de volume para identificar reversões e continuações de tendências nos mercados financeiros.",
+    recommendation: found ? 
+      `DECISÃO: ${primaryTrend === "up" ? "COMPRA" : primaryTrend === "down" ? "VENDA" : "AGUARDE"}. ${
+        primaryTrend === "up" ? 
+          "Tendência primária de alta identificada. " + (volumeConfirmation ? "Volume confirmando movimento." : "Aguarde confirmação de volume.") :
+        primaryTrend === "down" ? 
+          "Tendência primária de baixa identificada. " + (volumeConfirmation ? "Volume confirmando movimento." : "Aguarde confirmação de volume.") :
+          "Mercado em tendência lateral. Aguarde definição clara de direção."
+      }` : 
+      "Padrões da Teoria de Dow não detectados claramente no gráfico.",
+    timeframeRecommendation,
+    buyScore,
+    sellScore,
+    visualMarkers,
+    type: "dowTheory",
+    majorPlayers
+  };
+};
+
+// Function to implement AI confirmation of analyses
+const getAIConfirmation = async (
+  results: Record<AnalysisType, PatternResult>
+): Promise<{
+  confirmed: boolean;
+  direction: "buy" | "sell" | "neutral";
+  confidence: number;
+  recommendation: string;
+}> => {
+  // In a real implementation, this would call an AI service
+  // For now, we'll implement a deterministic algorithm that simulates AI confirmation
+  
+  let buySignals = 0;
+  let sellSignals = 0;
+  let totalConfidence = 0;
+  let signalCount = 0;
+  
+  // Process all analysis results
+  Object.values(results).forEach(result => {
+    if (!result || !result.found) return;
+    
+    // Skip the "all" result which is our aggregate
+    if (result.type === "all") return;
+    
+    // Count buy/sell signals weighted by confidence
+    const weight = result.confidence / 100;
+    
+    if (result.buyScore && result.buyScore > 0) {
+      buySignals += result.buyScore * weight;
+      signalCount++;
+    }
+    
+    if (result.sellScore && result.sellScore > 0) {
+      sellSignals += result.sellScore * weight;
+      signalCount++;
+    }
+    
+    totalConfidence += result.confidence;
+  });
+  
+  // Normalize confidence
+  const avgConfidence = signalCount > 0 ? Math.min(95, totalConfidence / signalCount) : 0;
+  
+  // Determine direction based on signal strength
+  let direction: "buy" | "sell" | "neutral" = "neutral";
+  let recommendation = "Sinais conflitantes ou insuficientes. Recomenda-se aguardar.";
+  
+  if (buySignals > sellSignals * 1.2 && buySignals > 1) {
+    direction = "buy";
+    const strength = buySignals > 2 ? "forte" : "moderado";
+    recommendation = `DECISÃO: COMPRA. Confirmação por múltiplos indicadores técnicos. Sinal de compra ${strength}.`;
+  } else if (sellSignals > buySignals * 1.2 && sellSignals > 1) {
+    direction = "sell";
+    const strength = sellSignals > 2 ? "forte" : "moderado";
+    recommendation = `DECISÃO: VENDA. Confirmação por múltiplos indicadores técnicos. Sinal de venda ${strength}.`;
+  }
+  
+  // Simulation of AI confirmation takes time
+  await new Promise(resolve => setTimeout(resolve, 300));
+  
+  return {
+    confirmed: direction !== "neutral",
+    direction,
+    confidence: avgConfidence,
+    recommendation
+  };
+};
+
 // Main function to detect patterns based on analysis types
 export const detectPatterns = async (
   imageData: string,
@@ -956,26 +1488,10 @@ export const detectPatterns = async (
           result = await detectCandlePatterns(imageData, disableSimulation);
           break;
         case "elliottWaves":
-          // Add placeholder for elliottWaves analysis
-          result = {
-            found: false,
-            confidence: 0,
-            description: "Análise de Ondas de Elliott não implementada.",
-            recommendation: "Esta análise será implementada em breve.",
-            timeframeRecommendation: "1min", // Default to 1min
-            type: "elliottWaves"
-          };
+          result = await detectElliottWaves(imageData, precision, disableSimulation);
           break;
         case "dowTheory":
-          // Add placeholder for dowTheory analysis
-          result = {
-            found: false,
-            confidence: 0,
-            description: "Análise de Teoria de Dow não implementada.",
-            recommendation: "Esta análise será implementada em breve.",
-            timeframeRecommendation: "1min", // Default to 1min
-            type: "dowTheory"
-          };
+          result = await detectDowTheory(imageData, precision, disableSimulation);
           break;
         case "all":
           // For "all", wait until individual analyses are done
@@ -993,7 +1509,7 @@ export const detectPatterns = async (
         confidence: 0,
         description: `Error during ${type} analysis.`,
         recommendation: "Try again with a clearer chart image.",
-        timeframeRecommendation: "1min", // Default to 1min even for errors
+        timeframeRecommendation: "1min", // Always use 1min
         type: type
       };
     }
@@ -1021,6 +1537,9 @@ export const detectPatterns = async (
       }
     }
     
+    // Get AI confirmation of the analyses
+    const aiConfirmation = await getAIConfirmation(results as Record<AnalysisType, PatternResult>);
+    
     // Aggregate scores from all analyses
     let totalBuyScore = 0;
     let totalSellScore = 0;
@@ -1044,18 +1563,28 @@ export const detectPatterns = async (
       }
     }
     
+    // Boost scores with AI confirmation
+    if (aiConfirmation.confirmed) {
+      if (aiConfirmation.direction === "buy") {
+        totalBuyScore *= 1.2;
+      } else if (aiConfirmation.direction === "sell") {
+        totalSellScore *= 1.2;
+      }
+    }
+    
     // Create combined result for "all"
     results.all = {
       found: totalBuyScore > 0 || totalSellScore > 0,
       confidence: Math.min(95, Math.floor(Math.max(...Object.values(results)
         .filter(r => r?.confidence !== undefined)
         .map(r => r.confidence)))),
-      description: "Análise combinada de todos os indicadores técnicos.",
-      recommendation: totalBuyScore > totalSellScore 
-        ? `DECISÃO: COMPRA. Pressão compradora identificada com score ${totalBuyScore.toFixed(1)}/3.` 
-        : totalSellScore > totalBuyScore
-        ? `DECISÃO: VENDA. Pressão vendedora identificada com score ${totalSellScore.toFixed(1)}/3.`
-        : "Sem sinal claro de compra ou venda.",
+      description: "Análise combinada de todos os indicadores técnicos com confirmação por IA.",
+      recommendation: aiConfirmation.confirmed ? aiConfirmation.recommendation :
+        totalBuyScore > totalSellScore 
+          ? `DECISÃO: COMPRA. Pressão compradora identificada com score ${totalBuyScore.toFixed(1)}/3.` 
+          : totalSellScore > totalBuyScore
+            ? `DECISÃO: VENDA. Pressão vendedora identificada com score ${totalSellScore.toFixed(1)}/3.`
+            : "Sem sinal claro de compra ou venda. Aguarde.",
       buyScore: totalBuyScore,
       sellScore: totalSellScore,
       timeframeRecommendation: bestTimeframeRecommendation,

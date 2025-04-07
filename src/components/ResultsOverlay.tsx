@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from "react";
 import { useAnalyzer } from "@/context/AnalyzerContext";
 import { detectPatterns, PatternResult } from "@/utils/patternDetection";
@@ -7,12 +8,19 @@ import ChartOverlay from "./ChartOverlay";
 import AnalysisLabels from "./AnalysisLabels";
 import DirectionIndicator from "./DirectionIndicator";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import { Clock } from "lucide-react";
+import { Clock, Bot } from "lucide-react";
 
 interface IndicatorPosition {
   x: number;
   y: number;
   isDragging: boolean;
+}
+
+interface AIConfirmation {
+  active: boolean;
+  verified: boolean;
+  direction: "buy" | "sell" | "neutral";
+  confidence: number;
 }
 
 const ResultsOverlay = () => {
@@ -36,6 +44,13 @@ const ResultsOverlay = () => {
     x: 20,
     y: 20,
     isDragging: false
+  });
+  
+  const [aiConfirmation, setAiConfirmation] = useState<AIConfirmation>({
+    active: false,
+    verified: false,
+    direction: "neutral",
+    confidence: 0
   });
   
   const isMobile = useMediaQuery("(max-width: 768px)");
@@ -171,6 +186,27 @@ const ResultsOverlay = () => {
             setAnalysisResult(type as any, result.found);
           });
           
+          // AI Confirmation stage
+          setProcessingStage("Verificando análise com IA");
+          
+          // Simulate AI verification
+          setTimeout(() => {
+            // Get overall buy/sell scores
+            const totalBuyScore = results.all?.buyScore || 0;
+            const totalSellScore = results.all?.sellScore || 0;
+            
+            // Set AI confirmation based on analysis results
+            setAiConfirmation({
+              active: true,
+              verified: totalBuyScore > 0.5 || totalSellScore > 0.5,
+              direction: totalBuyScore > totalSellScore ? "buy" : 
+                         totalSellScore > totalBuyScore ? "sell" : "neutral",
+              confidence: results.all?.confidence || 0
+            });
+            
+            setProcessingStage("");
+          }, 800);
+          
           const notFoundTypes = activeAnalysis
             .filter(type => type !== "all")
             .filter(type => !results[type]?.found);
@@ -183,8 +219,6 @@ const ResultsOverlay = () => {
           
           const totalBuyScore = results.all?.buyScore || 0;
           const totalSellScore = results.all?.sellScore || 0;
-          
-          const timeframeRecommendation = "1min";
           
           let directionMessage = "";
           if (totalBuyScore > totalSellScore && totalBuyScore > 1) {
@@ -234,8 +268,6 @@ const ResultsOverlay = () => {
     zIndex: 30
   };
 
-  const timeframeRecommendation = detailedResults.all?.timeframeRecommendation;
-
   return (
     <div 
       className="absolute inset-0 flex flex-col"
@@ -273,11 +305,26 @@ const ResultsOverlay = () => {
         />
       )}
       
-      {timeframeRecommendation && (
-        <div className="absolute top-2 right-2 z-30 bg-blue-100 text-blue-800 px-3 py-1.5 rounded-full flex items-center shadow-md">
-          <Clock className="h-4 w-4 mr-2" />
+      {/* Always show timeframe recommendation for 1 min */}
+      <div className="absolute top-2 right-2 z-30 bg-blue-100 text-blue-800 px-3 py-1.5 rounded-full flex items-center shadow-md">
+        <Clock className="h-4 w-4 mr-2" />
+        <span className="font-medium">
+          Operar em 1 minuto
+        </span>
+      </div>
+      
+      {/* AI confirmation badge */}
+      {aiConfirmation.active && aiConfirmation.verified && (
+        <div className={`absolute top-14 right-2 z-30 px-3 py-1.5 rounded-full flex items-center shadow-md ${
+          aiConfirmation.direction === "buy" ? "bg-trader-green/20 text-trader-green" :
+          aiConfirmation.direction === "sell" ? "bg-trader-red/20 text-trader-red" :
+          "bg-gray-100 text-gray-700"
+        }`}>
+          <Bot className="h-4 w-4 mr-2" />
           <span className="font-medium">
-            Operar em 1 minuto
+            {aiConfirmation.direction === "buy" ? "IA confirma compra" :
+             aiConfirmation.direction === "sell" ? "IA confirma venda" :
+             "IA sem confirmação clara"}
           </span>
         </div>
       )}

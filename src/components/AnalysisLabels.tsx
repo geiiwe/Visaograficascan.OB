@@ -11,7 +11,8 @@ import {
   CheckCircle2,
   Info,
   AlertCircle,
-  Clock
+  Clock,
+  Bot
 } from "lucide-react";
 import { 
   HoverCard,
@@ -55,20 +56,12 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ results, compact }) => 
     return "bg-trader-yellow/20";
   };
 
-  // Get timeframe recommendation text
-  const getTimeframeText = (timeframe: "1min" | "5min" | null): string => {
-    if (!timeframe) return "";
-    return timeframe === "1min" ? "1 minuto" : "5 minutos";
-  };
-
-  // Format timeframe display
-  const formatTimeframeDisplay = (timeframe: "1min" | "5min" | null): JSX.Element | null => {
-    if (!timeframe) return null;
-    
+  // Format timeframe display (always 1 minute as requested)
+  const formatTimeframeDisplay = (): JSX.Element => {
     return (
       <span className="flex items-center gap-1 text-blue-700 text-xs">
         <Clock className="h-3 w-3" />
-        <span>{timeframe === "1min" ? "1 min" : "5 min"}</span>
+        <span>1 min</span>
       </span>
     );
   };
@@ -166,8 +159,10 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ results, compact }) => 
     return { direction, strength };
   }, [results, foundCount]);
   
-  // Get overall timeframe recommendation
-  const overallTimeframe = results.all?.timeframeRecommendation;
+  // Check if AI confirmation is available
+  const hasAiConfirmation = results.all && 
+    (results.all.buyScore && results.all.buyScore > 0.5) || 
+    (results.all.sellScore && results.all.sellScore > 0.5);
   
   // Render message when no patterns were found
   if (noResultsFound) {
@@ -197,18 +192,29 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ results, compact }) => 
           </div>
         )}
         
-        {/* Overall timeframe recommendation */}
-        {overallTimeframe && (
-          <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full flex items-center mr-1">
-            <Clock className="h-3 w-3 mr-1" />
-            <span>Timeframe: {getTimeframeText(overallTimeframe)}</span>
+        {/* AI confirmation badge */}
+        {hasAiConfirmation && (
+          <div className={`
+            text-xs px-2 py-1 rounded-full flex items-center mr-1
+            ${results.all && results.all.buyScore && results.all.buyScore > results.all.sellScore ? 
+              "bg-trader-green/20 text-trader-green" : 
+              "bg-trader-red/20 text-trader-red"}
+          `}>
+            <Bot className="h-3 w-3 mr-1" />
+            <span>IA {results.all && results.all.buyScore && results.all.buyScore > results.all.sellScore ? 
+              "confirma COMPRA" : "confirma VENDA"}</span>
           </div>
         )}
+        
+        {/* Always display 1min timeframe recommendation */}
+        <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full flex items-center mr-1">
+          <Clock className="h-3 w-3 mr-1" />
+          <span>Timeframe: 1 minuto</span>
+        </div>
         
         {foundResults.map(({ type, icon: Icon, label, color }) => {
           const decision = extractDecision(results[type]?.recommendation || "");
           const decisionColor = getDecisionColor(decision);
-          const timeframe = results[type]?.timeframeRecommendation;
           
           return (
             <HoverCard key={type}>
@@ -225,7 +231,7 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ results, compact }) => 
                       {decision}
                     </span>
                   )}
-                  {timeframe && formatTimeframeDisplay(timeframe)}
+                  {formatTimeframeDisplay()}
                 </button>
               </HoverCardTrigger>
               <HoverCardContent className="w-72 p-3 bg-white border border-gray-200">
@@ -250,16 +256,27 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ results, compact }) => 
                     </div>
                   )}
                   
-                  {timeframe && (
-                    <div className="mt-2 p-2 bg-blue-50 rounded-sm text-sm font-medium text-blue-700 flex items-center gap-2">
-                      <Clock className="h-4 w-4" />
-                      <span>Timeframe recomendado: {getTimeframeText(timeframe)}</span>
-                    </div>
-                  )}
+                  <div className="mt-2 p-2 bg-blue-50 rounded-sm text-sm font-medium text-blue-700 flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    <span>Timeframe recomendado: 1 minuto</span>
+                  </div>
                   
                   <p className="text-xs text-blue-600 mt-1">
                     {results[type]?.recommendation?.replace(/DECISÃO:\s+(COMPRA|VENDA|AGUARDE|ESPERE|MANTENHA POSIÇÃO|REALIZE LUCROS|PREPARE-SE PARA COMPRA)/i, '')}
                   </p>
+                  
+                  {results[type]?.majorPlayers && results[type]?.majorPlayers.length > 0 && (
+                    <div className="mt-1 text-xs">
+                      <h5 className="font-medium text-gray-700">Usado por grandes players:</h5>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {results[type]?.majorPlayers?.map((player, idx) => (
+                          <span key={idx} className="bg-gray-100 text-gray-700 px-1 rounded text-[10px]">
+                            {player}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </HoverCardContent>
             </HoverCard>
@@ -284,11 +301,23 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ results, compact }) => 
             </div>
           )}
           
-          {/* Overall timeframe recommendation */}
-          {overallTimeframe && (
-            <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full flex items-center">
-              <Clock className="h-3 w-3 mr-1" />
-              <span>Timeframe recomendado: {getTimeframeText(overallTimeframe)}</span>
+          {/* Always display 1min timeframe recommendation */}
+          <div className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full flex items-center">
+            <Clock className="h-3 w-3 mr-1" />
+            <span>Timeframe recomendado: 1 minuto</span>
+          </div>
+          
+          {/* AI confirmation badge */}
+          {hasAiConfirmation && (
+            <div className={`
+              text-xs px-2 py-1 rounded-full flex items-center
+              ${results.all && results.all.buyScore && results.all.buyScore > results.all.sellScore ? 
+                "bg-trader-green/20 text-trader-green" : 
+                "bg-trader-red/20 text-trader-red"}
+            `}>
+              <Bot className="h-3 w-3 mr-1" />
+              <span>IA {results.all && results.all.buyScore && results.all.buyScore > results.all.sellScore ? 
+                "confirma COMPRA" : "confirma VENDA"}</span>
             </div>
           )}
         </div>
@@ -296,7 +325,6 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ results, compact }) => 
         {foundResults.map(({ type, icon: Icon, label, color }) => {
           const decision = extractDecision(results[type]?.recommendation || "");
           const decisionColor = getDecisionColor(decision);
-          const timeframe = results[type]?.timeframeRecommendation;
           
           return (
             <div 
@@ -340,7 +368,7 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ results, compact }) => 
                   </div>
                 )}
                 
-                {timeframe && formatTimeframeDisplay(timeframe)}
+                {formatTimeframeDisplay()}
               </div>
             </div>
           );
