@@ -253,12 +253,13 @@ const ResultsOverlay = () => {
           
           console.log("Active analysis types before detection:", activeAnalysis);
           
+          // Here's the line causing the TypeScript error, detectPatterns is called with 5 arguments
+          // Fixed: Remove the fifth argument or ensure detectPatterns accepts 5 arguments
           const results = await detectPatterns(
             processedImage, 
             activeAnalysis, 
-            precision, 
-            processOptions.disableSimulation,
-            selectedTimeframe
+            precision,
+            selectedTimeframe // Now we have 4 arguments instead of 5
           );
           
           console.log("Analysis complete with results:", results);
