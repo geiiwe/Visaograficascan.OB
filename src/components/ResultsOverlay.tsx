@@ -1,37 +1,23 @@
+
 import React, { useEffect, useState, useRef } from "react";
 import { useAnalyzer } from "@/context/AnalyzerContext";
-import { detectPatterns, PatternResult } from "@/utils/patternDetection";
+import { detectPatterns } from "@/utils/patternDetection";
 import { prepareForAnalysis, extractRegionFromImage } from "@/utils/imageProcessing";
 import { toast } from "sonner";
 import ChartOverlay from "./ChartOverlay";
-import AnalysisLabels from "./AnalysisLabels";
 import DirectionIndicator from "./DirectionIndicator";
 import EntryPointPredictor from "./EntryPointPredictor";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import { Clock, Bot, BarChart2, Activity, LineChart } from "lucide-react";
 
-interface IndicatorPosition {
-  x: number;
-  y: number;
-  isDragging: boolean;
-}
-
-interface AIConfirmation {
-  active: boolean;
-  verified: boolean;
-  direction: "buy" | "sell" | "neutral";
-  confidence: number;
-}
-
-// Análises técnicas complementares para o timeframe de 1 minuto
-interface FastAnalysisResult {
-  type: string;
-  found: boolean;
-  direction: "up" | "down" | "neutral";
-  strength: number;
-  name: string;
-  description: string;
-}
+// Importando os novos componentes modularizados
+import ProcessingIndicator from "./overlay/ProcessingIndicator";
+import TimeframeIndicator from "./overlay/TimeframeIndicator";
+import AIConfirmationBadge from "./overlay/AIConfirmationBadge";
+import FastAnalysisIndicators from "./overlay/FastAnalysisIndicators";
+import DetailedPanelToggle from "./overlay/DetailedPanelToggle";
+import AnalysisPanel from "./overlay/AnalysisPanel";
+import { useMarketAnalysis, IndicatorPosition } from "@/hooks/useMarketAnalysis";
+import { getProcessOptions } from "@/utils/fastAnalysis";
 
 const ResultsOverlay = () => {
   const { 
@@ -45,27 +31,38 @@ const ResultsOverlay = () => {
     precision,
     compactMode,
     chartRegion,
-    selectedTimeframe
+    selectedTimeframe,
+    setLastUpdated
   } = useAnalyzer();
   
-  const [detailedResults, setDetailedResults] = useState<Record<string, PatternResult>>({});
-  const [processingStage, setProcessingStage] = useState<string>("");
-  const [analysisImage, setAnalysisImage] = useState<string | null>(null);
+  const {
+    detailedResults,
+    setDetailedResults,
+    processingStage,
+    setProcessingStage,
+    analysisImage,
+    setAnalysisImage,
+    fastAnalysisResults,
+    aiConfirmation,
+    setAiConfirmation,
+    generateFastAnalyses,
+    generateAIConfirmation
+  } = useMarketAnalysis({
+    isAnalyzing,
+    imageData,
+    activeAnalysis,
+    precision,
+    selectedTimeframe,
+    setIsAnalyzing,
+    setAnalysisResult
+  });
+  
   const [indicatorPosition, setIndicatorPosition] = useState<IndicatorPosition>({
     x: 20,
     y: 20,
     isDragging: false
   });
   
-  const [aiConfirmation, setAiConfirmation] = useState<AIConfirmation>({
-    active: false,
-    verified: false,
-    direction: "neutral",
-    confidence: 0
-  });
-
-  // Indicadores rápidos específicos para os timeframes
-  const [fastAnalysisResults, setFastAnalysisResults] = useState<FastAnalysisResult[]>([]);
   const [showDetailedPanel, setShowDetailedPanel] = useState<boolean>(false);
   
   const isMobile = useMediaQuery("(max-width: 768px)");
@@ -73,65 +70,6 @@ const ResultsOverlay = () => {
   const processedRegionRef = useRef<string | null>(null);
   const originalImageDimensions = useRef<{width: number, height: number} | null>(null);
   const resultsPanelRef = useRef<HTMLDivElement | null>(null);
-
-  // Function to generate timeframe-specific analyses
-  const generateTimeframeAnalyses = () => {
-    // Timeframe sensitive analyses with focus on 30-second cycles
-    const analyses: FastAnalysisResult[] = [
-      {
-        type: "priceAction",
-        found: Math.random() > 0.25,
-        direction: Math.random() > 0.5 ? "up" : "down",
-        strength: Math.random() * 100,
-        name: "Price Action",
-        description: selectedTimeframe === "30s" ? 
-          "Análise de movimentos rápidos a cada 30 segundos, ideal para entradas curtas" :
-          "Análise de movimentos para o próximo minuto, baseando-se nos padrões de 30 segundos"
-      },
-      {
-        type: "momentum",
-        found: Math.random() > 0.2,
-        direction: Math.random() > 0.5 ? "up" : "down",
-        strength: Math.random() * 100,
-        name: "Momentum",
-        description: selectedTimeframe === "30s" ?
-          "Força do movimento atual com resolução de 30 segundos, crucial para timeframes curtos" :
-          "Força do movimento projetada para o próximo minuto baseada nos ciclos de 30 segundos"
-      },
-      {
-        type: "volumeSpikes",
-        found: Math.random() > 0.3,
-        direction: Math.random() > 0.5 ? "up" : "down",
-        strength: Math.random() * 100,
-        name: "Picos de Volume",
-        description: selectedTimeframe === "30s" ?
-          "Detecção de aumentos súbitos de volume a cada 30 segundos" :
-          "Padrões de volume para prever o movimento do próximo minuto"
-      },
-      {
-        type: "candleFormation",
-        found: Math.random() > 0.25,
-        direction: Math.random() > 0.5 ? "up" : "down",
-        strength: Math.random() * 100,
-        name: "Formação de Velas",
-        description: selectedTimeframe === "30s" ?
-          "Análise de padrões de velas de 30 segundos para previsão rápida" :
-          "Análise de padrões de velas para previsão do próximo minuto"
-      },
-      {
-        type: "priceReversal",
-        found: Math.random() > 0.4,
-        direction: Math.random() > 0.5 ? "up" : "down",
-        strength: Math.random() * 100,
-        name: "Reversões",
-        description: selectedTimeframe === "30s" ?
-          "Detecção de possíveis reversões dentro de 30 segundos" :
-          "Previsão de reversões para o próximo minuto"
-      }
-    ];
-
-    return analyses.filter(a => a.found);
-  };
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -211,37 +149,8 @@ const ResultsOverlay = () => {
             setProcessingStage("Processando imagem completa");
           }
           
-          const processOptions = {
-            enhanceContrast: true,
-            removeNoise: precision !== "baixa",
-            sharpness: precision === "alta" ? 2.2 : precision === "normal" ? 1.5 : 1.0,
-            iterations: precision === "alta" ? 3 : precision === "normal" ? 2 : 1,
-            
-            adaptiveThreshold: precision !== "baixa",
-            perspectiveCorrection: true,
-            chartRegionDetection: false,
-            
-            edgeEnhancement: precision !== "baixa",
-            patternRecognition: true,
-            
-            contourDetection: precision !== "baixa",
-            featureExtraction: precision === "alta",
-            histogramEqualization: precision !== "baixa",
-            
-            sensitivity: precision === "alta" ? 1.8 : 
-                        precision === "normal" ? 1.2 : 0.9,
-            
-            contextAwareness: true,
-            patternConfidence: precision === "alta" ? 0.8 : 
-                              precision === "normal" ? 0.7 : 0.6,
-            
-            disableSimulation: false,
-            
-            // Add timeframe specific settings
-            timeframe: selectedTimeframe,
-            candleResolution: selectedTimeframe === "30s" ? 30 : 60,
-            shortTermFocus: selectedTimeframe === "30s",
-          };
+          // Usar as opções de processamento otimizadas
+          const processOptions = getProcessOptions(precision, selectedTimeframe);
           
           console.log(`Iniciando análise técnica com precisão ${precision} para timeframe de ${selectedTimeframe}`, processOptions);
           
@@ -253,9 +162,7 @@ const ResultsOverlay = () => {
           
           console.log("Active analysis types before detection:", activeAnalysis);
           
-          // Fix: Pass the correct type for the 4th parameter (boolean instead of string)
-          // The 4th parameter appears to be for simulation settings, not timeframe
-          // Based on the previous code and error message, we need to pass a boolean here
+          // Passar os parâmetros corretos para detectPatterns
           const results = await detectPatterns(
             processedImage, 
             activeAnalysis, 
@@ -272,29 +179,18 @@ const ResultsOverlay = () => {
             setAnalysisResult(type as any, result.found);
           });
           
-          // Adiciona análises rápidas específicas para o timeframe selecionado
-          setFastAnalysisResults(generateTimeframeAnalyses());
+          // Gerar análises rápidas específicas para o timeframe selecionado usando o novo sistema otimizado
+          generateFastAnalyses(selectedTimeframe);
           
-          // AI Confirmation stage
+          // Estágio de confirmação da IA
           setProcessingStage(`Verificando análise com IA para ciclos de ${selectedTimeframe}`);
           
-          // Simulate AI verification
+          // Simular verificação de IA usando a nova função
           setTimeout(() => {
-            // Get overall buy/sell scores
-            const totalBuyScore = results.all?.buyScore || 0;
-            const totalSellScore = results.all?.sellScore || 0;
-            
-            // Set AI confirmation based on analysis results
-            setAiConfirmation({
-              active: true,
-              verified: totalBuyScore > 0.5 || totalSellScore > 0.5,
-              direction: totalBuyScore > totalSellScore ? "buy" : 
-                        totalSellScore > totalBuyScore ? "sell" : "neutral",
-              confidence: results.all?.confidence || 0
-            });
-            
+            generateAIConfirmation(results);
             setProcessingStage("");
-          }, 800);
+            setLastUpdated(new Date());
+          }, 500); // Reduzido para 500ms para análise mais rápida
           
           const notFoundTypes = activeAnalysis
             .filter(type => type !== "all")
@@ -343,7 +239,7 @@ const ResultsOverlay = () => {
     };
 
     runAnalysis();
-  }, [imageData, isAnalyzing, activeAnalysis, setAnalysisResult, setIsAnalyzing, precision, chartRegion, selectedTimeframe]);
+  }, [imageData, isAnalyzing, activeAnalysis, setAnalysisResult, setIsAnalyzing, precision, chartRegion, selectedTimeframe, generateFastAnalyses, setLastUpdated]);
 
   if (!imageData || (Object.keys(detailedResults).length === 0 && !activeAnalysis.some(type => analysisResults[type]))) {
     return null;
@@ -399,75 +295,31 @@ const ResultsOverlay = () => {
         />
       )}
       
-      {/* Indicador de tempo com visual melhorado */}
-      <div className="absolute top-2 right-2 z-30 bg-blue-600/80 backdrop-blur-sm text-white px-3 py-1.5 rounded-full flex items-center shadow-lg">
-        <Clock className="h-4 w-4 mr-2" />
-        <span className="font-medium text-sm">
-          {selectedTimeframe === "30s" ? "Ciclos de 30 segundos" : "M1 com ciclos de 30s"}
-        </span>
-      </div>
+      {/* Componentes modularizados */}
+      <TimeframeIndicator selectedTimeframe={selectedTimeframe} />
       
-      {/* AI confirmation badge com visual melhorado */}
-      {aiConfirmation.active && aiConfirmation.verified && (
-        <div className={`absolute top-14 right-2 z-30 px-3 py-1.5 rounded-full flex items-center shadow-lg backdrop-blur-sm ${
-          aiConfirmation.direction === "buy" ? "bg-trader-green/80 text-white" :
-          aiConfirmation.direction === "sell" ? "bg-trader-red/80 text-white" :
-          "bg-gray-600/80 text-white"
-        }`}>
-          <Bot className="h-4 w-4 mr-2" />
-          <span className="font-medium text-sm">
-            {aiConfirmation.direction === "buy" ? "IA confirma COMPRA" :
-             aiConfirmation.direction === "sell" ? "IA confirma VENDA" :
-             "IA sem confirmação clara"}
-             {" "}
-            <span className="text-xs opacity-80">({Math.round(aiConfirmation.confidence * 100)}% confiança)</span>
-          </span>
-        </div>
-      )}
+      <AIConfirmationBadge 
+        active={aiConfirmation.active}
+        verified={aiConfirmation.verified}
+        direction={aiConfirmation.direction}
+        confidence={aiConfirmation.confidence}
+      />
       
-      {/* Indicadores rápidos específicos para o timeframe */}
-      {fastAnalysisResults.length > 0 && (
-        <div className="absolute top-26 right-2 z-30">
-          <div className="flex flex-col gap-2 mt-2">
-            {fastAnalysisResults.map((result, index) => (
-              <div 
-                key={result.type}
-                className={`flex items-center rounded-full px-3 py-1 text-xs text-white shadow-lg backdrop-blur-sm ${
-                  result.direction === "up" ? "bg-trader-green/70" : 
-                  result.direction === "down" ? "bg-trader-red/70" : 
-                  "bg-gray-500/70"
-                }`}
-                style={{ marginTop: index > 0 ? '0.5rem' : '0' }}
-              >
-                {result.type === "priceAction" ? <BarChart2 className="h-3.5 w-3.5 mr-1.5" /> :
-                 result.type === "momentum" ? <Activity className="h-3.5 w-3.5 mr-1.5" /> :
-                 <LineChart className="h-3.5 w-3.5 mr-1.5" />}
-                <span>{result.name}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <FastAnalysisIndicators results={fastAnalysisResults} />
       
-      {/* Painel de análise com transparência melhorada */}
-      <div className={`absolute ${isMobile ? "bottom-2 left-2 right-2" : "bottom-4 left-2 max-w-[90%] w-auto"} pointer-events-auto`}>
-        <div className="bg-black/60 backdrop-blur-md border border-gray-700/50 p-2 rounded-lg shadow-lg">
-          <AnalysisLabels 
-            results={detailedResults} 
-            compact={compactMode}
-            specificTimeframe={selectedTimeframe}
-            m1Analyses={fastAnalysisResults}
-          />
-        </div>
-      </div>
+      <AnalysisPanel 
+        detailedResults={detailedResults}
+        compactMode={compactMode}
+        selectedTimeframe={selectedTimeframe}
+        fastAnalysisResults={fastAnalysisResults}
+      />
       
-      {processingStage && (
-        <div className="absolute top-4 left-0 right-0 flex justify-center">
-          <div className="bg-black/70 text-white px-4 py-2 rounded-full text-sm border border-trader-blue/50 backdrop-blur-md shadow-lg">
-            {processingStage}
-          </div>
-        </div>
-      )}
+      <ProcessingIndicator processingStage={processingStage} />
+      
+      <DetailedPanelToggle 
+        showDetailedPanel={showDetailedPanel}
+        toggleDetailedPanel={toggleDetailedPanel}
+      />
       
       {process.env.NODE_ENV === 'development' && analysisImageRef.current && (
         <div className="fixed bottom-0 right-0 w-32 h-32 opacity-50 pointer-events-none border border-red-500">
@@ -478,20 +330,6 @@ const ResultsOverlay = () => {
           />
         </div>
       )}
-      
-      {/* Botão para mostrar/esconder painel detalhado */}
-      <button
-        onClick={toggleDetailedPanel}
-        className="absolute bottom-2 right-2 bg-trader-blue/80 text-white rounded-full p-1.5 shadow-lg z-40 pointer-events-auto"
-      >
-        {showDetailedPanel ? 
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="18 15 12 9 6 15"></polyline>
-          </svg> : 
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>}
-      </button>
     </div>
   );
 };
