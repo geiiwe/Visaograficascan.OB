@@ -1,14 +1,16 @@
+
 import React, { useEffect, useState, useRef } from "react";
-import { useAnalyzer } from "@/context/AnalyzerContext";
+import { useAnalyzer, TimeframeType } from "@/context/AnalyzerContext";
 import CameraView from "./CameraView";
 import ControlPanel from "./ControlPanel";
 import ResultsOverlay from "./ResultsOverlay";
 import ChartRegionSelector from "./ChartRegionSelector";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle, Crop, Info, Maximize2, Minimize2 } from "lucide-react";
+import { AlertTriangle, Crop, Info, Maximize2, Minimize2, Clock, Clock1 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const GraphAnalyzer = () => {
   const { 
@@ -22,7 +24,9 @@ const GraphAnalyzer = () => {
     selectionMode,
     setSelectionMode,
     chartRegion,
-    hasCustomRegion
+    hasCustomRegion,
+    selectedTimeframe,
+    setSelectedTimeframe
   } = useAnalyzer();
   const [cameraSupported, setCameraSupported] = useState<boolean | null>(null);
   const imageRef = useRef<HTMLImageElement>(null);
@@ -134,6 +138,11 @@ const GraphAnalyzer = () => {
     }
   };
 
+  const handleTimeframeChange = (timeframe: TimeframeType) => {
+    setSelectedTimeframe(timeframe);
+    toast.info(`Análise ajustada para timeframe de ${timeframe === "30s" ? "30 segundos" : "1 minuto"}`);
+  };
+
   return (
     <div className="w-full max-w-4xl mx-auto p-4 space-y-4">
       {cameraSupported === false && (
@@ -148,7 +157,36 @@ const GraphAnalyzer = () => {
       
       <div className="relative">
         <div className="flex justify-between items-center mb-2">
-          <h2 className="text-lg font-medium text-white">Análise de Gráficos (30s)</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-medium text-white">Análise de Gráficos</h2>
+            
+            <Tabs 
+              value={selectedTimeframe} 
+              onValueChange={(value) => handleTimeframeChange(value as TimeframeType)}
+              className="bg-trader-panel/60 rounded-md px-1"
+            >
+              <TabsList className="h-7 bg-transparent">
+                <TabsTrigger 
+                  value="30s" 
+                  className={`h-6 ${selectedTimeframe === "30s" ? 'data-[state=active]:bg-trader-blue' : ''}`}
+                >
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-3.5 w-3.5" />
+                    <span>30s</span>
+                  </span>
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="1m"
+                  className={`h-6 ${selectedTimeframe === "1m" ? 'data-[state=active]:bg-trader-blue' : ''}`}
+                >
+                  <span className="flex items-center gap-1">
+                    <Clock1 className="h-3.5 w-3.5" />
+                    <span>1m</span>
+                  </span>
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
           
           <div className="flex items-center gap-2">
             <TooltipProvider>
@@ -270,10 +308,10 @@ const GraphAnalyzer = () => {
             <p className="mt-4 text-white font-medium">Analisando padrões do gráfico...</p>
             <p className="text-sm text-trader-gray mt-2">
               {precision === "alta" 
-                ? "Análise detalhada em andamento. Considerando ciclos de 30 segundos para maior precisão."
+                ? `Análise detalhada em andamento. Considerando ciclos de ${selectedTimeframe === "30s" ? "30 segundos" : "1 minuto"} para maior precisão.`
                 : precision === "baixa"
-                  ? "Análise rápida em andamento. Identificando ciclos de 30 segundos."
-                  : "Análise em andamento. Processando ciclos de 30 segundos."}
+                  ? `Análise rápida em andamento. Identificando ciclos de ${selectedTimeframe === "30s" ? "30 segundos" : "1 minuto"}.`
+                  : `Análise em andamento. Processando ciclos de ${selectedTimeframe === "30s" ? "30 segundos" : "1 minuto"}.`}
             </p>
           </div>
         </div>

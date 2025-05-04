@@ -1,8 +1,21 @@
-
 import React, { createContext, useContext, useState, ReactNode } from "react";
 
 export type AnalysisType = "trendlines" | "fibonacci" | "candlePatterns" | "elliottWaves" | "dowTheory" | "all";
 export type PrecisionLevel = "baixa" | "normal" | "alta";
+export type EntryType = "buy" | "sell" | "wait";
+export type TimeframeType = "30s" | "1m";
+
+interface PredictionData {
+  entryPoint: EntryType;
+  confidence: number;
+  timeframe: TimeframeType;
+  expirationTime: string;
+  indicators: {
+    name: string;
+    signal: "buy" | "sell" | "neutral";
+    strength: number;
+  }[];
+}
 
 interface AnalyzerContextType {
   imageData: string | null;
@@ -29,6 +42,12 @@ interface AnalyzerContextType {
   hasCustomRegion: boolean;
   indicatorPosition: { x: number; y: number; };
   setIndicatorPosition: (position: { x: number; y: number }) => void;
+  prediction: PredictionData | null;
+  setPrediction: (data: PredictionData | null) => void;
+  selectedTimeframe: TimeframeType;
+  setSelectedTimeframe: (timeframe: TimeframeType) => void;
+  lastUpdated: Date | null;
+  setLastUpdated: (date: Date | null) => void;
 }
 
 const AnalyzerContext = createContext<AnalyzerContextType | undefined>(undefined);
@@ -52,6 +71,9 @@ export const AnalyzerProvider = ({ children }: { children: ReactNode }) => {
   const [selectionMode, setSelectionMode] = useState(false);
   const [chartRegion, setChartRegion] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const [indicatorPosition, setIndicatorPosition] = useState<{ x: number; y: number }>({ x: 20, y: 20 });
+  const [prediction, setPrediction] = useState<PredictionData | null>(null);
+  const [selectedTimeframe, setSelectedTimeframe] = useState<TimeframeType>("30s");
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   // Computed property to check if a custom region is set
   const hasCustomRegion = chartRegion !== null;
@@ -146,6 +168,12 @@ export const AnalyzerProvider = ({ children }: { children: ReactNode }) => {
         hasCustomRegion,
         indicatorPosition,
         setIndicatorPosition,
+        prediction,
+        setPrediction,
+        selectedTimeframe,
+        setSelectedTimeframe,
+        lastUpdated,
+        setLastUpdated,
       }}
     >
       {children}

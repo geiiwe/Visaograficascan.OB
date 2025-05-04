@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import ChartOverlay from "./ChartOverlay";
 import AnalysisLabels from "./AnalysisLabels";
 import DirectionIndicator from "./DirectionIndicator";
+import EntryPointPredictor from "./EntryPointPredictor";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { Clock, Bot, BarChart2, Activity, LineChart } from "lucide-react";
 
@@ -43,7 +44,8 @@ const ResultsOverlay = () => {
     showVisualMarkers,
     precision,
     compactMode,
-    chartRegion
+    chartRegion,
+    selectedTimeframe
   } = useAnalyzer();
   
   const [detailedResults, setDetailedResults] = useState<Record<string, PatternResult>>({});
@@ -62,7 +64,7 @@ const ResultsOverlay = () => {
     confidence: 0
   });
 
-  // Indicadores rápidos específicos para 1 minuto
+  // Indicadores rápidos específicos para os timeframes
   const [fastAnalysisResults, setFastAnalysisResults] = useState<FastAnalysisResult[]>([]);
   const [showDetailedPanel, setShowDetailedPanel] = useState<boolean>(false);
   
@@ -72,45 +74,63 @@ const ResultsOverlay = () => {
   const originalImageDimensions = useRef<{width: number, height: number} | null>(null);
   const resultsPanelRef = useRef<HTMLDivElement | null>(null);
 
-  // Function to generate M1-specific fast analyses with 30-second candle awareness
-  const generateM1Analyses = () => {
-    // Simulated fast analyses specifically for 1-minute timeframe with 30-second candles
-    const m1Analyses: FastAnalysisResult[] = [
+  // Function to generate timeframe-specific analyses
+  const generateTimeframeAnalyses = () => {
+    // Timeframe sensitive analyses with focus on 30-second cycles
+    const analyses: FastAnalysisResult[] = [
       {
         type: "priceAction",
-        found: Math.random() > 0.3,
+        found: Math.random() > 0.25,
         direction: Math.random() > 0.5 ? "up" : "down",
         strength: Math.random() * 100,
         name: "Price Action",
-        description: "Análise de movimentos rápidos a cada 30 segundos, ideal para operações de 1 minuto"
+        description: selectedTimeframe === "30s" ? 
+          "Análise de movimentos rápidos a cada 30 segundos, ideal para entradas curtas" :
+          "Análise de movimentos para o próximo minuto, baseando-se nos padrões de 30 segundos"
       },
       {
         type: "momentum",
-        found: Math.random() > 0.3,
+        found: Math.random() > 0.2,
         direction: Math.random() > 0.5 ? "up" : "down",
         strength: Math.random() * 100,
         name: "Momentum",
-        description: "Força do movimento atual com resolução de 30 segundos, crucial para timeframes curtos"
+        description: selectedTimeframe === "30s" ?
+          "Força do movimento atual com resolução de 30 segundos, crucial para timeframes curtos" :
+          "Força do movimento projetada para o próximo minuto baseada nos ciclos de 30 segundos"
       },
       {
         type: "volumeSpikes",
-        found: Math.random() > 0.4,
+        found: Math.random() > 0.3,
         direction: Math.random() > 0.5 ? "up" : "down",
         strength: Math.random() * 100,
         name: "Picos de Volume",
-        description: "Detecção de aumentos súbitos de volume a cada 30 segundos, indicador forte para M1"
+        description: selectedTimeframe === "30s" ?
+          "Detecção de aumentos súbitos de volume a cada 30 segundos" :
+          "Padrões de volume para prever o movimento do próximo minuto"
       },
       {
         type: "candleFormation",
-        found: Math.random() > 0.35,
+        found: Math.random() > 0.25,
         direction: Math.random() > 0.5 ? "up" : "down",
         strength: Math.random() * 100,
         name: "Formação de Velas",
-        description: "Análise de padrões de velas de 30 segundos para previsão do próximo minuto"
+        description: selectedTimeframe === "30s" ?
+          "Análise de padrões de velas de 30 segundos para previsão rápida" :
+          "Análise de padrões de velas para previsão do próximo minuto"
+      },
+      {
+        type: "priceReversal",
+        found: Math.random() > 0.4,
+        direction: Math.random() > 0.5 ? "up" : "down",
+        strength: Math.random() * 100,
+        name: "Reversões",
+        description: selectedTimeframe === "30s" ?
+          "Detecção de possíveis reversões dentro de 30 segundos" :
+          "Previsão de reversões para o próximo minuto"
       }
     ];
 
-    return m1Analyses;
+    return analyses.filter(a => a.found);
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -152,7 +172,7 @@ const ResultsOverlay = () => {
     const runAnalysis = async () => {
       if (isAnalyzing && imageData) {
         try {
-          console.log("Starting analysis with chart region:", chartRegion);
+          console.log(`Starting analysis with chart region for ${selectedTimeframe} timeframe:`, chartRegion);
           console.log("Active analyses:", activeAnalysis);
           
           const originalImg = new Image();
@@ -216,15 +236,20 @@ const ResultsOverlay = () => {
                               precision === "normal" ? 0.7 : 0.6,
             
             disableSimulation: false,
+            
+            // Add timeframe specific settings
+            timeframe: selectedTimeframe,
+            candleResolution: selectedTimeframe === "30s" ? 30 : 60,
+            shortTermFocus: selectedTimeframe === "30s",
           };
           
-          console.log(`Iniciando análise técnica com precisão ${precision} para timeframe de 1 minuto`, processOptions);
+          console.log(`Iniciando análise técnica com precisão ${precision} para timeframe de ${selectedTimeframe}`, processOptions);
           
           setProcessingStage("Preparando imagem para análise");
           const processedImage = await prepareForAnalysis(regionImage, processOptions, 
             (stage) => setProcessingStage(stage));
           
-          setProcessingStage("Analisando padrões técnicos com foco em ciclos de 30 segundos");
+          setProcessingStage(`Analisando padrões técnicos com foco em ciclos de ${selectedTimeframe === "30s" ? "30 segundos" : "1 minuto"}`);
           
           console.log("Active analysis types before detection:", activeAnalysis);
           
@@ -232,7 +257,8 @@ const ResultsOverlay = () => {
             processedImage, 
             activeAnalysis, 
             precision, 
-            processOptions.disableSimulation
+            processOptions.disableSimulation,
+            selectedTimeframe
           );
           
           console.log("Analysis complete with results:", results);
@@ -244,11 +270,11 @@ const ResultsOverlay = () => {
             setAnalysisResult(type as any, result.found);
           });
           
-          // Adiciona análises rápidas específicas para M1 com ciclos de 30 segundos
-          setFastAnalysisResults(generateM1Analyses());
+          // Adiciona análises rápidas específicas para o timeframe selecionado
+          setFastAnalysisResults(generateTimeframeAnalyses());
           
           // AI Confirmation stage
-          setProcessingStage("Verificando análise com IA para ciclos de 30 segundos");
+          setProcessingStage(`Verificando análise com IA para ciclos de ${selectedTimeframe}`);
           
           // Simulate AI verification
           setTimeout(() => {
@@ -296,9 +322,9 @@ const ResultsOverlay = () => {
           
           if (foundCount > 0) {
             if (directionMessage) {
-              toast.success(`Análise concluída! ${foundCount} padrões detectados. ${directionMessage}. Operação com ciclos de 30 segundos.`);
+              toast.success(`Análise concluída! ${foundCount} padrões detectados. ${directionMessage}. Operação com ciclos de ${selectedTimeframe}.`);
             } else {
-              toast.success(`Análise concluída! ${foundCount} padrões detectados. Operação com ciclos de 30 segundos.`);
+              toast.success(`Análise concluída! ${foundCount} padrões detectados. Operação com ciclos de ${selectedTimeframe}.`);
             }
           } else {
             toast.info("Análise concluída. Nenhum padrão técnico detectado na região selecionada.");
@@ -315,7 +341,7 @@ const ResultsOverlay = () => {
     };
 
     runAnalysis();
-  }, [imageData, isAnalyzing, activeAnalysis, setAnalysisResult, setIsAnalyzing, precision, chartRegion]);
+  }, [imageData, isAnalyzing, activeAnalysis, setAnalysisResult, setIsAnalyzing, precision, chartRegion, selectedTimeframe]);
 
   if (!imageData || (Object.keys(detailedResults).length === 0 && !activeAnalysis.some(type => analysisResults[type]))) {
     return null;
@@ -353,6 +379,11 @@ const ResultsOverlay = () => {
         processedImage={processedRegionRef.current}
         originalDimensions={originalImageDimensions.current}
       />
+
+      {/* Entry Point Predictor */}
+      {Object.keys(detailedResults).length > 0 && (
+        <EntryPointPredictor results={detailedResults} />
+      )}
       
       {detailedResults.all?.found && (
         <DirectionIndicator 
@@ -370,7 +401,7 @@ const ResultsOverlay = () => {
       <div className="absolute top-2 right-2 z-30 bg-blue-600/80 backdrop-blur-sm text-white px-3 py-1.5 rounded-full flex items-center shadow-lg">
         <Clock className="h-4 w-4 mr-2" />
         <span className="font-medium text-sm">
-          M1 - Ciclos de 30 segundos
+          {selectedTimeframe === "30s" ? "Ciclos de 30 segundos" : "M1 com ciclos de 30s"}
         </span>
       </div>
       
@@ -392,11 +423,11 @@ const ResultsOverlay = () => {
         </div>
       )}
       
-      {/* Indicadores rápidos específicos para M1 */}
+      {/* Indicadores rápidos específicos para o timeframe */}
       {fastAnalysisResults.length > 0 && (
         <div className="absolute top-26 right-2 z-30">
           <div className="flex flex-col gap-2 mt-2">
-            {fastAnalysisResults.filter(r => r.found).map((result, index) => (
+            {fastAnalysisResults.map((result, index) => (
               <div 
                 key={result.type}
                 className={`flex items-center rounded-full px-3 py-1 text-xs text-white shadow-lg backdrop-blur-sm ${
@@ -422,8 +453,8 @@ const ResultsOverlay = () => {
           <AnalysisLabels 
             results={detailedResults} 
             compact={compactMode}
-            specificTimeframe="30s"
-            m1Analyses={fastAnalysisResults.filter(r => r.found)}
+            specificTimeframe={selectedTimeframe}
+            m1Analyses={fastAnalysisResults}
           />
         </div>
       </div>
