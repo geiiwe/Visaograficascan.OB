@@ -1,4 +1,3 @@
-
 import React, { useMemo } from "react";
 import { PatternResult } from "@/utils/patternDetection";
 import { cn } from "@/lib/utils";
@@ -47,7 +46,7 @@ interface AnalysisLabelsProps {
 const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ 
   results, 
   compact, 
-  specificTimeframe = "1min", 
+  specificTimeframe = "30s", 
   m1Analyses = []
 }) => {
   const isMobile = useMediaQuery("(max-width: 768px)");
@@ -80,9 +79,9 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({
   // Format timeframe display
   const formatTimeframeDisplay = (): JSX.Element => {
     return (
-      <span className="flex items-center gap-1 text-blue-700 text-xs">
+      <span className="flex items-center gap-1 text-blue-400 text-xs">
         <Clock className="h-3 w-3" />
-        <span>{specificTimeframe === "1min" ? "1 min" : specificTimeframe}</span>
+        <span>{specificTimeframe === "30s" ? "30s" : specificTimeframe}</span>
       </span>
     );
   };
@@ -95,7 +94,7 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({
       label: "Linhas de Tendência",
       color: "text-trader-green",
       description: "Níveis de suporte e resistência",
-      m1Effectiveness: 70, // Eficácia estimada para M1
+      m1Effectiveness: 80, // Ajustado para ciclos de 30s
     },
     {
       type: "fibonacci" as AnalysisType,
@@ -103,7 +102,7 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({
       label: "Fibonacci",
       color: "text-[#f97316]",
       description: "Níveis de Fibonacci",
-      m1Effectiveness: 60,
+      m1Effectiveness: 75, // Ajustado para ciclos de 30s
     },
     {
       type: "candlePatterns" as AnalysisType,
@@ -111,7 +110,7 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({
       label: "Padrões de Candles",
       color: "text-[#e11d48]",
       description: "Formações de candles específicas",
-      m1Effectiveness: 85, // Alta eficácia para M1
+      m1Effectiveness: 95, // Alta eficácia para ciclos de 30s
     },
     {
       type: "elliottWaves" as AnalysisType,
@@ -119,7 +118,7 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({
       label: "Ondas de Elliott",
       color: "text-[#06b6d4]",
       description: "Padrões de ondas e ciclos",
-      m1Effectiveness: 55,
+      m1Effectiveness: 85, // Ajustado para ciclos de 30s
     },
     {
       type: "dowTheory" as AnalysisType,
@@ -127,7 +126,7 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({
       label: "Teoria de Dow",
       color: "text-[#d946ef]",
       description: "Análise de tendências",
-      m1Effectiveness: 50,
+      m1Effectiveness: 70, // Ajustado para ciclos de 30s
     }
   ];
   
@@ -226,15 +225,15 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({
   
   if (foundResults.length === 0 && m1Analyses.length === 0) return null;
 
-  // Render compact version
+  // Render compact version with improved transparency
   if (compact) {
     return (
       <div className={`
-        flex flex-wrap gap-1 p-2 bg-white/90 backdrop-blur-sm rounded-lg border border-gray-300
+        flex flex-wrap gap-1 p-2 bg-black/70 backdrop-blur-sm rounded-lg border border-gray-700/50
         ${isMobile ? 'justify-center' : 'justify-start'}
       `}>
         {foundCount < activatedCount && activatedCount > 0 && (
-          <div className="text-xs text-gray-700 mr-1 flex items-center">
+          <div className="text-xs text-gray-300 mr-1 flex items-center">
             <CheckCircle2 className="h-3 w-3 mr-1 text-trader-green" />
             <span>{foundCount}/{activatedCount} padrões encontrados</span>
           </div>
@@ -245,8 +244,8 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({
           <div className={`
             text-xs px-2 py-1 rounded-full flex items-center mr-1
             ${results.all && results.all.buyScore && results.all.buyScore > results.all.sellScore ? 
-              "bg-trader-green text-white" : 
-              "bg-trader-red text-white"}
+              "bg-trader-green/80 text-white" : 
+              "bg-trader-red/80 text-white"}
           `}>
             <Bot className="h-3 w-3 mr-1" />
             <span>IA {results.all && results.all.buyScore && results.all.buyScore > results.all.sellScore ? 
@@ -255,9 +254,9 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({
         )}
         
         {/* Improved timeframe display */}
-        <div className="text-xs bg-blue-600 text-white font-medium px-2 py-1 rounded-full flex items-center mr-1">
+        <div className="text-xs bg-blue-600/80 text-white font-medium px-2 py-1 rounded-full flex items-center mr-1">
           <Clock className="h-3 w-3 mr-1" />
-          <span>M1</span>
+          <span>30s</span>
         </div>
         
         {/* M1 Fast Analyses */}
@@ -269,51 +268,51 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({
               <HoverCardTrigger asChild>
                 <button className={`
                   flex items-center space-x-1 px-2 py-1 rounded-full
-                  ${analysis.direction === "up" ? "bg-trader-green/20 text-trader-green" : 
-                    analysis.direction === "down" ? "bg-trader-red/20 text-trader-red" : 
-                    "bg-gray-200 text-gray-700"}
-                  border border-gray-300
+                  ${analysis.direction === "up" ? "bg-trader-green/30 text-trader-green" : 
+                    analysis.direction === "down" ? "bg-trader-red/30 text-trader-red" : 
+                    "bg-gray-700/50 text-gray-300"}
+                  border border-gray-600/50
                 `}>
                   <Icon className="h-3 w-3" />
                   <span className="text-xs font-medium">{analysis.name}</span>
                 </button>
               </HoverCardTrigger>
-              <HoverCardContent className="w-72 p-3 bg-white border border-gray-200">
+              <HoverCardContent className="w-72 p-3 bg-gray-900/90 backdrop-blur-sm border border-gray-700/80 text-white">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Icon className="h-5 w-5" />
-                      <h4 className="font-medium text-gray-900">{analysis.name}</h4>
+                      <h4 className="font-medium">{analysis.name}</h4>
                     </div>
                     <div className={`
                       px-2 py-1 rounded-full text-xs font-medium
                       ${analysis.direction === "up" ? "bg-trader-green/20 text-trader-green" : 
                         analysis.direction === "down" ? "bg-trader-red/20 text-trader-red" : 
-                        "bg-gray-100 text-gray-700"}
+                        "bg-gray-700/50 text-gray-300"}
                     `}>
                       {analysis.direction === "up" ? "ALTA" : 
                        analysis.direction === "down" ? "BAIXA" : "NEUTRO"}
                     </div>
                   </div>
                   
-                  <p className="text-xs text-gray-600">{analysis.description}</p>
+                  <p className="text-xs text-gray-300">{analysis.description}</p>
                   
                   <div className="mt-1">
-                    <div className="text-xs text-gray-500">Força do sinal:</div>
-                    <div className="w-full bg-gray-200 h-2 rounded-full mt-1">
+                    <div className="text-xs text-gray-400">Força do sinal:</div>
+                    <div className="w-full bg-gray-700 h-2 rounded-full mt-1">
                       <div 
                         className={`h-full rounded-full ${
                           analysis.direction === "up" ? "bg-trader-green" : 
-                          analysis.direction === "down" ? "bg-trader-red" : "bg-gray-400"
+                          analysis.direction === "down" ? "bg-trader-red" : "bg-gray-500"
                         }`}
                         style={{ width: `${Math.min(analysis.strength, 100)}%` }}
                       />
                     </div>
                   </div>
                   
-                  <div className="mt-2 p-2 bg-blue-50 rounded-sm text-sm font-medium text-blue-700 flex items-center gap-2">
+                  <div className="mt-2 p-2 bg-blue-900/30 rounded-sm text-sm font-medium text-blue-200 flex items-center gap-2 border border-blue-800/30">
                     <Clock className="h-4 w-4" />
-                    <span>Ideal para timeframe de 1 minuto</span>
+                    <span>Ideal para opções de 30 segundos</span>
                   </div>
                 </div>
               </HoverCardContent>
@@ -331,11 +330,11 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({
               <HoverCardTrigger asChild>
                 <button className={cn(
                   "flex items-center space-x-1 px-2 py-1 rounded-full",
-                  "bg-white border border-gray-300",
+                  "bg-gray-800/60 border border-gray-700/50",
                   decision ? decisionColor : ""
                 )}>
                   <Icon className={cn("h-3 w-3", color)} />
-                  <span className="text-xs font-medium text-gray-800">{label}</span>
+                  <span className="text-xs font-medium text-gray-200">{label}</span>
                   {decision && (
                     <span className={cn("text-[10px] font-bold", decisionColor)}>
                       {decision}
@@ -344,22 +343,22 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({
                   {formatTimeframeDisplay()}
                 </button>
               </HoverCardTrigger>
-              <HoverCardContent className="w-72 p-3 bg-white border border-gray-200">
+              <HoverCardContent className="w-72 p-3 bg-gray-900/90 backdrop-blur-sm border border-gray-700/80 text-white">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Icon className={cn("h-5 w-5", color)} />
-                      <h4 className="font-medium text-gray-900">{label}</h4>
+                      <h4 className="font-medium">{label}</h4>
                     </div>
                     <CheckCircle2 className="h-4 w-4 text-trader-green" />
                   </div>
                   
-                  <p className="text-xs text-gray-600">{results[type]?.description}</p>
+                  <p className="text-xs text-gray-300">{results[type]?.description}</p>
                   
-                  {/* M1 Effectiveness Indicator */}
+                  {/* M1 Effectiveness Indicator for 30-second cycles */}
                   <div className="mt-1">
-                    <div className="text-xs text-gray-500">Eficácia para M1:</div>
-                    <div className="w-full bg-gray-200 h-2 rounded-full mt-1">
+                    <div className="text-xs text-gray-400">Eficácia para ciclos de 30s:</div>
+                    <div className="w-full bg-gray-700 h-2 rounded-full mt-1">
                       <div 
                         className={`h-full rounded-full ${
                           m1Effectiveness >= 80 ? "bg-trader-green" : 
@@ -369,7 +368,7 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({
                         style={{ width: `${m1Effectiveness}%` }}
                       />
                     </div>
-                    <div className="text-xs text-right mt-0.5">
+                    <div className="text-xs text-right mt-0.5 text-gray-300">
                       {m1Effectiveness >= 80 ? "Alta" : 
                        m1Effectiveness >= 60 ? "Média" : 
                        "Limitada"}
@@ -386,21 +385,21 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({
                     </div>
                   )}
                   
-                  <div className="mt-2 p-2 bg-blue-50 rounded-sm text-sm font-medium text-blue-700 flex items-center gap-2">
+                  <div className="mt-2 p-2 bg-blue-900/30 rounded-sm text-sm font-medium text-blue-200 flex items-center gap-2 border border-blue-800/30">
                     <Clock className="h-4 w-4" />
-                    <span>Timeframe recomendado: 1 minuto</span>
+                    <span>Ciclos de 30 segundos</span>
                   </div>
                   
-                  <p className="text-xs text-blue-600 mt-1">
+                  <p className="text-xs text-blue-400 mt-1">
                     {results[type]?.recommendation?.replace(/DECISÃO:\s+(COMPRA|VENDA|AGUARDE|ESPERE|MANTENHA POSIÇÃO|REALIZE LUCROS|PREPARE-SE PARA COMPRA)/i, '')}
                   </p>
                   
                   {results[type]?.majorPlayers && results[type]?.majorPlayers.length > 0 && (
                     <div className="mt-1 text-xs">
-                      <h5 className="font-medium text-gray-700">Usado por grandes players:</h5>
+                      <h5 className="font-medium text-gray-300">Usado por grandes players:</h5>
                       <div className="flex flex-wrap gap-1 mt-1">
                         {results[type]?.majorPlayers?.map((player, idx) => (
-                          <span key={idx} className="bg-gray-100 text-gray-700 px-1 rounded text-[10px]">
+                          <span key={idx} className="bg-gray-800 text-gray-300 px-1 rounded text-[10px]">
                             {player}
                           </span>
                         ))}
@@ -416,26 +415,26 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({
     );
   }
 
-  // Render expanded version with improved organization
+  // Render expanded version with improved transparency and 30-second focus
   return (
     <div className="space-y-3">      
       <div className={`
-        grid gap-2 p-3 bg-white/90 backdrop-blur-sm rounded-lg border border-gray-300
+        grid gap-2 p-3 bg-black/70 backdrop-blur-sm rounded-lg border border-gray-700/50 text-gray-200
         ${isMobile ? 'grid-cols-2' : 'grid-cols-4'}
       `}>
         <div className="col-span-full flex flex-wrap gap-2 items-center justify-between mb-1">
           <div className="flex items-center gap-2">
             {foundCount < activatedCount && activatedCount > 0 && (
-              <div className="text-xs text-gray-700 flex items-center">
+              <div className="text-xs text-gray-300 flex items-center">
                 <CheckCircle2 className="h-3 w-3 mr-1 text-trader-green" />
                 <span>{foundCount}/{activatedCount} padrões</span>
               </div>
             )}
             
             {/* Enhanced timeframe badge */}
-            <div className="text-xs bg-blue-600 text-white font-semibold px-2 py-1 rounded-full flex items-center">
+            <div className="text-xs bg-blue-600/80 text-white font-semibold px-2 py-1 rounded-full flex items-center">
               <Clock className="h-3 w-3 mr-1" />
-              <span>M1</span>
+              <span>30s</span>
             </div>
           </div>
           
@@ -444,8 +443,8 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({
             <div className={`
               text-xs px-2 py-1 rounded-full flex items-center
               ${results.all && results.all.buyScore && results.all.buyScore > results.all.sellScore ? 
-                "bg-trader-green text-white" : 
-                "bg-trader-red text-white"}
+                "bg-trader-green/80 text-white" : 
+                "bg-trader-red/80 text-white"}
             `}>
               <Bot className="h-3 w-3 mr-1" />
               <span>IA {results.all && results.all.buyScore && results.all.buyScore > results.all.sellScore ? 

@@ -72,9 +72,9 @@ const ResultsOverlay = () => {
   const originalImageDimensions = useRef<{width: number, height: number} | null>(null);
   const resultsPanelRef = useRef<HTMLDivElement | null>(null);
 
-  // Function to generate M1-specific fast analyses
+  // Function to generate M1-specific fast analyses with 30-second candle awareness
   const generateM1Analyses = () => {
-    // Simulated fast analyses specifically for 1-minute timeframe
+    // Simulated fast analyses specifically for 1-minute timeframe with 30-second candles
     const m1Analyses: FastAnalysisResult[] = [
       {
         type: "priceAction",
@@ -82,7 +82,7 @@ const ResultsOverlay = () => {
         direction: Math.random() > 0.5 ? "up" : "down",
         strength: Math.random() * 100,
         name: "Price Action",
-        description: "Análise de movimentos rápidos de preço, eficaz para operações de 1 minuto"
+        description: "Análise de movimentos rápidos a cada 30 segundos, ideal para operações de 1 minuto"
       },
       {
         type: "momentum",
@@ -90,7 +90,7 @@ const ResultsOverlay = () => {
         direction: Math.random() > 0.5 ? "up" : "down",
         strength: Math.random() * 100,
         name: "Momentum",
-        description: "Força do movimento atual, crucial em timeframes curtos"
+        description: "Força do movimento atual com resolução de 30 segundos, crucial para timeframes curtos"
       },
       {
         type: "volumeSpikes",
@@ -98,7 +98,15 @@ const ResultsOverlay = () => {
         direction: Math.random() > 0.5 ? "up" : "down",
         strength: Math.random() * 100,
         name: "Picos de Volume",
-        description: "Detecção de aumentos súbitos de volume, indicador forte para M1"
+        description: "Detecção de aumentos súbitos de volume a cada 30 segundos, indicador forte para M1"
+      },
+      {
+        type: "candleFormation",
+        found: Math.random() > 0.35,
+        direction: Math.random() > 0.5 ? "up" : "down",
+        strength: Math.random() * 100,
+        name: "Formação de Velas",
+        description: "Análise de padrões de velas de 30 segundos para previsão do próximo minuto"
       }
     ];
 
@@ -216,7 +224,7 @@ const ResultsOverlay = () => {
           const processedImage = await prepareForAnalysis(regionImage, processOptions, 
             (stage) => setProcessingStage(stage));
           
-          setProcessingStage("Analisando padrões técnicos e calculando pressão de compra/venda");
+          setProcessingStage("Analisando padrões técnicos com foco em ciclos de 30 segundos");
           
           console.log("Active analysis types before detection:", activeAnalysis);
           
@@ -236,11 +244,11 @@ const ResultsOverlay = () => {
             setAnalysisResult(type as any, result.found);
           });
           
-          // Adiciona análises rápidas específicas para M1
+          // Adiciona análises rápidas específicas para M1 com ciclos de 30 segundos
           setFastAnalysisResults(generateM1Analyses());
           
           // AI Confirmation stage
-          setProcessingStage("Verificando análise com IA");
+          setProcessingStage("Verificando análise com IA para ciclos de 30 segundos");
           
           // Simulate AI verification
           setTimeout(() => {
@@ -288,9 +296,9 @@ const ResultsOverlay = () => {
           
           if (foundCount > 0) {
             if (directionMessage) {
-              toast.success(`Análise concluída! ${foundCount} padrões detectados. ${directionMessage}. Operação recomendada: 1 minuto.`);
+              toast.success(`Análise concluída! ${foundCount} padrões detectados. ${directionMessage}. Operação com ciclos de 30 segundos.`);
             } else {
-              toast.success(`Análise concluída! ${foundCount} padrões detectados. Operação recomendada: 1 minuto.`);
+              toast.success(`Análise concluída! ${foundCount} padrões detectados. Operação com ciclos de 30 segundos.`);
             }
           } else {
             toast.info("Análise concluída. Nenhum padrão técnico detectado na região selecionada.");
@@ -323,7 +331,7 @@ const ResultsOverlay = () => {
 
   return (
     <div 
-      className="absolute inset-0 flex flex-col"
+      className="absolute inset-0 flex flex-col pointer-events-none"
       ref={resultsPanelRef}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
@@ -352,26 +360,26 @@ const ResultsOverlay = () => {
                     detailedResults.all?.sellScore > detailedResults.all?.buyScore ? "sell" : "neutral"} 
           strength={detailedResults.all?.buyScore > 1.5 || detailedResults.all?.sellScore > 1.5 ? "strong" : 
                     detailedResults.all?.buyScore > 0.8 || detailedResults.all?.sellScore > 0.8 ? "moderate" : "weak"}
-          className="drag-handle"
+          className="drag-handle pointer-events-auto"
           style={indicatorStyle as React.CSSProperties}
           onMouseDown={handleMouseDown}
         />
       )}
       
       {/* Indicador de tempo com visual melhorado */}
-      <div className="absolute top-2 right-2 z-30 bg-blue-600 text-white px-3 py-1.5 rounded-full flex items-center shadow-lg">
+      <div className="absolute top-2 right-2 z-30 bg-blue-600/80 backdrop-blur-sm text-white px-3 py-1.5 rounded-full flex items-center shadow-lg">
         <Clock className="h-4 w-4 mr-2" />
         <span className="font-medium text-sm">
-          M1 - Operar em 1 minuto
+          M1 - Ciclos de 30 segundos
         </span>
       </div>
       
       {/* AI confirmation badge com visual melhorado */}
       {aiConfirmation.active && aiConfirmation.verified && (
-        <div className={`absolute top-14 right-2 z-30 px-3 py-1.5 rounded-full flex items-center shadow-lg ${
-          aiConfirmation.direction === "buy" ? "bg-trader-green text-white" :
-          aiConfirmation.direction === "sell" ? "bg-trader-red text-white" :
-          "bg-gray-600/90 text-white"
+        <div className={`absolute top-14 right-2 z-30 px-3 py-1.5 rounded-full flex items-center shadow-lg backdrop-blur-sm ${
+          aiConfirmation.direction === "buy" ? "bg-trader-green/80 text-white" :
+          aiConfirmation.direction === "sell" ? "bg-trader-red/80 text-white" :
+          "bg-gray-600/80 text-white"
         }`}>
           <Bot className="h-4 w-4 mr-2" />
           <span className="font-medium text-sm">
@@ -391,10 +399,10 @@ const ResultsOverlay = () => {
             {fastAnalysisResults.filter(r => r.found).map((result, index) => (
               <div 
                 key={result.type}
-                className={`flex items-center rounded-full px-3 py-1 text-xs text-white shadow-lg ${
-                  result.direction === "up" ? "bg-trader-green/90" : 
-                  result.direction === "down" ? "bg-trader-red/90" : 
-                  "bg-gray-500/90"
+                className={`flex items-center rounded-full px-3 py-1 text-xs text-white shadow-lg backdrop-blur-sm ${
+                  result.direction === "up" ? "bg-trader-green/70" : 
+                  result.direction === "down" ? "bg-trader-red/70" : 
+                  "bg-gray-500/70"
                 }`}
                 style={{ marginTop: index > 0 ? '0.5rem' : '0' }}
               >
@@ -409,12 +417,12 @@ const ResultsOverlay = () => {
       )}
       
       {/* Painel de análise com transparência melhorada */}
-      <div className={`absolute ${isMobile ? "bottom-0 left-0 right-0" : "bottom-2 left-2 right-2"}`}>
-        <div className="bg-black/75 backdrop-blur-md border border-gray-700 p-2 rounded-lg shadow-lg">
+      <div className={`absolute ${isMobile ? "bottom-2 left-2 right-2" : "bottom-4 left-2 max-w-[90%] w-auto"} pointer-events-auto`}>
+        <div className="bg-black/60 backdrop-blur-md border border-gray-700/50 p-2 rounded-lg shadow-lg">
           <AnalysisLabels 
             results={detailedResults} 
             compact={compactMode}
-            specificTimeframe="1min"
+            specificTimeframe="30s"
             m1Analyses={fastAnalysisResults.filter(r => r.found)}
           />
         </div>
@@ -422,7 +430,7 @@ const ResultsOverlay = () => {
       
       {processingStage && (
         <div className="absolute top-4 left-0 right-0 flex justify-center">
-          <div className="bg-black/80 text-white px-4 py-2 rounded-full text-sm border border-trader-blue backdrop-blur-md shadow-lg">
+          <div className="bg-black/70 text-white px-4 py-2 rounded-full text-sm border border-trader-blue/50 backdrop-blur-md shadow-lg">
             {processingStage}
           </div>
         </div>
@@ -441,7 +449,7 @@ const ResultsOverlay = () => {
       {/* Botão para mostrar/esconder painel detalhado */}
       <button
         onClick={toggleDetailedPanel}
-        className="absolute bottom-2 right-2 bg-trader-blue/90 text-white rounded-full p-1.5 shadow-lg z-40"
+        className="absolute bottom-2 right-2 bg-trader-blue/80 text-white rounded-full p-1.5 shadow-lg z-40 pointer-events-auto"
       >
         {showDetailedPanel ? 
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

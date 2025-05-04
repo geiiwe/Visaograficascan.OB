@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from "react";
 import { useAnalyzer } from "@/context/AnalyzerContext";
 import CameraView from "./CameraView";
@@ -149,7 +148,7 @@ const GraphAnalyzer = () => {
       
       <div className="relative">
         <div className="flex justify-between items-center mb-2">
-          <h2 className="text-lg font-medium text-white">Análise de Gráficos</h2>
+          <h2 className="text-lg font-medium text-white">Análise de Gráficos (30s)</h2>
           
           <div className="flex items-center gap-2">
             <TooltipProvider>
@@ -225,12 +224,12 @@ const GraphAnalyzer = () => {
                   alt="Região do Gráfico" 
                   className="w-full object-contain" 
                 />
-                <div className="absolute top-0 right-0 bg-trader-blue text-white text-xs px-2 py-1 rounded-bl-md">
+                <div className="absolute top-0 right-0 bg-trader-blue/80 text-white text-xs px-2 py-1 rounded-bl-md backdrop-blur-sm">
                   Região selecionada
                 </div>
                 
                 {/* Show image dimensions for better feedback */}
-                <div className="absolute bottom-0 left-0 bg-black/80 text-white text-xs px-2 py-1 rounded-tr-md">
+                <div className="absolute bottom-0 left-0 bg-black/70 text-white text-xs px-2 py-1 rounded-tr-md backdrop-blur-sm">
                   {chartRegion.width} x {chartRegion.height}px
                 </div>
               </div>
@@ -271,11 +270,10 @@ const GraphAnalyzer = () => {
             <p className="mt-4 text-white font-medium">Analisando padrões do gráfico...</p>
             <p className="text-sm text-trader-gray mt-2">
               {precision === "alta" 
-                ? "Análise detalhada em andamento. Isso pode levar mais tempo para maior precisão."
+                ? "Análise detalhada em andamento. Considerando ciclos de 30 segundos para maior precisão."
                 : precision === "baixa"
-                  ? "Análise rápida em andamento."
-                  : "Análise em andamento. Isso pode levar alguns instantes."
-              }
+                  ? "Análise rápida em andamento. Identificando ciclos de 30 segundos."
+                  : "Análise em andamento. Processando ciclos de 30 segundos."}
             </p>
           </div>
         </div>
