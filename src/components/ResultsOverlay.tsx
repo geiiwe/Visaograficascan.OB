@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from "react";
 import { useAnalyzer } from "@/context/AnalyzerContext";
 import { detectPatterns, PatternResult } from "@/utils/patternDetection";
@@ -359,8 +358,8 @@ const ResultsOverlay = () => {
         />
       )}
       
-      {/* Novo painel de indicador de tempo */}
-      <div className="absolute top-2 right-2 z-30 bg-blue-600 text-white px-3 py-1.5 rounded-full flex items-center shadow-md animate-pulse">
+      {/* Indicador de tempo com visual melhorado */}
+      <div className="absolute top-2 right-2 z-30 bg-blue-600 text-white px-3 py-1.5 rounded-full flex items-center shadow-lg">
         <Clock className="h-4 w-4 mr-2" />
         <span className="font-medium text-sm">
           M1 - Operar em 1 minuto
@@ -369,10 +368,10 @@ const ResultsOverlay = () => {
       
       {/* AI confirmation badge com visual melhorado */}
       {aiConfirmation.active && aiConfirmation.verified && (
-        <div className={`absolute top-14 right-2 z-30 px-3 py-1.5 rounded-full flex items-center shadow-md ${
+        <div className={`absolute top-14 right-2 z-30 px-3 py-1.5 rounded-full flex items-center shadow-lg ${
           aiConfirmation.direction === "buy" ? "bg-trader-green text-white" :
           aiConfirmation.direction === "sell" ? "bg-trader-red text-white" :
-          "bg-gray-100 text-gray-700"
+          "bg-gray-600/90 text-white"
         }`}>
           <Bot className="h-4 w-4 mr-2" />
           <span className="font-medium text-sm">
@@ -392,7 +391,7 @@ const ResultsOverlay = () => {
             {fastAnalysisResults.filter(r => r.found).map((result, index) => (
               <div 
                 key={result.type}
-                className={`flex items-center rounded-full px-3 py-1 text-xs text-white shadow-md ${
+                className={`flex items-center rounded-full px-3 py-1 text-xs text-white shadow-lg ${
                   result.direction === "up" ? "bg-trader-green/90" : 
                   result.direction === "down" ? "bg-trader-red/90" : 
                   "bg-gray-500/90"
@@ -409,8 +408,9 @@ const ResultsOverlay = () => {
         </div>
       )}
       
+      {/* Painel de análise com transparência melhorada */}
       <div className={`absolute ${isMobile ? "bottom-0 left-0 right-0" : "bottom-2 left-2 right-2"}`}>
-        <div className="bg-white/95 backdrop-blur-sm border border-gray-200 p-2 rounded-lg shadow-lg">
+        <div className="bg-black/75 backdrop-blur-md border border-gray-700 p-2 rounded-lg shadow-lg">
           <AnalysisLabels 
             results={detailedResults} 
             compact={compactMode}
@@ -422,7 +422,7 @@ const ResultsOverlay = () => {
       
       {processingStage && (
         <div className="absolute top-4 left-0 right-0 flex justify-center">
-          <div className="bg-white/90 text-black px-4 py-2 rounded-full text-sm border border-gray-300 backdrop-blur-sm shadow-lg">
+          <div className="bg-black/80 text-white px-4 py-2 rounded-full text-sm border border-trader-blue backdrop-blur-md shadow-lg">
             {processingStage}
           </div>
         </div>
@@ -438,10 +438,10 @@ const ResultsOverlay = () => {
         </div>
       )}
       
-      {/* Novo botão para mostrar/esconder painel detalhado */}
+      {/* Botão para mostrar/esconder painel detalhado */}
       <button
         onClick={toggleDetailedPanel}
-        className="absolute bottom-2 right-2 bg-trader-panel text-white rounded-full p-1.5 shadow-lg z-40"
+        className="absolute bottom-2 right-2 bg-trader-blue/90 text-white rounded-full p-1.5 shadow-lg z-40"
       >
         {showDetailedPanel ? 
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

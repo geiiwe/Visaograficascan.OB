@@ -9,7 +9,7 @@ const Index = () => {
   return (
     <AnalyzerProvider>
       <div className="min-h-screen bg-trader-dark">
-        <header className="bg-trader-panel py-3 px-4 shadow-md">
+        <header className="bg-trader-panel/90 backdrop-blur-sm py-3 px-4 shadow-md border-b border-trader-blue/20">
           <div className="flex items-center justify-between max-w-4xl mx-auto">
             <div className="flex items-center space-x-2">
               <ChartLine className="h-6 w-6 text-trader-blue" />
@@ -17,7 +17,7 @@ const Index = () => {
             </div>
             <div className="flex items-center space-x-1 text-trader-gray text-sm">
               <Camera className="h-4 w-4" />
-              <span>v1.4</span>
+              <span>v1.5</span>
               <span className="ml-2 bg-trader-blue/20 text-trader-blue text-xs px-2 py-0.5 rounded-full">PRO</span>
             </div>
           </div>
@@ -27,9 +27,9 @@ const Index = () => {
           <GraphAnalyzer />
           <DisclaimerAlert showOnStartup={true} />
           
-          {/* Educational Tooltip Section */}
+          {/* Educational Tooltip Section com transparência melhorada */}
           <div className="max-w-4xl mx-auto px-4 mt-4">
-            <div className="bg-trader-panel rounded-lg p-4 border-l-4 border-trader-blue">
+            <div className="bg-trader-panel/80 backdrop-blur-sm rounded-lg p-4 border-l-4 border-trader-blue shadow-md">
               <div className="flex items-start">
                 <HelpCircle className="h-5 w-5 text-trader-blue mr-3 flex-shrink-0 mt-0.5" />
                 <div>
@@ -46,26 +46,26 @@ const Index = () => {
           </div>
         </main>
 
-        <footer className="py-4">
-          <div className="max-w-4xl mx-auto px-4 text-center">
+        <footer className="py-4 mt-4">
+          <div className="max-w-4xl mx-auto px-4">
             <div className="text-trader-gray text-sm">
-              <p className="mb-2">
+              <p className="mb-2 text-center">
                 Aponte sua câmera para qualquer gráfico financeiro para detectar padrões e indicadores utilizados pelos grandes players do mercado
               </p>
               
-              {/* Trust Badges */}
+              {/* Cards melhorados com transparência */}
               <div className="grid grid-cols-3 gap-3 my-6">
-                <div className="flex flex-col items-center justify-center bg-trader-panel p-4 rounded-lg">
+                <div className="flex flex-col items-center justify-center bg-trader-panel/70 backdrop-blur-sm p-4 rounded-lg border border-trader-blue/10 shadow-md">
                   <ShieldCheck className="h-7 w-7 mb-2 text-trader-blue" />
                   <h3 className="font-medium text-white">Análise Segura</h3>
                   <p className="text-xs text-trader-gray mt-1">Tecnologia confiável para traders profissionais</p>
                 </div>
-                <div className="flex flex-col items-center justify-center bg-trader-panel p-4 rounded-lg">
+                <div className="flex flex-col items-center justify-center bg-trader-panel/70 backdrop-blur-sm p-4 rounded-lg border border-trader-green/10 shadow-md">
                   <Award className="h-7 w-7 mb-2 text-trader-green" />
                   <h3 className="font-medium text-white">85% de Precisão</h3>
                   <p className="text-xs text-trader-gray mt-1">Algoritmos avançados testados por especialistas</p>
                 </div>
-                <div className="flex flex-col items-center justify-center bg-trader-panel p-4 rounded-lg">
+                <div className="flex flex-col items-center justify-center bg-trader-panel/70 backdrop-blur-sm p-4 rounded-lg border border-trader-yellow/10 shadow-md">
                   <Clock className="h-7 w-7 mb-2 text-trader-yellow" />
                   <h3 className="font-medium text-white">Análise em Tempo Real</h3>
                   <p className="text-xs text-trader-gray mt-1">Resultados instantâneos para decisões rápidas</p>
@@ -80,7 +80,7 @@ const Index = () => {
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
-                  <div className="bg-trader-panel p-4 rounded-lg">
+                  <div className="bg-trader-panel/70 backdrop-blur-sm p-4 rounded-lg border border-trader-green/20 shadow-md">
                     <div className="flex items-center space-x-2 mb-2">
                       <TrendingUp className="h-4 w-4 text-trader-green" />
                       <h4 className="font-medium text-white">Linhas de Tendência</h4>
@@ -88,7 +88,7 @@ const Index = () => {
                     <p className="text-xs text-trader-gray">Indicam direções de movimento de preços. Suportes e resistências são níveis onde o preço tende a reverter.</p>
                   </div>
                   
-                  <div className="bg-trader-panel p-4 rounded-lg">
+                  <div className="bg-trader-panel/70 backdrop-blur-sm p-4 rounded-lg border border-[#f97316]/20 shadow-md">
                     <div className="flex items-center space-x-2 mb-2">
                       <Fingerprint className="h-4 w-4 text-[#f97316]" />
                       <h4 className="font-medium text-white">Fibonacci</h4>
@@ -96,7 +96,7 @@ const Index = () => {
                     <p className="text-xs text-trader-gray">Níveis utilizados para identificar possíveis pontos de reversão, continuação e alvos de preço.</p>
                   </div>
                   
-                  <div className="bg-trader-panel p-4 rounded-lg">
+                  <div className="bg-trader-panel/70 backdrop-blur-sm p-4 rounded-lg border border-[#e11d48]/20 shadow-md">
                     <div className="flex items-center space-x-2 mb-2">
                       <CandlestickChart className="h-4 w-4 text-[#e11d48]" />
                       <h4 className="font-medium text-white">Padrões de Candles</h4>
@@ -104,7 +104,7 @@ const Index = () => {
                     <p className="text-xs text-trader-gray">Formações específicas que indicam possíveis reversões ou continuações de tendência.</p>
                   </div>
                   
-                  <div className="bg-trader-panel p-4 rounded-lg">
+                  <div className="bg-trader-panel/70 backdrop-blur-sm p-4 rounded-lg border border-[#06b6d4]/20 shadow-md">
                     <div className="flex items-center space-x-2 mb-2">
                       <TrendingDown className="h-4 w-4 text-[#06b6d4]" />
                       <h4 className="font-medium text-white">Ondas de Elliott</h4>
@@ -112,7 +112,7 @@ const Index = () => {
                     <p className="text-xs text-trader-gray">Método baseado na psicologia de massa que sugere que o mercado se move em ciclos de 5 ondas na direção da tendência principal, seguido por 3 ondas corretivas.</p>
                   </div>
                   
-                  <div className="bg-trader-panel p-4 rounded-lg">
+                  <div className="bg-trader-panel/70 backdrop-blur-sm p-4 rounded-lg border border-[#d946ef]/20 shadow-md">
                     <div className="flex items-center space-x-2 mb-2">
                       <BarChart className="h-4 w-4 text-[#d946ef]" />
                       <h4 className="font-medium text-white">Teoria de Dow</h4>
@@ -120,7 +120,7 @@ const Index = () => {
                     <p className="text-xs text-trader-gray">Teoria clássica que avalia tendências de mercado baseando-se na confirmação entre diferentes índices e no volume.</p>
                   </div>
                   
-                  <div className="bg-trader-panel p-4 rounded-lg border border-trader-yellow">
+                  <div className="bg-trader-panel/70 backdrop-blur-sm p-4 rounded-lg border border-trader-yellow/20 shadow-md">
                     <div className="flex items-center space-x-2 mb-2">
                       <AlertTriangle className="h-4 w-4 text-trader-yellow" />
                       <h4 className="font-medium text-white">Limitações</h4>
@@ -130,45 +130,48 @@ const Index = () => {
                 </div>
               </div>
               
-              {/* Available Tools Section */}
-              <div className="grid grid-cols-4 md:grid-cols-8 gap-3 mt-4">
-                <div className="flex flex-col items-center">
-                  <TrendingUp className="h-5 w-5 mb-1 text-trader-green" />
-                  <span className="text-xs">Tendências</span>
-                </div>
-                <div className="flex flex-col items-center">
-                  <LineChart className="h-5 w-5 mb-1 text-trader-blue" />
-                  <span className="text-xs">Médias Móveis</span>
-                </div>
-                <div className="flex flex-col items-center">
-                  <Activity className="h-5 w-5 mb-1 text-trader-yellow" />
-                  <span className="text-xs">RSI</span>
-                </div>
-                <div className="flex flex-col items-center">
-                  <BarChart4 className="h-5 w-5 mb-1 text-trader-purple" />
-                  <span className="text-xs">MACD</span>
-                </div>
-                <div className="flex flex-col items-center">
-                  <Fingerprint className="h-5 w-5 mb-1 text-[#f97316]" />
-                  <span className="text-xs">Fibonacci</span>
-                </div>
-                <div className="flex flex-col items-center">
-                  <CandlestickChart className="h-5 w-5 mb-1 text-[#e11d48]" />
-                  <span className="text-xs">Candles</span>
-                </div>
-                <div className="flex flex-col items-center">
-                  <TrendingDown className="h-5 w-5 mb-1 text-[#06b6d4]" />
-                  <span className="text-xs">Elliott</span>
-                </div>
-                <div className="flex flex-col items-center">
-                  <BarChart className="h-5 w-5 mb-1 text-[#d946ef]" />
-                  <span className="text-xs">Dow</span>
+              {/* Available Tools Section - Design melhorado */}
+              <div className="bg-trader-panel/40 backdrop-blur-sm rounded-lg p-4 shadow-md">
+                <h4 className="text-center text-sm text-white mb-3">Ferramentas de Análise para M1</h4>
+                <div className="grid grid-cols-4 md:grid-cols-8 gap-3">
+                  <div className="flex flex-col items-center">
+                    <TrendingUp className="h-5 w-5 mb-1 text-trader-green" />
+                    <span className="text-xs">Tendências</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <LineChart className="h-5 w-5 mb-1 text-trader-blue" />
+                    <span className="text-xs">Médias Móveis</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <Activity className="h-5 w-5 mb-1 text-trader-yellow" />
+                    <span className="text-xs">RSI</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <BarChart4 className="h-5 w-5 mb-1 text-trader-purple" />
+                    <span className="text-xs">MACD</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <Fingerprint className="h-5 w-5 mb-1 text-[#f97316]" />
+                    <span className="text-xs">Fibonacci</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <CandlestickChart className="h-5 w-5 mb-1 text-[#e11d48]" />
+                    <span className="text-xs">Candles</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <TrendingDown className="h-5 w-5 mb-1 text-[#06b6d4]" />
+                    <span className="text-xs">Elliott</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <BarChart className="h-5 w-5 mb-1 text-[#d946ef]" />
+                    <span className="text-xs">Dow</span>
+                  </div>
                 </div>
               </div>
               
-              {/* Enhanced Disclaimers */}
-              <div className="mt-6 border-t border-trader-panel pt-4 text-trader-gray/80 text-xs">
-                <div className="bg-trader-panel/50 p-3 rounded-lg">
+              {/* Enhanced Disclaimers com transparência melhorada */}
+              <div className="mt-6 border-t border-trader-panel/50 pt-4 text-trader-gray/80 text-xs">
+                <div className="bg-trader-panel/40 backdrop-blur-sm p-3 rounded-lg">
                   <p className="mb-2 flex items-start">
                     <AlertTriangle className="h-4 w-4 text-trader-yellow mr-2 mt-0.5 flex-shrink-0" />
                     <span>
@@ -197,7 +200,7 @@ const Index = () => {
                 <span className="text-trader-gray">+2.500 traders confiam</span>
               </div>
               
-              <p className="mt-4 text-xs text-trader-gray/60">
+              <p className="mt-4 text-xs text-trader-gray/60 text-center">
                 © 2023-2025 Analisador Gráfico Inteligente. Todos os direitos reservados.
               </p>
             </div>

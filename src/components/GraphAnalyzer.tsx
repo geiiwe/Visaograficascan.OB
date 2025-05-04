@@ -149,7 +149,7 @@ const GraphAnalyzer = () => {
       
       <div className="relative">
         <div className="flex justify-between items-center mb-2">
-          <h2 className="text-lg font-medium">Análise de Gráficos</h2>
+          <h2 className="text-lg font-medium text-white">Análise de Gráficos</h2>
           
           <div className="flex items-center gap-2">
             <TooltipProvider>
@@ -216,7 +216,7 @@ const GraphAnalyzer = () => {
         
         <CameraView />
         {imageData && (
-          <div className="relative mt-4 rounded-lg overflow-hidden shadow-xl">
+          <div className="relative mt-4 rounded-lg overflow-hidden shadow-xl bg-black/20 backdrop-blur-sm">
             {/* Show either cropped image or full image with region indicator */}
             {croppedImage && hasCustomRegion && !selectionMode ? (
               <div className="relative">
@@ -230,7 +230,7 @@ const GraphAnalyzer = () => {
                 </div>
                 
                 {/* Show image dimensions for better feedback */}
-                <div className="absolute bottom-0 left-0 bg-black/60 text-white text-xs px-2 py-1 rounded-tr-md">
+                <div className="absolute bottom-0 left-0 bg-black/80 text-white text-xs px-2 py-1 rounded-tr-md">
                   {chartRegion.width} x {chartRegion.height}px
                 </div>
               </div>
@@ -265,8 +265,8 @@ const GraphAnalyzer = () => {
       <ControlPanel />
       
       {isAnalyzing && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-trader-panel p-8 rounded-lg shadow-xl flex flex-col items-center">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-trader-panel/90 p-8 rounded-lg shadow-xl flex flex-col items-center border border-trader-blue/20">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-trader-blue"></div>
             <p className="mt-4 text-white font-medium">Analisando padrões do gráfico...</p>
             <p className="text-sm text-trader-gray mt-2">
