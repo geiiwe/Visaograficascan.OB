@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from "react";
 import { useAnalyzer, TimeframeType } from "@/context/AnalyzerContext";
 import CameraView from "./CameraView";
@@ -11,6 +10,8 @@ import { AlertTriangle, Crop, Info, Maximize2, Minimize2, Clock, Clock1 } from "
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useIsMobile } from "@/hooks/use-mobile";
+import MarketTypeSelector from "./MarketTypeSelector";
 
 const GraphAnalyzer = () => {
   const { 
@@ -26,11 +27,14 @@ const GraphAnalyzer = () => {
     chartRegion,
     hasCustomRegion,
     selectedTimeframe,
-    setSelectedTimeframe
+    setSelectedTimeframe,
+    marketType
   } = useAnalyzer();
+  
   const [cameraSupported, setCameraSupported] = useState<boolean | null>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const [croppedImage, setCroppedImage] = useState<string | null>(null);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     // Check if the device has camera capabilities
@@ -144,9 +148,9 @@ const GraphAnalyzer = () => {
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto p-4 space-y-4">
+    <div className="w-full max-w-4xl mx-auto p-2 sm:p-4 space-y-3 sm:space-y-4">
       {cameraSupported === false && (
-        <Alert variant="destructive" className="mb-4">
+        <Alert variant="destructive" className="mb-2 sm:mb-4">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
             Sua câmera não está disponível. Verifique se você está usando um navegador atualizado e 
@@ -156,62 +160,69 @@ const GraphAnalyzer = () => {
       )}
       
       <div className="relative">
-        <div className="flex justify-between items-center mb-2">
-          <div className="flex items-center gap-3">
-            <h2 className="text-lg font-medium text-white">Análise de Gráficos</h2>
+        <div className={`flex flex-wrap ${isMobile ? 'gap-2' : 'justify-between'} items-center mb-2`}>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <h2 className={`${isMobile ? 'text-base' : 'text-lg'} font-medium text-white`}>
+              {isMobile ? "Análise" : "Análise de Gráficos"}
+            </h2>
             
-            <Tabs 
-              value={selectedTimeframe} 
-              onValueChange={(value) => handleTimeframeChange(value as TimeframeType)}
-              className="bg-trader-panel/60 rounded-md px-1"
-            >
-              <TabsList className="h-7 bg-transparent">
-                <TabsTrigger 
-                  value="30s" 
-                  className={`h-6 ${selectedTimeframe === "30s" ? 'data-[state=active]:bg-trader-blue' : ''}`}
-                >
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-3.5 w-3.5" />
-                    <span>30s</span>
-                  </span>
-                </TabsTrigger>
-                <TabsTrigger 
-                  value="1m"
-                  className={`h-6 ${selectedTimeframe === "1m" ? 'data-[state=active]:bg-trader-blue' : ''}`}
-                >
-                  <span className="flex items-center gap-1">
-                    <Clock1 className="h-3.5 w-3.5" />
-                    <span>1m</span>
-                  </span>
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <div className="flex gap-1 sm:gap-2">
+              <Tabs 
+                value={selectedTimeframe} 
+                onValueChange={(value) => handleTimeframeChange(value as TimeframeType)}
+                className="bg-trader-panel/60 rounded-md px-1"
+              >
+                <TabsList className="h-7 bg-transparent">
+                  <TabsTrigger 
+                    value="30s" 
+                    className={`h-6 ${selectedTimeframe === "30s" ? 'data-[state=active]:bg-trader-blue' : ''}`}
+                  >
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3.5 w-3.5" />
+                      <span>30s</span>
+                    </span>
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="1m"
+                    className={`h-6 ${selectedTimeframe === "1m" ? 'data-[state=active]:bg-trader-blue' : ''}`}
+                  >
+                    <span className="flex items-center gap-1">
+                      <Clock1 className="h-3.5 w-3.5" />
+                      <span>1m</span>
+                    </span>
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+              
+              {/* Seletor de tipo de mercado */}
+              <MarketTypeSelector />
+            </div>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-xs text-trader-gray">Precisão:</span>
+                  <div className="flex items-center space-x-1 sm:space-x-2">
+                    <span className="text-xs text-trader-gray hidden sm:inline">Precisão:</span>
                     <div className="flex space-x-1">
                       <button 
                         onClick={() => handlePrecisionChange("baixa")}
-                        className={`px-2 py-1 text-xs rounded ${precision === "baixa" ? "bg-trader-blue text-white" : "bg-trader-panel text-trader-gray"}`}
+                        className={`px-1 sm:px-2 py-1 text-xs rounded ${precision === "baixa" ? "bg-trader-blue text-white" : "bg-trader-panel text-trader-gray"}`}
                       >
-                        Rápida
+                        {isMobile ? "R" : "Rápida"}
                       </button>
                       <button 
                         onClick={() => handlePrecisionChange("normal")}
-                        className={`px-2 py-1 text-xs rounded ${precision === "normal" ? "bg-trader-blue text-white" : "bg-trader-panel text-trader-gray"}`}
+                        className={`px-1 sm:px-2 py-1 text-xs rounded ${precision === "normal" ? "bg-trader-blue text-white" : "bg-trader-panel text-trader-gray"}`}
                       >
-                        Normal
+                        {isMobile ? "N" : "Normal"}
                       </button>
                       <button 
                         onClick={() => handlePrecisionChange("alta")}
-                        className={`px-2 py-1 text-xs rounded ${precision === "alta" ? "bg-trader-blue text-white" : "bg-trader-panel text-trader-gray"}`}
+                        className={`px-1 sm:px-2 py-1 text-xs rounded ${precision === "alta" ? "bg-trader-blue text-white" : "bg-trader-panel text-trader-gray"}`}
                       >
-                        Precisa
+                        {isMobile ? "P" : "Precisa"}
                       </button>
                     </div>
                     <Info className="h-4 w-4 text-trader-gray" />
@@ -231,12 +242,12 @@ const GraphAnalyzer = () => {
             {imageData && !selectionMode && (
               <Button 
                 variant="outline" 
-                size="sm" 
+                size={isMobile ? "xs" : "sm"}
                 onClick={toggleChartSelection}
-                className={`h-8 ${hasCustomRegion ? "bg-trader-blue/20 text-trader-blue border-trader-blue" : ""}`}
+                className={`h-7 sm:h-8 ${hasCustomRegion ? "bg-trader-blue/20 text-trader-blue border-trader-blue" : ""}`}
               >
-                <Crop className="h-4 w-4 mr-1" />
-                {hasCustomRegion ? "Editar Região" : "Definir Região"}
+                <Crop className="h-3.5 sm:h-4 w-3.5 sm:w-4 mr-1" />
+                {hasCustomRegion ? (isMobile ? "Editar" : "Editar Região") : (isMobile ? "Região" : "Definir Região")}
               </Button>
             )}
             
@@ -244,16 +255,16 @@ const GraphAnalyzer = () => {
               variant="ghost" 
               size="icon" 
               onClick={toggleCompactMode}
-              className="h-8 w-8"
+              className="h-7 sm:h-8 w-7 sm:w-8"
             >
-              {compactMode ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
+              {compactMode ? <Maximize2 className="h-3.5 sm:h-4 w-3.5 sm:w-4" /> : <Minimize2 className="h-3.5 sm:h-4 w-3.5 sm:w-4" />}
             </Button>
           </div>
         </div>
         
         <CameraView />
         {imageData && (
-          <div className="relative mt-4 rounded-lg overflow-hidden shadow-xl bg-black/20 backdrop-blur-sm">
+          <div className="relative mt-2 sm:mt-4 rounded-lg overflow-hidden shadow-xl bg-black/20 backdrop-blur-sm">
             {/* Show either cropped image or full image with region indicator */}
             {croppedImage && hasCustomRegion && !selectionMode ? (
               <div className="relative">
@@ -303,15 +314,17 @@ const GraphAnalyzer = () => {
       
       {isAnalyzing && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-trader-panel/90 p-8 rounded-lg shadow-xl flex flex-col items-center border border-trader-blue/20">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-trader-blue"></div>
-            <p className="mt-4 text-white font-medium">Analisando padrões do gráfico...</p>
-            <p className="text-sm text-trader-gray mt-2">
-              {precision === "alta" 
-                ? `Análise detalhada em andamento. Considerando ciclos de ${selectedTimeframe === "30s" ? "30 segundos" : "1 minuto"} para maior precisão.`
-                : precision === "baixa"
-                  ? `Análise rápida em andamento. Identificando ciclos de ${selectedTimeframe === "30s" ? "30 segundos" : "1 minuto"}.`
-                  : `Análise em andamento. Processando ciclos de ${selectedTimeframe === "30s" ? "30 segundos" : "1 minuto"}.`}
+          <div className="bg-trader-panel/90 p-4 sm:p-8 rounded-lg shadow-xl flex flex-col items-center border border-trader-blue/20 max-w-[90%] mx-auto">
+            <div className="animate-spin rounded-full h-10 sm:h-12 w-10 sm:w-12 border-t-2 border-trader-blue"></div>
+            <p className="mt-3 sm:mt-4 text-white text-sm sm:text-base font-medium">Analisando padrões do gráfico...</p>
+            <p className="text-xs sm:text-sm text-trader-gray mt-1 sm:mt-2 text-center">
+              {marketType === "otc" ? 
+                `Análise de mercado OTC em andamento. ${selectedTimeframe === "30s" ? "Ciclos de 30 segundos" : "M1 com ciclos de 30s"}.` :
+                precision === "alta" 
+                  ? `Análise detalhada em andamento. Considerando ciclos de ${selectedTimeframe === "30s" ? "30 segundos" : "1 minuto"} para maior precisão.`
+                  : precision === "baixa"
+                    ? `Análise rápida em andamento. Identificando ciclos de ${selectedTimeframe === "30s" ? "30 segundos" : "1 minuto"}.`
+                    : `Análise em andamento. Processando ciclos de ${selectedTimeframe === "30s" ? "30 segundos" : "1 minuto"}.`}
             </p>
           </div>
         </div>

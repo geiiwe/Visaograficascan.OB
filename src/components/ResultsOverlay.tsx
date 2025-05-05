@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from "react";
 import { useAnalyzer } from "@/context/AnalyzerContext";
 import { detectPatterns } from "@/utils/patternDetection";
@@ -8,10 +7,12 @@ import ChartOverlay from "./ChartOverlay";
 import DirectionIndicator from "./DirectionIndicator";
 import EntryPointPredictor from "./EntryPointPredictor";
 import { useMediaQuery } from "@/hooks/use-media-query";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // Importando os novos componentes modularizados
 import ProcessingIndicator from "./overlay/ProcessingIndicator";
 import TimeframeIndicator from "./overlay/TimeframeIndicator";
+import MarketTypeIndicator from "./overlay/MarketTypeIndicator";
 import AIConfirmationBadge from "./overlay/AIConfirmationBadge";
 import FastAnalysisIndicators from "./overlay/FastAnalysisIndicators";
 import DetailedPanelToggle from "./overlay/DetailedPanelToggle";
@@ -32,6 +33,7 @@ const ResultsOverlay = () => {
     compactMode,
     chartRegion,
     selectedTimeframe,
+    marketType, // Novo campo do contexto
     setLastUpdated
   } = useAnalyzer();
   
@@ -53,6 +55,7 @@ const ResultsOverlay = () => {
     activeAnalysis,
     precision,
     selectedTimeframe,
+    marketType, // Passando o tipo de mercado
     setIsAnalyzing,
     setAnalysisResult
   });
@@ -65,7 +68,7 @@ const ResultsOverlay = () => {
   
   const [showDetailedPanel, setShowDetailedPanel] = useState<boolean>(false);
   
-  const isMobile = useMediaQuery("(max-width: 768px)");
+  const isMobile = useIsMobile();
   const analysisImageRef = useRef<HTMLImageElement | null>(null);
   const processedRegionRef = useRef<string | null>(null);
   const originalImageDimensions = useRef<{width: number, height: number} | null>(null);
@@ -110,7 +113,7 @@ const ResultsOverlay = () => {
     const runAnalysis = async () => {
       if (isAnalyzing && imageData) {
         try {
-          console.log(`Starting analysis with chart region for ${selectedTimeframe} timeframe:`, chartRegion);
+          console.log(`Starting analysis with chart region for ${selectedTimeframe} timeframe in ${marketType} market:`, chartRegion);
           console.log("Active analyses:", activeAnalysis);
           
           const originalImg = new Image();
@@ -149,16 +152,16 @@ const ResultsOverlay = () => {
             setProcessingStage("Processando imagem completa");
           }
           
-          // Usar as opções de processamento otimizadas
-          const processOptions = getProcessOptions(precision, selectedTimeframe);
+          // Usar as opções de processamento otimizadas com o tipo de mercado
+          const processOptions = getProcessOptions(precision, selectedTimeframe, marketType);
           
-          console.log(`Iniciando análise técnica com precisão ${precision} para timeframe de ${selectedTimeframe}`, processOptions);
+          console.log(`Iniciando análise técnica com precisão ${precision} para timeframe de ${selectedTimeframe} em mercado ${marketType}`, processOptions);
           
-          setProcessingStage("Preparando imagem para análise");
+          setProcessingStage(`Preparando imagem para análise de ${marketType === "otc" ? "mercado OTC" : "mercado regular"}`);
           const processedImage = await prepareForAnalysis(regionImage, processOptions, 
             (stage) => setProcessingStage(stage));
           
-          setProcessingStage(`Analisando padrões técnicos com foco em ciclos de ${selectedTimeframe === "30s" ? "30 segundos" : "1 minuto"}`);
+          setProcessingStage(`Analisando padrões técnicos com foco em ciclos de ${selectedTimeframe === "30s" ? "30 segundos" : "1 minuto"} em ${marketType === "otc" ? "mercado OTC" : "mercado regular"}`);
           
           console.log("Active analysis types before detection:", activeAnalysis);
           
@@ -179,11 +182,11 @@ const ResultsOverlay = () => {
             setAnalysisResult(type as any, result.found);
           });
           
-          // Gerar análises rápidas específicas para o timeframe selecionado usando o novo sistema otimizado
-          generateFastAnalyses(selectedTimeframe);
+          // Gerar análises rápidas específicas para o timeframe e tipo de mercado
+          generateFastAnalyses(selectedTimeframe, marketType);
           
           // Estágio de confirmação da IA
-          setProcessingStage(`Verificando análise com IA para ciclos de ${selectedTimeframe}`);
+          setProcessingStage(`Verificando análise com IA para ciclos de ${selectedTimeframe} em ${marketType === "otc" ? "mercado OTC" : "mercado regular"}`);
           
           // Simular verificação de IA usando a nova função
           setTimeout(() => {
@@ -220,12 +223,12 @@ const ResultsOverlay = () => {
           
           if (foundCount > 0) {
             if (directionMessage) {
-              toast.success(`Análise concluída! ${foundCount} padrões detectados. ${directionMessage}. Operação com ciclos de ${selectedTimeframe}.`);
+              toast.success(`Análise concluída! ${foundCount} padrões detectados. ${directionMessage}. Operação com ciclos de ${selectedTimeframe}${marketType === "otc" ? " em mercado OTC" : ""}.`);
             } else {
-              toast.success(`Análise concluída! ${foundCount} padrões detectados. Operação com ciclos de ${selectedTimeframe}.`);
+              toast.success(`Análise concluída! ${foundCount} padrões detectados. Operação com ciclos de ${selectedTimeframe}${marketType === "otc" ? " em mercado OTC" : ""}.`);
             }
           } else {
-            toast.info("Análise concluída. Nenhum padrão técnico detectado na região selecionada.");
+            toast.info(`Análise concluída. Nenhum padrão técnico detectado na região selecionada${marketType === "otc" ? " em mercado OTC" : ""}.`);
           }
           
         } catch (error) {
@@ -239,7 +242,7 @@ const ResultsOverlay = () => {
     };
 
     runAnalysis();
-  }, [imageData, isAnalyzing, activeAnalysis, setAnalysisResult, setIsAnalyzing, precision, chartRegion, selectedTimeframe, generateFastAnalyses, setLastUpdated]);
+  }, [imageData, isAnalyzing, activeAnalysis, setAnalysisResult, setIsAnalyzing, precision, chartRegion, selectedTimeframe, marketType, generateFastAnalyses, setLastUpdated]);
 
   if (!imageData || (Object.keys(detailedResults).length === 0 && !activeAnalysis.some(type => analysisResults[type]))) {
     return null;
@@ -296,7 +299,12 @@ const ResultsOverlay = () => {
       )}
       
       {/* Componentes modularizados */}
-      <TimeframeIndicator selectedTimeframe={selectedTimeframe} />
+      <TimeframeIndicator 
+        selectedTimeframe={selectedTimeframe} 
+        marketType={marketType} 
+      />
+      
+      <MarketTypeIndicator marketType={marketType} />
       
       <AIConfirmationBadge 
         active={aiConfirmation.active}
