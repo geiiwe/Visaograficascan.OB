@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from "react";
 import { useAnalyzer } from "@/context/AnalyzerContext";
 import { detectPatterns } from "@/utils/patternDetection";
@@ -154,7 +153,8 @@ const ResultsOverlay = () => {
             active: false,
             verified: false,
             direction: 'neutral',
-            confidence: 0
+            confidence: 0,
+            majorityDirection: false  // Add the missing property here
           });
           
           const originalImg = new Image();
