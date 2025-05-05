@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from "react";
 import { useAnalyzer } from "@/context/AnalyzerContext";
 import { detectPatterns } from "@/utils/patternDetection";
@@ -9,7 +10,7 @@ import EntryPointPredictor from "./EntryPointPredictor";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-// Importando os novos componentes modularizados
+// Importando os componentes modularizados
 import ProcessingIndicator from "./overlay/ProcessingIndicator";
 import TimeframeIndicator from "./overlay/TimeframeIndicator";
 import MarketTypeIndicator from "./overlay/MarketTypeIndicator";
@@ -33,7 +34,7 @@ const ResultsOverlay = () => {
     compactMode,
     chartRegion,
     selectedTimeframe,
-    marketType, // Novo campo do contexto
+    marketType,
     setLastUpdated
   } = useAnalyzer();
   
@@ -55,7 +56,7 @@ const ResultsOverlay = () => {
     activeAnalysis,
     precision,
     selectedTimeframe,
-    marketType, // Passando o tipo de mercado
+    marketType,
     setIsAnalyzing,
     setAnalysisResult
   });
@@ -67,12 +68,14 @@ const ResultsOverlay = () => {
   });
   
   const [showDetailedPanel, setShowDetailedPanel] = useState<boolean>(false);
+  const [hasError, setHasError] = useState<boolean>(false);
   
   const isMobile = useIsMobile();
   const analysisImageRef = useRef<HTMLImageElement | null>(null);
   const processedRegionRef = useRef<string | null>(null);
   const originalImageDimensions = useRef<{width: number, height: number} | null>(null);
   const resultsPanelRef = useRef<HTMLDivElement | null>(null);
+  const analysisInProgress = useRef<boolean>(false);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -97,6 +100,12 @@ const ResultsOverlay = () => {
     setShowDetailedPanel(!showDetailedPanel);
   };
 
+  // Cleanup function to properly handle resources
+  const cleanupResources = () => {
+    setProcessingStage("");
+    analysisInProgress.current = false;
+  };
+
   useEffect(() => {
     const handleGlobalMouseUp = () => {
       setIndicatorPosition(prev => ({ ...prev, isDragging: false }));
@@ -106,12 +115,22 @@ const ResultsOverlay = () => {
     
     return () => {
       window.removeEventListener('mouseup', handleGlobalMouseUp);
+      cleanupResources();
     };
   }, []);
 
   useEffect(() => {
     const runAnalysis = async () => {
+      // Prevent multiple analyses from running simultaneously
+      if (analysisInProgress.current) {
+        console.log("Analysis already in progress, skipping...");
+        return;
+      }
+      
       if (isAnalyzing && imageData) {
+        setHasError(false);
+        analysisInProgress.current = true;
+        
         try {
           console.log(`Starting analysis with chart region for ${selectedTimeframe} timeframe in ${marketType} market:`, chartRegion);
           console.log("Active analyses:", activeAnalysis);
@@ -124,6 +143,10 @@ const ResultsOverlay = () => {
                 width: originalImg.naturalWidth,
                 height: originalImg.naturalHeight
               };
+              resolve(null);
+            };
+            originalImg.onerror = () => {
+              console.error("Failed to load original image");
               resolve(null);
             };
           });
@@ -147,6 +170,7 @@ const ResultsOverlay = () => {
             } catch (error) {
               console.error("Error extracting region:", error);
               toast.error("Erro ao extrair região selecionada");
+              setHasError(true);
             }
           } else {
             setProcessingStage("Processando imagem completa");
@@ -193,6 +217,8 @@ const ResultsOverlay = () => {
             generateAIConfirmation(results);
             setProcessingStage("");
             setLastUpdated(new Date());
+            setIsAnalyzing(false);
+            analysisInProgress.current = false;
           }, 500); // Reduzido para 500ms para análise mais rápida
           
           const notFoundTypes = activeAnalysis
@@ -234,9 +260,11 @@ const ResultsOverlay = () => {
         } catch (error) {
           console.error("Analysis error:", error);
           toast.error("Erro durante a análise. Por favor, tente novamente.");
+          setHasError(true);
         } finally {
           setProcessingStage("");
           setIsAnalyzing(false);
+          analysisInProgress.current = false;
         }
       }
     };
@@ -322,7 +350,7 @@ const ResultsOverlay = () => {
         fastAnalysisResults={fastAnalysisResults}
       />
       
-      <ProcessingIndicator processingStage={processingStage} />
+      <ProcessingIndicator processingStage={processingStage} isError={hasError} />
       
       <DetailedPanelToggle 
         showDetailedPanel={showDetailedPanel}
