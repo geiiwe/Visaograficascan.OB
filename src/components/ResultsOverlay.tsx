@@ -10,7 +10,7 @@ import EntryPointPredictor from "./EntryPointPredictor";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-// Importando os componentes modularizados
+// Importing the modularized components
 import ProcessingIndicator from "./overlay/ProcessingIndicator";
 import TimeframeIndicator from "./overlay/TimeframeIndicator";
 import MarketTypeIndicator from "./overlay/MarketTypeIndicator";
@@ -76,6 +76,7 @@ const ResultsOverlay = () => {
   const originalImageDimensions = useRef<{width: number, height: number} | null>(null);
   const resultsPanelRef = useRef<HTMLDivElement | null>(null);
   const analysisInProgress = useRef<boolean>(false);
+  const analysisCleanupDone = useRef<boolean>(true);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -104,6 +105,17 @@ const ResultsOverlay = () => {
   const cleanupResources = () => {
     setProcessingStage("");
     analysisInProgress.current = false;
+    analysisCleanupDone.current = true;
+    
+    // Clear any references to prevent memory leaks
+    if (analysisImageRef.current) {
+      analysisImageRef.current.onload = null;
+      analysisImageRef.current.onerror = null;
+      analysisImageRef.current = null;
+    }
+    
+    processedRegionRef.current = null;
+    console.log("Analysis resources cleaned up");
   };
 
   useEffect(() => {
@@ -130,14 +142,24 @@ const ResultsOverlay = () => {
       if (isAnalyzing && imageData) {
         setHasError(false);
         analysisInProgress.current = true;
+        analysisCleanupDone.current = false;
         
         try {
           console.log(`Starting analysis with chart region for ${selectedTimeframe} timeframe in ${marketType} market:`, chartRegion);
           console.log("Active analyses:", activeAnalysis);
           
+          // Reset previous analysis results to avoid overlapping display
+          setDetailedResults({});
+          setAiConfirmation({
+            active: false,
+            verified: false,
+            direction: 'neutral',
+            confidence: 0
+          });
+          
           const originalImg = new Image();
           originalImg.src = imageData;
-          await new Promise(resolve => {
+          await new Promise((resolve, reject) => {
             originalImg.onload = () => {
               originalImageDimensions.current = {
                 width: originalImg.naturalWidth,
@@ -145,10 +167,17 @@ const ResultsOverlay = () => {
               };
               resolve(null);
             };
-            originalImg.onerror = () => {
-              console.error("Failed to load original image");
-              resolve(null);
+            originalImg.onerror = (err) => {
+              console.error("Failed to load original image", err);
+              reject(new Error("Failed to load image"));
             };
+            
+            // Add timeout to prevent hanging
+            setTimeout(() => {
+              if (!originalImageDimensions.current) {
+                reject(new Error("Image load timed out"));
+              }
+            }, 10000);
           });
           
           console.log("Original image dimensions:", originalImageDimensions.current);
@@ -171,12 +200,13 @@ const ResultsOverlay = () => {
               console.error("Error extracting region:", error);
               toast.error("Erro ao extrair região selecionada");
               setHasError(true);
+              throw new Error("Region extraction failed");
             }
           } else {
             setProcessingStage("Processando imagem completa");
           }
           
-          // Usar as opções de processamento otimizadas com o tipo de mercado
+          // Use optimized processing options with market type
           const processOptions = getProcessOptions(precision, selectedTimeframe, marketType);
           
           console.log(`Iniciando análise técnica com precisão ${precision} para timeframe de ${selectedTimeframe} em mercado ${marketType}`, processOptions);
@@ -189,7 +219,7 @@ const ResultsOverlay = () => {
           
           console.log("Active analysis types before detection:", activeAnalysis);
           
-          // Passar os parâmetros corretos para detectPatterns
+          // Pass correct parameters to detectPatterns
           const results = await detectPatterns(
             processedImage, 
             activeAnalysis, 
@@ -206,20 +236,24 @@ const ResultsOverlay = () => {
             setAnalysisResult(type as any, result.found);
           });
           
-          // Gerar análises rápidas específicas para o timeframe e tipo de mercado
+          // Generate fast analyses specific to timeframe and market type
           generateFastAnalyses(selectedTimeframe, marketType);
           
-          // Estágio de confirmação da IA
+          // AI confirmation stage
           setProcessingStage(`Verificando análise com IA para ciclos de ${selectedTimeframe} em ${marketType === "otc" ? "mercado OTC" : "mercado regular"}`);
           
-          // Simular verificação de IA usando a nova função
+          // Simulate AI verification using the new function
           setTimeout(() => {
             generateAIConfirmation(results);
             setProcessingStage("");
             setLastUpdated(new Date());
             setIsAnalyzing(false);
-            analysisInProgress.current = false;
-          }, 500); // Reduzido para 500ms para análise mais rápida
+            
+            // Only call cleanup resources once analysis is complete
+            if (!analysisCleanupDone.current) {
+              cleanupResources();
+            }
+          }, 500); // Reduced to 500ms for faster analysis
           
           const notFoundTypes = activeAnalysis
             .filter(type => type !== "all")
@@ -261,16 +295,27 @@ const ResultsOverlay = () => {
           console.error("Analysis error:", error);
           toast.error("Erro durante a análise. Por favor, tente novamente.");
           setHasError(true);
-        } finally {
-          setProcessingStage("");
           setIsAnalyzing(false);
-          analysisInProgress.current = false;
+          
+          // Ensure cleanup runs even in case of error
+          if (!analysisCleanupDone.current) {
+            cleanupResources();
+          }
         }
       }
     };
 
     runAnalysis();
   }, [imageData, isAnalyzing, activeAnalysis, setAnalysisResult, setIsAnalyzing, precision, chartRegion, selectedTimeframe, marketType, generateFastAnalyses, setLastUpdated]);
+
+  // Make sure we properly cleanup when unmounting or when component re-renders
+  useEffect(() => {
+    return () => {
+      if (!analysisCleanupDone.current) {
+        cleanupResources();
+      }
+    };
+  }, []);
 
   if (!imageData || (Object.keys(detailedResults).length === 0 && !activeAnalysis.some(type => analysisResults[type]))) {
     return null;
@@ -309,53 +354,63 @@ const ResultsOverlay = () => {
         originalDimensions={originalImageDimensions.current}
       />
 
-      {/* Entry Point Predictor */}
+      {/* Entry Point Predictor - Moved down in z-index to avoid overlap */}
       {Object.keys(detailedResults).length > 0 && (
-        <EntryPointPredictor results={detailedResults} />
+        <div className="absolute inset-0 z-10 pointer-events-none">
+          <EntryPointPredictor results={detailedResults} />
+        </div>
       )}
       
       {detailedResults.all?.found && (
-        <DirectionIndicator 
-          direction={detailedResults.all?.buyScore > detailedResults.all?.sellScore ? "buy" : 
-                    detailedResults.all?.sellScore > detailedResults.all?.buyScore ? "sell" : "neutral"} 
-          strength={detailedResults.all?.buyScore > 1.5 || detailedResults.all?.sellScore > 1.5 ? "strong" : 
-                    detailedResults.all?.buyScore > 0.8 || detailedResults.all?.sellScore > 0.8 ? "moderate" : "weak"}
-          className="drag-handle pointer-events-auto"
-          style={indicatorStyle as React.CSSProperties}
-          onMouseDown={handleMouseDown}
-        />
+        <div className="absolute inset-0 z-30 pointer-events-none">
+          <DirectionIndicator 
+            direction={detailedResults.all?.buyScore > detailedResults.all?.sellScore ? "buy" : 
+                      detailedResults.all?.sellScore > detailedResults.all?.buyScore ? "sell" : "neutral"} 
+            strength={detailedResults.all?.buyScore > 1.5 || detailedResults.all?.sellScore > 1.5 ? "strong" : 
+                      detailedResults.all?.buyScore > 0.8 || detailedResults.all?.sellScore > 0.8 ? "moderate" : "weak"}
+            className="drag-handle pointer-events-auto"
+            style={indicatorStyle as React.CSSProperties}
+            onMouseDown={handleMouseDown}
+          />
+        </div>
       )}
       
-      {/* Componentes modularizados */}
-      <TimeframeIndicator 
-        selectedTimeframe={selectedTimeframe} 
-        marketType={marketType} 
-      />
+      {/* Organized modular components with proper z-index layers */}
+      <div className="absolute inset-0 z-30 pointer-events-none">
+        <TimeframeIndicator 
+          selectedTimeframe={selectedTimeframe} 
+          marketType={marketType} 
+        />
+        
+        <MarketTypeIndicator marketType={marketType} />
+        
+        <AIConfirmationBadge 
+          active={aiConfirmation.active}
+          verified={aiConfirmation.verified}
+          direction={aiConfirmation.direction}
+          confidence={aiConfirmation.confidence}
+        />
+      </div>
       
-      <MarketTypeIndicator marketType={marketType} />
+      <div className="absolute inset-0 z-30 pointer-events-none">
+        <FastAnalysisIndicators results={fastAnalysisResults} />
+      </div>
       
-      <AIConfirmationBadge 
-        active={aiConfirmation.active}
-        verified={aiConfirmation.verified}
-        direction={aiConfirmation.direction}
-        confidence={aiConfirmation.confidence}
-      />
-      
-      <FastAnalysisIndicators results={fastAnalysisResults} />
-      
-      <AnalysisPanel 
-        detailedResults={detailedResults}
-        compactMode={compactMode}
-        selectedTimeframe={selectedTimeframe}
-        fastAnalysisResults={fastAnalysisResults}
-      />
-      
-      <ProcessingIndicator processingStage={processingStage} isError={hasError} />
-      
-      <DetailedPanelToggle 
-        showDetailedPanel={showDetailedPanel}
-        toggleDetailedPanel={toggleDetailedPanel}
-      />
+      <div className="absolute inset-0 z-40 pointer-events-none">
+        <AnalysisPanel 
+          detailedResults={detailedResults}
+          compactMode={compactMode}
+          selectedTimeframe={selectedTimeframe}
+          fastAnalysisResults={fastAnalysisResults}
+        />
+        
+        <ProcessingIndicator processingStage={processingStage} isError={hasError} />
+        
+        <DetailedPanelToggle 
+          showDetailedPanel={showDetailedPanel}
+          toggleDetailedPanel={toggleDetailedPanel}
+        />
+      </div>
       
       {process.env.NODE_ENV === 'development' && analysisImageRef.current && (
         <div className="fixed bottom-0 right-0 w-32 h-32 opacity-50 pointer-events-none border border-red-500">

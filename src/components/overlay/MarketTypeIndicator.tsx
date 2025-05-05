@@ -9,16 +9,16 @@ interface MarketTypeIndicatorProps {
 
 const MarketTypeIndicator: React.FC<MarketTypeIndicatorProps> = ({ marketType }) => {
   return (
-    <div className="absolute top-2 left-2 z-30 bg-purple-600/80 backdrop-blur-sm text-white px-3 py-1.5 rounded-full flex items-center shadow-lg">
+    <div className="absolute top-2 left-2 z-30 bg-purple-600/70 backdrop-blur-sm text-white px-3 py-1 rounded-full flex items-center shadow-lg">
       {marketType === "otc" ? (
         <>
-          <CircleArrowDown className="h-4 w-4 mr-2" />
-          <span className="font-medium text-sm">Mercado OTC</span>
+          <CircleArrowDown className="h-3.5 w-3.5 mr-1.5" />
+          <span className="font-medium text-xs">OTC</span>
         </>
       ) : (
         <>
-          <CircleArrowUp className="h-4 w-4 mr-2" />
-          <span className="font-medium text-sm">Mercado Regular</span>
+          <CircleArrowUp className="h-3.5 w-3.5 mr-1.5" />
+          <span className="font-medium text-xs">Regular</span>
         </>
       )}
     </div>
