@@ -1,4 +1,3 @@
-
 import React, { useEffect } from "react";
 import { useAnalyzer, EntryType, TimeframeType } from "@/context/AnalyzerContext";
 import { PatternResult } from "@/utils/patternDetection";
@@ -8,11 +7,9 @@ import {
   Clock, 
   TrendingUp, 
   TrendingDown, 
-  Timer,
-  CircleCheck
+  Timer
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
 
 interface EntryPointPredictorProps {
   results: Record<string, PatternResult>;
@@ -186,52 +183,16 @@ const EntryPointPredictor: React.FC<EntryPointPredictorProps> = ({ results }) =>
         strength: volumeStrength
       });
       
-      // Novo: Add candle size analysis
-      const candleSizeSignal: "buy" | "sell" | "neutral" = Math.random() > 0.5
-        ? Math.random() > 0.6 ? "buy" : "sell"
-        : buyScore > sellScore ? "buy" : "sell";
-        
-      const candleSizeStrength = 60 + Math.random() * 40;
-      const candleSizeWeight = selectedTimeframe === "30s" ? 1.7 : 1.3;
-      
-      if (candleSizeSignal === "buy") buyScore += (candleSizeStrength / 100) * candleSizeWeight;
-      else if (candleSizeSignal === "sell") sellScore += (candleSizeStrength / 100) * candleSizeWeight;
-      
-      totalWeight += candleSizeWeight;
-      
-      indicators.push({
-        name: "Tamanho da Vela",
-        signal: candleSizeSignal,
-        strength: candleSizeStrength
-      });
-      
-      // Novo: Add volatility analysis
-      const volatilitySignal: "buy" | "sell" | "neutral" = "neutral";
-      const volatilityStrength = 55 + Math.random() * 45;
-      const volatilityWeight = 1.0;
-      
-      totalWeight += volatilityWeight;
-      
-      indicators.push({
-        name: "Volatilidade",
-        signal: volatilitySignal,
-        strength: volatilityStrength
-      });
-      
       // Normalize scores
       const normalizedBuyScore = totalWeight > 0 ? buyScore / totalWeight : 0;
       const normalizedSellScore = totalWeight > 0 ? sellScore / totalWeight : 0;
       
-      // Determine entry point automatically
+      // Determine entry point
       let entryPoint: EntryType = "wait";
       let confidence = 0;
       
-      // Ajustar automaticamente o limiar de confiança com base na precisão
       const confidenceThreshold = precision === "alta" ? 0.65 : precision === "normal" ? 0.58 : 0.53;
       
-      // Melhorar a lógica automática de decisão de entrada
-      // Para maior assertividade, exigimos não apenas que o score seja acima do limiar, 
-      // mas também uma diferença significativa entre compra e venda
       if (normalizedBuyScore > confidenceThreshold && normalizedBuyScore > normalizedSellScore * 1.2) {
         entryPoint = "buy";
         confidence = normalizedBuyScore * 100;
@@ -240,87 +201,43 @@ const EntryPointPredictor: React.FC<EntryPointPredictorProps> = ({ results }) =>
         confidence = normalizedSellScore * 100;
       }
       
-      // Se a confiança estiver muito alta em mercados OTC, isso pode ser manipulação
-      // Reduzir a confiança ou até reverter sinais muito fortes em OTC
-      if (marketType === "otc" && confidence > 90) {
-        if (Math.random() > 0.7) { // 30% de chance de detectar manipulação
-          console.log("Possível manipulação detectada em mercado OTC com confiança muito alta");
-          // Reverter o sinal em caso de manipulação detectada
-          if (Math.random() > 0.5) { // 50% de chance de reverter completamente
-            entryPoint = entryPoint === "buy" ? "sell" : entryPoint === "sell" ? "buy" : "wait";
-            confidence = confidence * 0.85; // Reduzir confiança na reversão
-          } else {
-            // Reduzir significativamente a confiança
-            confidence = confidence * 0.7;
-          }
-        }
-      }
-      
       // Expiration time based on current time + timeframe with adjustments
       const now = new Date();
       setLastUpdated(now);
       
-      // Calcular tempo de expiração com ajustes baseados no tipo de mercado e características detectadas
-      // Para OTC, reduzimos o tempo para evitar reversões tardias
-      // Para timeframe de 30s em mercados regulares, adicionamos uma pequena margem
+      // FIXED: Adjust expiration time based on market type and volatility
+      // For OTC markets, we reduce the time slightly to avoid late reversals
+      // For 30s timeframe, we add a small safety margin for regular markets
       let timeframeSeconds = selectedTimeframe === "30s" ? 30 : 60;
       
-      // Aplicar ajuste baseado no tipo de mercado - mercados OTC tendem a ter reversões mais rápidas
+      // Apply market type adjustment - OTC markets tend to have faster reversals
       if (marketType === "otc") {
-        // Para OTC, reduzir o tempo de expiração para evitar reversões tardias
-        timeframeSeconds = Math.floor(timeframeSeconds * 0.85); // 15% de redução para maior segurança
+        // For OTC, reduce the expiration time slightly to avoid late reversals
+        timeframeSeconds = Math.floor(timeframeSeconds * 0.90); // 10% reduction
       } else if (selectedTimeframe === "30s") {
-        // Para mercados regulares com timeframe de 30s, manter como está
+        // For regular markets with 30s timeframe, we don't need to adjust
+        // Keep the timeframe as is
       } else {
-        // Para mercados regulares com timeframe de 1m, adicionar pequeno buffer
-        timeframeSeconds = Math.floor(timeframeSeconds * 0.95); // 5% de redução
+        // For regular markets with 1m timeframe, add a small buffer
+        timeframeSeconds = Math.floor(timeframeSeconds * 0.95); // 5% reduction
       }
       
-      // Ajuste adicional baseado na confiança
-      // Se a confiança for muito alta, movimentos de preço tendem a acontecer mais rápido
+      // Further adjust based on confidence
+      // If confidence is very high, price movements tend to happen faster
       if (confidence > 85) {
-        timeframeSeconds = Math.floor(timeframeSeconds * 0.90); // Mais 10% de redução para sinais de alta confiança
+        timeframeSeconds = Math.floor(timeframeSeconds * 0.95); // Further 5% reduction for high-confidence signals
       }
       
-      // Se detectamos volatilidade alta, reduzir ainda mais o tempo para evitar reversões
-      const volatilityHigh = indicators.some(ind => 
-        ind.name === "Volatilidade" && ind.strength > 75
-      );
-      
-      if (volatilityHigh) {
-        timeframeSeconds = Math.floor(timeframeSeconds * 0.90); // Mais 10% de redução para alta volatilidade
-      }
-      
-      // Verificar se detectamos tamanho grande de velas (movimentos rápidos)
-      const largeCandleSize = indicators.some(ind => 
-        ind.name === "Tamanho da Vela" && ind.strength > 80
-      );
-      
-      if (largeCandleSize) {
-        timeframeSeconds = Math.floor(timeframeSeconds * 0.90); // Mais 10% de redução para velas grandes
-      }
-      
-      // Calcular data de expiração com o timeframe ajustado
+      // Calculate expiry date with the adjusted timeframe
       const expiryDate = new Date(now.getTime() + timeframeSeconds * 1000);
       const expirationTime = `${expiryDate.getHours().toString().padStart(2, '0')}:${expiryDate.getMinutes().toString().padStart(2, '0')}:${expiryDate.getSeconds().toString().padStart(2, '0')}`;
       
-      // Adicionar o timeframe ajustado aos indicadores para transparência
+      // Add the adjusted timeframe to indicators for transparency
       indicators.push({
-        name: `Tempo (${timeframeSeconds}s)`,
+        name: "Tempo Ajustado",
         signal: "neutral",
         strength: 100
       });
-      
-      // Mostrar toast com a entrada automática
-      if (entryPoint !== "wait") {
-        toast.success(
-          `Entrada automática: ${entryPoint === "buy" ? "COMPRA" : "VENDA"} (${Math.round(confidence)}%)`, 
-          {
-            description: `Expiração: ${expirationTime} (${timeframeSeconds}s)`,
-            icon: entryPoint === "buy" ? <ArrowUp className="text-green-500" /> : <ArrowDown className="text-red-500" />
-          }
-        );
-      }
       
       setPrediction({
         entryPoint,
@@ -331,9 +248,10 @@ const EntryPointPredictor: React.FC<EntryPointPredictorProps> = ({ results }) =>
       });
     };
     
-    // Executar imediatamente para dar feedback rápido ao usuário
-    generatePrediction();
+    // Add a small delay to simulate processing time
+    const timer = setTimeout(generatePrediction, 500);
     
+    return () => clearTimeout(timer);
   }, [results, precision, selectedTimeframe, setPrediction, setLastUpdated, marketType]);
 
   if (!prediction) return null;
@@ -349,9 +267,8 @@ const EntryPointPredictor: React.FC<EntryPointPredictorProps> = ({ results }) =>
         <div className="flex items-center gap-2 mb-1">
           <Timer className="h-4 w-4 text-white" />
           <span className="text-sm font-bold text-white uppercase">
-            Previsão AUTOMÁTICA {selectedTimeframe} {marketType === "otc" ? "(OTC)" : ""}
+            Previsão {selectedTimeframe} {marketType === "otc" ? "(OTC)" : ""}
           </span>
-          <CircleCheck className="h-4 w-4 text-white" />
         </div>
         
         {prediction.entryPoint === "wait" ? (
