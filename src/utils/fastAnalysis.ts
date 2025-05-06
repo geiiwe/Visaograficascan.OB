@@ -12,7 +12,7 @@ export const generateTimeframeAnalyses = (
     {
       type: "priceAction",
       found: Math.random() > 0.25,
-      direction: Math.random() > (marketType === "otc" ? 0.6 : 0.5) ? "up" : "down", // Ajuste para OTC
+      direction: Math.random() > (marketType === "otc" ? 0.6 : 0.5) ? "up" : "down" as "up" | "down", // Typed correctly
       strength: Math.random() * 100,
       name: "Price Action",
       description: marketType === "otc" ? 
@@ -24,7 +24,7 @@ export const generateTimeframeAnalyses = (
     {
       type: "momentum",
       found: Math.random() > 0.2,
-      direction: Math.random() > (marketType === "otc" ? 0.45 : 0.5) ? "up" : "down", // Ajuste para OTC
+      direction: Math.random() > (marketType === "otc" ? 0.45 : 0.5) ? "up" : "down" as "up" | "down", // Typed correctly
       strength: Math.random() * 100,
       name: "Momentum",
       description: marketType === "otc" ? 
@@ -36,7 +36,7 @@ export const generateTimeframeAnalyses = (
     {
       type: "volumeSpikes",
       found: Math.random() > 0.3,
-      direction: Math.random() > (marketType === "otc" ? 0.55 : 0.5) ? "up" : "down", // Ajuste para OTC
+      direction: Math.random() > (marketType === "otc" ? 0.55 : 0.5) ? "up" : "down" as "up" | "down", // Typed correctly
       strength: Math.random() * 100,
       name: "Picos de Volume",
       description: marketType === "otc" ? 
@@ -48,7 +48,7 @@ export const generateTimeframeAnalyses = (
     {
       type: "candleFormation",
       found: Math.random() > 0.25,
-      direction: Math.random() > (marketType === "otc" ? 0.55 : 0.5) ? "up" : "down", // Ajuste para OTC
+      direction: Math.random() > (marketType === "otc" ? 0.55 : 0.5) ? "up" : "down" as "up" | "down", // Typed correctly
       strength: Math.random() * 100,
       name: "Formação de Velas",
       description: marketType === "otc" ? 
@@ -60,7 +60,7 @@ export const generateTimeframeAnalyses = (
     {
       type: "priceReversal",
       found: Math.random() > (marketType === "otc" ? 0.3 : 0.4), // OTC tem mais reversões
-      direction: Math.random() > (marketType === "otc" ? 0.45 : 0.5) ? "up" : "down", // Ajuste para OTC
+      direction: Math.random() > (marketType === "otc" ? 0.45 : 0.5) ? "up" : "down" as "up" | "down", // Typed correctly
       strength: Math.random() * 100,
       name: "Reversões",
       description: marketType === "otc" ? 
@@ -73,7 +73,7 @@ export const generateTimeframeAnalyses = (
     {
       type: "rsiAnalysis",
       found: Math.random() > 0.3,
-      direction: Math.random() > (marketType === "otc" ? 0.4 : 0.6) ? "up" : "down", // OTC tem comportamento RSI diferente
+      direction: Math.random() > (marketType === "otc" ? 0.4 : 0.6) ? "up" : "down" as "up" | "down", // Typed correctly
       strength: Math.random() * 100,
       name: "RSI",
       description: marketType === "otc" ? 
@@ -85,7 +85,7 @@ export const generateTimeframeAnalyses = (
     {
       type: "macdCrossover",
       found: Math.random() > 0.35,
-      direction: Math.random() > (marketType === "otc" ? 0.45 : 0.55) ? "up" : "down", // Ajuste para OTC
+      direction: Math.random() > (marketType === "otc" ? 0.45 : 0.55) ? "up" : "down" as "up" | "down", // Typed correctly
       strength: Math.random() * 100,
       name: "MACD",
       description: marketType === "otc" ? 
@@ -97,7 +97,7 @@ export const generateTimeframeAnalyses = (
     {
       type: "bollingerBands",
       found: Math.random() > 0.4,
-      direction: Math.random() > (marketType === "otc" ? 0.6 : 0.5) ? "up" : "down", // Ajuste para OTC
+      direction: Math.random() > (marketType === "otc" ? 0.6 : 0.5) ? "up" : "down" as "up" | "down", // Typed correctly
       strength: Math.random() * 100,
       name: "Bollinger",
       description: marketType === "otc" ? 
@@ -110,7 +110,7 @@ export const generateTimeframeAnalyses = (
     {
       type: "otcPatterns",
       found: marketType === "otc" && Math.random() > 0.3,
-      direction: Math.random() > 0.5 ? "up" : "down",
+      direction: Math.random() > 0.5 ? "up" : "down" as "up" | "down", // Typed correctly
       strength: Math.random() * 100,
       name: "Padrões OTC",
       description: "Detecção de padrões específicos de manipulação em mercados OTC"

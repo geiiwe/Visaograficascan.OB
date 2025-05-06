@@ -389,6 +389,7 @@ const ResultsOverlay = () => {
           verified={aiConfirmation.verified}
           direction={aiConfirmation.direction}
           confidence={aiConfirmation.confidence}
+          majorityDirection={aiConfirmation.majorityDirection}
         />
       </div>
       

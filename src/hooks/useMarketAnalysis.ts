@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { PatternResult } from "@/utils/patternDetection";
 import { FastAnalysisResult } from "@/components/overlay/FastAnalysisIndicators";
@@ -19,7 +18,7 @@ interface MarketAnalysisParams {
 export interface AIConfirmation {
   active: boolean;
   verified: boolean;
-  direction: "buy" | "sell" | "neutral";
+  direction: "buy" | "sell" | "neutral";  // Strict union type
   confidence: number;
   majorityDirection: boolean; // Indica se a direção está alinhada com a maioria dos indicadores
 }
@@ -99,9 +98,14 @@ export const useMarketAnalysis = ({
         return results.map(result => {
           if (strongIndicators.includes(result) && Math.random() > 0.5) {
             // Inverter alguns dos indicadores fortes (possível manipulação)
+            const newDirection: "up" | "down" | "neutral" = 
+              result.direction === "up" ? "down" : 
+              result.direction === "down" ? "up" : 
+              "neutral";
+
             return {
               ...result,
-              direction: result.direction === "up" ? "down" : "up",
+              direction: newDirection,
               description: `${result.description} (ALERTA: Possível manipulação detectada)`,
               strength: result.strength * 0.9 // Reduzir um pouco a força do sinal manipulado
             };
@@ -113,7 +117,8 @@ export const useMarketAnalysis = ({
     
     // Para mercados regulares ou casos onde não detectamos manipulação, melhorar a consistência
     if (hasMajorityConsensus) {
-      const dominantDirection = directionCounts.up > directionCounts.down ? "up" : "down";
+      const dominantDirection: "up" | "down" | "neutral" = 
+        directionCounts.up > directionCounts.down ? "up" : "down";
       
       // Aumentar a força dos indicadores que concordam com a maioria
       return results.map(result => {
@@ -163,8 +168,9 @@ export const useMarketAnalysis = ({
     });
     
     // Determinar a direção majoritária
-    const majorityDirection = buyIndicators > sellIndicators ? "buy" : 
-                             sellIndicators > buyIndicators ? "sell" : "neutral";
+    const majorityDirection: "buy" | "sell" | "neutral" = 
+      buyIndicators > sellIndicators ? "buy" : 
+      sellIndicators > buyIndicators ? "sell" : "neutral";
     
     // Ajustes de pontuação baseados no tipo de mercado e padrões
     let buyScoreAdjustment = 1.0;
@@ -210,8 +216,9 @@ export const useMarketAnalysis = ({
     const totalSellScore = (results.all?.sellScore || 0) * sellScoreAdjustment;
     
     // Indicador mais forte (análise técnica pura)
-    const technicalDirection = totalBuyScore > totalSellScore ? "buy" : 
-                              totalSellScore > totalBuyScore ? "sell" : "neutral";
+    const technicalDirection: "buy" | "sell" | "neutral" = 
+      totalBuyScore > totalSellScore ? "buy" : 
+      totalSellScore > totalBuyScore ? "sell" : "neutral";
     
     // Calcular confiança baseada na corroboração entre análise técnica e maioria dos indicadores
     const baseConfidence = results.all?.confidence || 0;
@@ -233,7 +240,7 @@ export const useMarketAnalysis = ({
     }
     
     // Direção final baseada na análise completa
-    let finalDirection = majorityDirection;
+    let finalDirection: "buy" | "sell" | "neutral" = majorityDirection;
     let finalConfidence = adjustedConfidence;
     
     // Ajustes finais para OTC com manipulação

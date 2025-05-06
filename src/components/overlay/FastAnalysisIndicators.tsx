@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 export interface FastAnalysisResult {
   type: string;
   found: boolean;
-  direction: "up" | "down" | "neutral";
+  direction: "up" | "down" | "neutral";  // Strict union type
   strength: number;
   name: string;
   description: string;
