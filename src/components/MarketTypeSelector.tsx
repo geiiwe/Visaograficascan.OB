@@ -12,43 +12,43 @@ const MarketTypeSelector: React.FC = () => {
     setMarketType(type);
     
     if (type === "otc") {
-      toast.info("Modo OTC ativado. Análises automaticamente ajustadas para padrões de mercado OTC.", {
-        description: "As entradas serão calculadas considerando manipulações e reversões típicas de mercados OTC."
+      toast.info("Modo OTC ativado. Análise automática em progresso...", {
+        description: "A entrada será calculada considerando manipulações típicas de mercados OTC."
       });
     } else {
-      toast.info("Modo Regular ativado. Análises automaticamente ajustadas para padrões de mercado tradicional.", {
-        description: "As entradas serão calculadas usando análises técnicas padrão para mercados regulares."
+      toast.info("Modo Regular ativado. Análise automática em progresso...", {
+        description: "A entrada será calculada usando análise técnica padrão."
       });
     }
   };
   
   return (
     <div className="flex flex-col items-center">
-      <div className="mb-1.5 text-xs font-medium text-center text-white/80 px-1.5 py-0.5 bg-trader-panel/80 rounded-sm">
-        Selecione o tipo de mercado (única configuração necessária)
+      <div className="mb-2 text-sm font-medium text-center text-white/90 px-2.5 py-1.5 bg-trader-panel/90 rounded-md">
+        <span className="animate-pulse">⚠️</span> Selecione apenas o tipo de mercado <span className="animate-pulse">⚠️</span>
       </div>
       <Tabs 
         value={marketType} 
         onValueChange={(value) => handleMarketTypeChange(value as MarketType)}
-        className="bg-trader-panel/60 rounded-md px-1"
+        className="bg-trader-panel/80 rounded-md px-1.5 py-1 border-2 border-trader-blue/50"
       >
-        <TabsList className="h-7 bg-transparent">
+        <TabsList className="h-9 bg-transparent">
           <TabsTrigger 
             value="regular" 
-            className={`h-6 ${marketType === "regular" ? 'data-[state=active]:bg-trader-blue' : ''}`}
+            className={`h-7 ${marketType === "regular" ? 'data-[state=active]:bg-trader-blue' : ''}`}
           >
-            <span className="flex items-center gap-1">
-              <TrendingUp className="h-3.5 w-3.5" />
-              <span className="inline">Regular</span>
+            <span className="flex items-center gap-1.5">
+              <TrendingUp className="h-4.5 w-4.5" />
+              <span className="inline font-medium">REGULAR</span>
             </span>
           </TabsTrigger>
           <TabsTrigger 
             value="otc"
-            className={`h-6 ${marketType === "otc" ? 'data-[state=active]:bg-trader-blue' : ''}`}
+            className={`h-7 ${marketType === "otc" ? 'data-[state=active]:bg-trader-blue' : ''}`}
           >
-            <span className="flex items-center gap-1">
-              <TrendingDown className="h-3.5 w-3.5" />
-              <span className="inline">OTC</span>
+            <span className="flex items-center gap-1.5">
+              <TrendingDown className="h-4.5 w-4.5" />
+              <span className="inline font-medium">OTC</span>
             </span>
           </TabsTrigger>
         </TabsList>

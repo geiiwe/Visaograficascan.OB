@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { PatternResult } from "@/utils/patternDetection";
 import { FastAnalysisResult } from "@/components/overlay/FastAnalysisIndicators";
@@ -18,9 +19,9 @@ interface MarketAnalysisParams {
 export interface AIConfirmation {
   active: boolean;
   verified: boolean;
-  direction: "buy" | "sell" | "neutral";  // Strict union type
+  direction: "buy" | "sell" | "neutral";
   confidence: number;
-  majorityDirection: boolean; // Indica se a direção está alinhada com a maioria dos indicadores
+  majorityDirection: boolean;
 }
 
 export interface IndicatorPosition {
@@ -135,6 +136,14 @@ export const useMarketAnalysis = ({
     
     return results;
   };
+
+  // Auto-trigger analysis when market type changes
+  useEffect(() => {
+    if (imageData && !isAnalyzing && marketType) {
+      console.log("Auto-triggering analysis based on market type change:", marketType);
+      setIsAnalyzing(true);
+    }
+  }, [marketType, imageData, isAnalyzing, setIsAnalyzing]);
 
   // Função aprimorada para confirmação de IA com detecção avançada de manipulação
   const generateAIConfirmation = (results: Record<string, PatternResult>) => {
