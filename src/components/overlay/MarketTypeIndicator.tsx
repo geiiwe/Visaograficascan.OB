@@ -1,6 +1,6 @@
 
 import React from "react";
-import { CircleArrowDown, CircleArrowUp, AlertTriangle } from "lucide-react";
+import { CircleArrowDown, CircleArrowUp, AlertTriangle, CircleCheck } from "lucide-react";
 import { MarketType } from "@/context/AnalyzerContext";
 
 interface MarketTypeIndicatorProps {
@@ -20,16 +20,22 @@ const MarketTypeIndicator: React.FC<MarketTypeIndicatorProps> = ({ marketType })
             <AlertTriangle className="h-3 w-3 text-yellow-300" />
           </div>
           <div className="flex flex-col">
-            <span className="font-medium text-xs">OTC</span>
-            <span className="text-[9px] leading-tight text-yellow-200">Alto risco</span>
+            <div className="flex items-center gap-1">
+              <span className="font-medium text-xs">OTC</span>
+              <CircleCheck className="h-2.5 w-2.5 text-yellow-200" />
+            </div>
+            <span className="text-[9px] leading-tight text-yellow-200">Análise automática para OTC</span>
           </div>
         </>
       ) : (
         <>
           <CircleArrowUp className="h-3.5 w-3.5" />
           <div className="flex flex-col">
-            <span className="font-medium text-xs">Regular</span>
-            <span className="text-[9px] leading-tight text-blue-100">Padrões normais</span>
+            <div className="flex items-center gap-1">
+              <span className="font-medium text-xs">Regular</span>
+              <CircleCheck className="h-2.5 w-2.5 text-blue-200" />
+            </div>
+            <span className="text-[9px] leading-tight text-blue-100">Análise automática padrão</span>
           </div>
         </>
       )}
