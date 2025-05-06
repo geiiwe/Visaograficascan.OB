@@ -108,6 +108,19 @@ export const generateTimeframeAnalyses = (
           "Análise da volatilidade em ciclos de 30 segundos" :
           "Volatilidade projetada para o próximo minuto"
     },
+    // NOVO: Análise específica para velocidade de movimento
+    {
+      type: "movementSpeed",
+      found: Math.random() > 0.3,
+      direction: Math.random() > (marketType === "otc" ? 0.55 : 0.5) ? "up" : "down" as "up" | "down",
+      strength: Math.random() * 100,
+      name: "Velocidade",
+      description: marketType === "otc" ?
+        "Análise da velocidade do movimento de preço em OTC, crucial para timing de saída" :
+        selectedTimeframe === "30s" ?
+          "Velocidade do movimento nos últimos ciclos de 30 segundos" :
+          "Análise da aceleração/desaceleração do preço no último minuto"
+    },
     // Indicadores técnicos
     {
       type: "rsiAnalysis",
@@ -153,6 +166,19 @@ export const generateTimeframeAnalyses = (
       strength: Math.random() * 100,
       name: "Padrões OTC",
       description: "Detecção de padrões específicos de manipulação em mercados OTC"
+    },
+    // NOVO: Análise de timing de expiração
+    {
+      type: "expiryTiming",
+      found: Math.random() > 0.35,
+      direction: Math.random() > 0.5 ? "neutral" : (Math.random() > 0.5 ? "up" : "down") as "up" | "down" | "neutral",
+      strength: Math.random() * 100,
+      name: "Timing Exato",
+      description: marketType === "otc" ?
+        "Análise preditiva do melhor momento de expiração para evitar reversões em OTC" :
+        selectedTimeframe === "30s" ?
+          "Análise de ciclos temporais para determinar o momento exato de expiração em 30s" :
+          "Previsão do momento ideal de expiração para entradas de 1 minuto"
     }
   ];
 
@@ -179,6 +205,18 @@ export const generateTimeframeAnalyses = (
       volatilityIndicator.strength = (volatilityIndicator.strength * 0.4) + (candleStrength * 0.6);
     }
     
+    // Correlacionar velocidade de movimento com timing de expiração
+    let speedIndicator = analyses.find(a => a.type === "movementSpeed");
+    let timingIndicator = analyses.find(a => a.type === "expiryTiming");
+    
+    if (speedIndicator && timingIndicator && speedIndicator.found && timingIndicator.found) {
+      // Movimentos mais rápidos geralmente exigem expiração mais precisa
+      if (speedIndicator.strength > 75) {
+        timingIndicator.strength = Math.min(100, timingIndicator.strength * 1.2);
+        timingIndicator.description += " (Ajustado para movimento rápido)";
+      }
+    }
+    
     // Correlacionar volume com força do movimento
     let volumeIndicator = analyses.find(a => a.type === "volume" || a.type === "volumeSpikes");
     let momentumIndicator = analyses.find(a => a.type === "momentum");
@@ -194,6 +232,17 @@ export const generateTimeframeAnalyses = (
       }
     }
     
+    // Correlacionar reversões com timing de expiração
+    let reversalIndicator = analyses.find(a => a.type === "priceReversal");
+    
+    if (reversalIndicator && timingIndicator && reversalIndicator.found && timingIndicator.found) {
+      // Alta probabilidade de reversão deve impactar o timing de expiração
+      if (reversalIndicator.strength > 70) {
+        timingIndicator.strength = Math.min(100, timingIndicator.strength * 1.3);
+        timingIndicator.description += " (Ajustado para risco de reversão)";
+      }
+    }
+    
     // Ajustar alguns indicadores para melhor alinhamento com a tendência dominante (50% de chance)
     return analyses.map(indicator => {
       // Lógica específica para OTC
@@ -203,6 +252,33 @@ export const generateTimeframeAnalyses = (
           direction: Math.random() > 0.6 ? dominantTrend : (dominantTrend === "up" ? "down" : "up"), // Mais chance de reverter em OTC
           strength: indicator.strength * (Math.random() > 0.5 ? 1.3 : 0.9) // Mais volátil em OTC
         };
+      }
+      
+      // Para timing de expiração, correlacionar com outros indicadores
+      if (indicator.type === "expiryTiming") {
+        // Verificar se há indicações fortes de reversão
+        const highReversalRisk = analyses.some(
+          a => a.type === "priceReversal" && a.found && a.strength > 75
+        );
+        
+        // Verificar se há alta volatilidade
+        const highVolatility = analyses.some(
+          a => a.type === "volatility" && a.found && a.strength > 70
+        );
+        
+        if (highReversalRisk || highVolatility) {
+          return {
+            ...indicator,
+            strength: Math.min(100, indicator.strength * 1.25),
+            description: indicator.description + (
+              highReversalRisk && highVolatility 
+                ? " (Alta volatilidade e risco de reversão detectados)"
+                : highReversalRisk 
+                  ? " (Alto risco de reversão detectado)" 
+                  : " (Alta volatilidade detectada)"
+            )
+          };
+        }
       }
       
       // Para alguns indicadores, alinhar com a tendência dominante para maior consistência
@@ -270,6 +346,13 @@ export const getProcessOptions = (precision: string, selectedTimeframe: Timefram
     prioritizeRecentData: true,
     adaptiveFiltering: precision === "alta",
     quickDetectionMode: selectedTimeframe === "30s",
+    
+    // Novas opções para melhorar timing de expiração
+    preciseTimingAnalysis: true,
+    expirationOptimization: true,
+    adjustForMarketSpeed: selectedTimeframe === "30s",
+    predictReversal: marketType === "otc" ? true : precision === "alta",
+    earlyExpirationForOTC: marketType === "otc",
     
     // Otimizações para Mobile
     mobileOptimized: true,

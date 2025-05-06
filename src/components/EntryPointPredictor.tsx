@@ -1,4 +1,3 @@
-
 import React, { useEffect } from "react";
 import { useAnalyzer, EntryType, TimeframeType } from "@/context/AnalyzerContext";
 import { PatternResult } from "@/utils/patternDetection";
@@ -22,7 +21,8 @@ const EntryPointPredictor: React.FC<EntryPointPredictorProps> = ({ results }) =>
     prediction, 
     setPrediction, 
     selectedTimeframe, 
-    setLastUpdated 
+    setLastUpdated,
+    marketType 
   } = useAnalyzer();
 
   // Generate prediction based on analysis results
@@ -201,12 +201,43 @@ const EntryPointPredictor: React.FC<EntryPointPredictorProps> = ({ results }) =>
         confidence = normalizedSellScore * 100;
       }
       
-      // Expiration time based on current time + timeframe
+      // Expiration time based on current time + timeframe with adjustments
       const now = new Date();
       setLastUpdated(now);
       
-      const expiryDate = new Date(now.getTime() + (selectedTimeframe === "30s" ? 30 : 60) * 1000);
+      // FIXED: Adjust expiration time based on market type and volatility
+      // For OTC markets, we reduce the time slightly to avoid late reversals
+      // For 30s timeframe, we add a small safety margin for regular markets
+      let timeframeSeconds = selectedTimeframe === "30s" ? 30 : 60;
+      
+      // Apply market type adjustment - OTC markets tend to have faster reversals
+      if (marketType === "otc") {
+        // For OTC, reduce the expiration time slightly to avoid late reversals
+        timeframeSeconds = Math.floor(timeframeSeconds * 0.90); // 10% reduction
+      } else if (selectedTimeframe === "30s") {
+        // For regular markets with 30s timeframe, we don't need to adjust
+        // Keep the timeframe as is
+      } else {
+        // For regular markets with 1m timeframe, add a small buffer
+        timeframeSeconds = Math.floor(timeframeSeconds * 0.95); // 5% reduction
+      }
+      
+      // Further adjust based on confidence
+      // If confidence is very high, price movements tend to happen faster
+      if (confidence > 85) {
+        timeframeSeconds = Math.floor(timeframeSeconds * 0.95); // Further 5% reduction for high-confidence signals
+      }
+      
+      // Calculate expiry date with the adjusted timeframe
+      const expiryDate = new Date(now.getTime() + timeframeSeconds * 1000);
       const expirationTime = `${expiryDate.getHours().toString().padStart(2, '0')}:${expiryDate.getMinutes().toString().padStart(2, '0')}:${expiryDate.getSeconds().toString().padStart(2, '0')}`;
+      
+      // Add the adjusted timeframe to indicators for transparency
+      indicators.push({
+        name: "Tempo Ajustado",
+        signal: "neutral",
+        strength: 100
+      });
       
       setPrediction({
         entryPoint,
@@ -221,7 +252,7 @@ const EntryPointPredictor: React.FC<EntryPointPredictorProps> = ({ results }) =>
     const timer = setTimeout(generatePrediction, 500);
     
     return () => clearTimeout(timer);
-  }, [results, precision, selectedTimeframe, setPrediction, setLastUpdated]);
+  }, [results, precision, selectedTimeframe, setPrediction, setLastUpdated, marketType]);
 
   if (!prediction) return null;
 
@@ -236,7 +267,7 @@ const EntryPointPredictor: React.FC<EntryPointPredictorProps> = ({ results }) =>
         <div className="flex items-center gap-2 mb-1">
           <Timer className="h-4 w-4 text-white" />
           <span className="text-sm font-bold text-white uppercase">
-            Previsão {selectedTimeframe}
+            Previsão {selectedTimeframe} {marketType === "otc" ? "(OTC)" : ""}
           </span>
         </div>
         
