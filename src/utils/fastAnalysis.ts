@@ -45,6 +45,19 @@ export const generateTimeframeAnalyses = (
           "Detecção de aumentos súbitos de volume a cada 30 segundos" :
           "Padrões de volume para prever o movimento do próximo minuto"
     },
+    // NOVO: Análise específica para volume contínuo
+    {
+      type: "volume",
+      found: Math.random() > 0.3,
+      direction: Math.random() > (marketType === "otc" ? 0.45 : 0.5) ? "up" : "down" as "up" | "down", 
+      strength: Math.random() * 100,
+      name: "Volume Contínuo",
+      description: marketType === "otc" ? 
+        "Análise de volume contínuo em OTC, indicador de interesse dos traders" :
+        selectedTimeframe === "30s" ?
+          "Volume consistente nos últimos 30 segundos, indicando interesse sustentado" :
+          "Análise de volume acumulado no último minuto"
+    },
     {
       type: "candleFormation",
       found: Math.random() > 0.25,
@@ -57,6 +70,19 @@ export const generateTimeframeAnalyses = (
           "Análise de padrões de velas de 30 segundos para previsão rápida" :
           "Análise de padrões de velas para previsão do próximo minuto"
     },
+    // NOVO: Análise específica para tamanho das velas
+    {
+      type: "candleSize",
+      found: Math.random() > 0.3,
+      direction: Math.random() > (marketType === "otc" ? 0.5 : 0.5) ? "up" : "down" as "up" | "down", 
+      strength: Math.random() * 100,
+      name: "Tamanho das Velas",
+      description: marketType === "otc" ? 
+        "Análise do tamanho relativo das velas em OTC, indicando convicção do movimento" :
+        selectedTimeframe === "30s" ?
+          "Tamanho das velas nos últimos 30 segundos, indicando força do movimento" :
+          "Análise da amplitude das velas no último minuto"
+    },
     {
       type: "priceReversal",
       found: Math.random() > (marketType === "otc" ? 0.3 : 0.4), // OTC tem mais reversões
@@ -68,6 +94,19 @@ export const generateTimeframeAnalyses = (
         selectedTimeframe === "30s" ?
           "Detecção de possíveis reversões dentro de 30 segundos" :
           "Previsão de reversões para o próximo minuto"
+    },
+    // NOVO: Análise específica para volatilidade
+    {
+      type: "volatility",
+      found: Math.random() > 0.25,
+      direction: Math.random() > 0.5 ? "neutral" : (Math.random() > 0.5 ? "up" : "down") as "up" | "down" | "neutral",
+      strength: Math.random() * 100,
+      name: "Volatilidade",
+      description: marketType === "otc" ? 
+        "Medição da volatilidade em OTC, importante para definir stop-loss adequado" :
+        selectedTimeframe === "30s" ?
+          "Análise da volatilidade em ciclos de 30 segundos" :
+          "Volatilidade projetada para o próximo minuto"
     },
     // Indicadores técnicos
     {
@@ -128,6 +167,33 @@ export const generateTimeframeAnalyses = (
       (upwardIndicators > downwardIndicators ? "down" : "up") : // Inversão intencional para OTC
       (upwardIndicators > downwardIndicators ? "up" : "down");
     
+    // Correlacionar tamanho das velas com volatilidade
+    let candleSizeIndicator = analyses.find(a => a.type === "candleSize");
+    let volatilityIndicator = analyses.find(a => a.type === "volatility");
+    
+    // Se ambos existirem, correlacionar os valores
+    if (candleSizeIndicator && volatilityIndicator && candleSizeIndicator.found && volatilityIndicator.found) {
+      // Maior tamanho de vela geralmente implica em maior volatilidade
+      const candleStrength = candleSizeIndicator.strength;
+      // Ajustar volatilidade para ter alguma correlação com tamanho da vela, mas não exata
+      volatilityIndicator.strength = (volatilityIndicator.strength * 0.4) + (candleStrength * 0.6);
+    }
+    
+    // Correlacionar volume com força do movimento
+    let volumeIndicator = analyses.find(a => a.type === "volume" || a.type === "volumeSpikes");
+    let momentumIndicator = analyses.find(a => a.type === "momentum");
+    
+    // Se ambos existirem, correlacionar os valores
+    if (volumeIndicator && momentumIndicator && volumeIndicator.found && momentumIndicator.found) {
+      // Volume alto tende a confirmar a força do movimento
+      if (volumeIndicator.strength > 70 && momentumIndicator.strength > 60) {
+        // Alinhar a direção com base na força relativa
+        if (volumeIndicator.strength > momentumIndicator.strength) {
+          momentumIndicator.direction = volumeIndicator.direction;
+        }
+      }
+    }
+    
     // Ajustar alguns indicadores para melhor alinhamento com a tendência dominante (50% de chance)
     return analyses.map(indicator => {
       // Lógica específica para OTC
@@ -144,7 +210,7 @@ export const generateTimeframeAnalyses = (
           ["momentum", "macdCrossover", "rsiAnalysis"].includes(indicator.type)) {
         return {
           ...indicator,
-          direction: dominantTrend,
+          direction: dominantTrend as "up" | "down",
           // Aumentar força quando alinhado com a tendência dominante
           strength: Math.min(100, indicator.strength * (marketType === "otc" ? 1.1 : 1.2))
         };
