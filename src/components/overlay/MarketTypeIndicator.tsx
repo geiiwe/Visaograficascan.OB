@@ -24,7 +24,7 @@ const MarketTypeIndicator: React.FC<MarketTypeIndicatorProps> = ({ marketType })
               <span className="font-medium text-sm">MERCADO OTC</span>
               <CircleCheck className="h-3 w-3 text-yellow-200" />
             </div>
-            <span className="text-[10px] leading-tight text-yellow-200">Análise automática ajustada para OTC</span>
+            <span className="text-[10px] leading-tight text-yellow-200">Análise automática otimizada para OTC</span>
           </div>
         </>
       ) : (
