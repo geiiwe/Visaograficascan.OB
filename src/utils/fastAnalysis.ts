@@ -1,4 +1,3 @@
-
 import { TimeframeType, MarketType } from "@/context/AnalyzerContext";
 import { FastAnalysisResult } from "@/components/overlay/FastAnalysisIndicators";
 
@@ -12,7 +11,7 @@ export const generateTimeframeAnalyses = (
     {
       type: "priceAction",
       found: Math.random() > 0.25,
-      direction: Math.random() > (marketType === "otc" ? 0.6 : 0.5) ? "up" : "down" as "up" | "down", // Typed correctly
+      direction: Math.random() > (marketType === "otc" ? 0.6 : 0.5) ? "up" : "down" as "up" | "down",
       strength: Math.random() * 100,
       name: "Price Action",
       description: marketType === "otc" ? 
@@ -24,7 +23,7 @@ export const generateTimeframeAnalyses = (
     {
       type: "momentum",
       found: Math.random() > 0.2,
-      direction: Math.random() > (marketType === "otc" ? 0.45 : 0.5) ? "up" : "down" as "up" | "down", // Typed correctly
+      direction: Math.random() > (marketType === "otc" ? 0.45 : 0.5) ? "up" : "down" as "up" | "down",
       strength: Math.random() * 100,
       name: "Momentum",
       description: marketType === "otc" ? 
@@ -36,7 +35,7 @@ export const generateTimeframeAnalyses = (
     {
       type: "volumeSpikes",
       found: Math.random() > 0.3,
-      direction: Math.random() > (marketType === "otc" ? 0.55 : 0.5) ? "up" : "down" as "up" | "down", // Typed correctly
+      direction: Math.random() > (marketType === "otc" ? 0.55 : 0.5) ? "up" : "down" as "up" | "down",
       strength: Math.random() * 100,
       name: "Picos de Volume",
       description: marketType === "otc" ? 
@@ -61,7 +60,7 @@ export const generateTimeframeAnalyses = (
     {
       type: "candleFormation",
       found: Math.random() > 0.25,
-      direction: Math.random() > (marketType === "otc" ? 0.55 : 0.5) ? "up" : "down" as "up" | "down", // Typed correctly
+      direction: Math.random() > (marketType === "otc" ? 0.55 : 0.5) ? "up" : "down" as "up" | "down",
       strength: Math.random() * 100,
       name: "Formação de Velas",
       description: marketType === "otc" ? 
@@ -86,7 +85,7 @@ export const generateTimeframeAnalyses = (
     {
       type: "priceReversal",
       found: Math.random() > (marketType === "otc" ? 0.3 : 0.4), // OTC tem mais reversões
-      direction: Math.random() > (marketType === "otc" ? 0.45 : 0.5) ? "up" : "down" as "up" | "down", // Typed correctly
+      direction: Math.random() > (marketType === "otc" ? 0.45 : 0.5) ? "up" : "down" as "up" | "down",
       strength: Math.random() * 100,
       name: "Reversões",
       description: marketType === "otc" ? 
@@ -99,7 +98,8 @@ export const generateTimeframeAnalyses = (
     {
       type: "volatility",
       found: Math.random() > 0.25,
-      direction: Math.random() > 0.5 ? "neutral" : (Math.random() > 0.5 ? "up" : "down") as "up" | "down" | "neutral",
+      // Ensure we're explicitly casting to the union type
+      direction: (Math.random() > 0.5 ? "neutral" : (Math.random() > 0.5 ? "up" : "down")) as "up" | "down" | "neutral",
       strength: Math.random() * 100,
       name: "Volatilidade",
       description: marketType === "otc" ? 
@@ -125,7 +125,7 @@ export const generateTimeframeAnalyses = (
     {
       type: "rsiAnalysis",
       found: Math.random() > 0.3,
-      direction: Math.random() > (marketType === "otc" ? 0.4 : 0.6) ? "up" : "down" as "up" | "down", // Typed correctly
+      direction: Math.random() > (marketType === "otc" ? 0.4 : 0.6) ? "up" : "down" as "up" | "down",
       strength: Math.random() * 100,
       name: "RSI",
       description: marketType === "otc" ? 
@@ -137,7 +137,7 @@ export const generateTimeframeAnalyses = (
     {
       type: "macdCrossover",
       found: Math.random() > 0.35,
-      direction: Math.random() > (marketType === "otc" ? 0.45 : 0.55) ? "up" : "down" as "up" | "down", // Typed correctly
+      direction: Math.random() > (marketType === "otc" ? 0.45 : 0.55) ? "up" : "down" as "up" | "down",
       strength: Math.random() * 100,
       name: "MACD",
       description: marketType === "otc" ? 
@@ -149,7 +149,7 @@ export const generateTimeframeAnalyses = (
     {
       type: "bollingerBands",
       found: Math.random() > 0.4,
-      direction: Math.random() > (marketType === "otc" ? 0.6 : 0.5) ? "up" : "down" as "up" | "down", // Typed correctly
+      direction: Math.random() > (marketType === "otc" ? 0.6 : 0.5) ? "up" : "down" as "up" | "down",
       strength: Math.random() * 100,
       name: "Bollinger",
       description: marketType === "otc" ? 
@@ -162,7 +162,7 @@ export const generateTimeframeAnalyses = (
     {
       type: "otcPatterns",
       found: marketType === "otc" && Math.random() > 0.3,
-      direction: Math.random() > 0.5 ? "up" : "down" as "up" | "down", // Typed correctly
+      direction: Math.random() > 0.5 ? "up" : "down" as "up" | "down",
       strength: Math.random() * 100,
       name: "Padrões OTC",
       description: "Detecção de padrões específicos de manipulação em mercados OTC"
@@ -171,7 +171,8 @@ export const generateTimeframeAnalyses = (
     {
       type: "expiryTiming",
       found: Math.random() > 0.35,
-      direction: Math.random() > 0.5 ? "neutral" : (Math.random() > 0.5 ? "up" : "down") as "up" | "down" | "neutral",
+      // Ensure we're explicitly casting to the union type
+      direction: (Math.random() > 0.5 ? "neutral" : (Math.random() > 0.5 ? "up" : "down")) as "up" | "down" | "neutral",
       strength: Math.random() * 100,
       name: "Timing Exato",
       description: marketType === "otc" ?
@@ -190,8 +191,8 @@ export const generateTimeframeAnalyses = (
     
     // Em mercados OTC, a tendência dominante pode ser frequentemente enganosa (manipulação)
     const dominantTrend = marketType === "otc" && Math.random() > 0.4 ? 
-      (upwardIndicators > downwardIndicators ? "down" : "up") : // Inversão intencional para OTC
-      (upwardIndicators > downwardIndicators ? "up" : "down");
+      (upwardIndicators > downwardIndicators ? "down" : "up") as "up" | "down" : // Explicitly type as union
+      (upwardIndicators > downwardIndicators ? "up" : "down") as "up" | "down";  // Explicitly type as union
     
     // Correlacionar tamanho das velas com volatilidade
     let candleSizeIndicator = analyses.find(a => a.type === "candleSize");
@@ -249,7 +250,7 @@ export const generateTimeframeAnalyses = (
       if (marketType === "otc" && indicator.type === "priceReversal") {
         return {
           ...indicator,
-          direction: Math.random() > 0.6 ? dominantTrend : (dominantTrend === "up" ? "down" : "up"), // Mais chance de reverter em OTC
+          direction: Math.random() > 0.6 ? dominantTrend : (dominantTrend === "up" ? "down" : "up") as "up" | "down",
           strength: indicator.strength * (Math.random() > 0.5 ? 1.3 : 0.9) // Mais volátil em OTC
         };
       }
@@ -286,7 +287,7 @@ export const generateTimeframeAnalyses = (
           ["momentum", "macdCrossover", "rsiAnalysis"].includes(indicator.type)) {
         return {
           ...indicator,
-          direction: dominantTrend as "up" | "down",
+          direction: dominantTrend,
           // Aumentar força quando alinhado com a tendência dominante
           strength: Math.min(100, indicator.strength * (marketType === "otc" ? 1.1 : 1.2))
         };

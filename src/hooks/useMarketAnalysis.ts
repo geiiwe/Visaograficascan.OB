@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { PatternResult } from "@/utils/patternDetection";
 import { FastAnalysisResult } from "@/components/overlay/FastAnalysisIndicators";
@@ -102,7 +101,7 @@ export const useMarketAnalysis = ({
         {
           type: "fallbackAnalysis",
           found: true,
-          direction: "neutral",
+          direction: "neutral" as "up" | "down" | "neutral",
           strength: 60,
           name: "Análise Básica",
           description: "Análise de contingência devido a erro no processamento principal"
