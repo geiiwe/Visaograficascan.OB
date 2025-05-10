@@ -1,6 +1,6 @@
 
 import React from "react";
-import { CircleArrowDown, CircleArrowUp, AlertTriangle } from "lucide-react";
+import { CircleArrowDown, CircleArrowUp, AlertTriangle, Shield } from "lucide-react";
 import { MarketType } from "@/context/AnalyzerContext";
 
 interface MarketTypeIndicatorProps {
@@ -26,10 +26,13 @@ const MarketTypeIndicator: React.FC<MarketTypeIndicatorProps> = ({ marketType })
         </>
       ) : (
         <>
-          <CircleArrowUp className="h-3.5 w-3.5" />
+          <div className="flex items-center gap-0.5">
+            <CircleArrowUp className="h-3.5 w-3.5" />
+            <Shield className="h-3 w-3 text-blue-300" />
+          </div>
           <div className="flex flex-col">
             <span className="font-medium text-xs">Regular</span>
-            <span className="text-[9px] leading-tight text-blue-100">Padrões normais</span>
+            <span className="text-[9px] leading-tight text-blue-100">Padrões confiáveis</span>
           </div>
         </>
       )}

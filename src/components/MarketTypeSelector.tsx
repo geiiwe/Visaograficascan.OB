@@ -6,18 +6,23 @@ import { TrendingUp, TrendingDown } from "lucide-react";
 import { toast } from "sonner";
 
 const MarketTypeSelector: React.FC = () => {
-  const { marketType, setMarketType } = useAnalyzer();
+  const { marketType, setMarketType, isAnalyzing } = useAnalyzer();
   
   const handleMarketTypeChange = (type: MarketType) => {
+    if (isAnalyzing) {
+      toast.warning("Aguarde a análise atual ser concluída antes de mudar o tipo de mercado.");
+      return;
+    }
+    
     setMarketType(type);
     
     if (type === "otc") {
-      toast.info("Modo OTC ativado. Análises ajustadas para padrões de mercado OTC.", {
-        description: "Este modo é otimizado para detectar manipulações e reversões típicas de mercados OTC."
+      toast.info("Modo OTC ativado. Sistema otimizado para detectar manipulações de mercado.", {
+        description: "Algoritmos adaptados para maior assertividade em mercados OTC."
       });
     } else {
-      toast.info("Modo Regular ativado. Análises ajustadas para padrões de mercado tradicional.", {
-        description: "Este modo é otimizado para análises técnicas padrão em mercados regulares."
+      toast.info("Modo Regular ativado. Sistema otimizado para mercados tradicionais.", {
+        description: "Algoritmos calibrados para maior precisão em mercados regulares."
       });
     }
   };
@@ -31,7 +36,8 @@ const MarketTypeSelector: React.FC = () => {
       <TabsList className="h-7 bg-transparent">
         <TabsTrigger 
           value="regular" 
-          className={`h-6 ${marketType === "regular" ? 'data-[state=active]:bg-trader-blue' : ''}`}
+          className={`h-6 ${marketType === "regular" ? 'data-[state=active]:bg-trader-blue border-b-2 border-blue-400' : ''}`}
+          disabled={isAnalyzing}
         >
           <span className="flex items-center gap-1">
             <TrendingUp className="h-3.5 w-3.5" />
@@ -40,7 +46,8 @@ const MarketTypeSelector: React.FC = () => {
         </TabsTrigger>
         <TabsTrigger 
           value="otc"
-          className={`h-6 ${marketType === "otc" ? 'data-[state=active]:bg-trader-blue' : ''}`}
+          className={`h-6 ${marketType === "otc" ? 'data-[state=active]:bg-trader-blue border-b-2 border-purple-400' : ''}`}
+          disabled={isAnalyzing}
         >
           <span className="flex items-center gap-1">
             <TrendingDown className="h-3.5 w-3.5" />
