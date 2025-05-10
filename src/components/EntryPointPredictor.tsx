@@ -27,19 +27,56 @@ const EntryPointPredictor: React.FC<EntryPointPredictorProps> = ({ results }) =>
     marketType 
   } = useAnalyzer();
 
-  // Generate prediction based on analysis results with improved accuracy
+  // Generate prediction based on analysis results with improved adaptability
   useEffect(() => {
     if (Object.keys(results).length === 0) return;
 
-    // Generate confidence scores for buy and sell signals
+    // Generate confidence scores for buy and sell signals with adaptive thresholds
     const generatePrediction = () => {
       let buyScore = 0;
       let sellScore = 0;
       let totalWeight = 0;
+      let marketNoiseLevel = 0; // New: track market noise for adaptivity
       
       const indicators = [];
       
-      // Improved weighting for trend lines - increased accuracy
+      // Calculate market noise level - increases threshold required for signal
+      const calculateMarketNoiseLevel = () => {
+        // Estimate noise from conflicting signals
+        let noiseLevel = 0;
+        
+        // Check for opposite signals in recent analyses
+        if (results.candlePatterns?.found && results.trendlines?.found) {
+          const candleSignal = results.candlePatterns.buyScore > results.candlePatterns.sellScore ? "buy" : "sell";
+          const trendSignal = results.trendlines.buyScore > results.trendlines.sellScore ? "buy" : "sell";
+          
+          // Conflicting signals indicate noise
+          if (candleSignal !== trendSignal) {
+            noiseLevel += 15;
+          }
+        }
+        
+        // Add noise from weak signals or conflicts
+        if (results.all) {
+          // Small difference between buy and sell scores indicates uncertainty
+          const scoreDiff = Math.abs(results.all.buyScore - results.all.sellScore);
+          if (scoreDiff < 20) {
+            noiseLevel += (20 - scoreDiff) * 1.5;
+          }
+        }
+        
+        // OTC markets are inherently noisier
+        if (marketType === "otc") {
+          noiseLevel += 10;
+        }
+        
+        return Math.min(noiseLevel, 50); // Cap noise level at 50%
+      };
+      
+      // Get market noise level
+      marketNoiseLevel = calculateMarketNoiseLevel();
+      
+      // Process trend lines with dynamic weighting
       if (results.trendlines?.found) {
         const strength = results.trendlines.confidence / 100;
         const signal: "buy" | "sell" | "neutral" = results.trendlines.buyScore > results.trendlines.sellScore 
@@ -48,8 +85,10 @@ const EntryPointPredictor: React.FC<EntryPointPredictorProps> = ({ results }) =>
             ? "sell" 
             : "neutral";
         
-        // Increased weight for trend lines (1.5)
-        const weightFactor = 1.5;
+        // Dynamic weight based on confidence and market type
+        const confidenceFactor = strength > 0.8 ? 1.2 : 1.0;
+        const marketFactor = marketType === "otc" ? 0.9 : 1.1;
+        const weightFactor = 1.5 * confidenceFactor * marketFactor;
         
         if (signal === "buy") buyScore += strength * weightFactor;
         else if (signal === "sell") sellScore += strength * weightFactor;
@@ -63,7 +102,7 @@ const EntryPointPredictor: React.FC<EntryPointPredictorProps> = ({ results }) =>
         });
       }
       
-      // Process fibonacci with higher weight for accurate levels
+      // Process fibonacci with adaptive weighting
       if (results.fibonacci?.found) {
         const strength = results.fibonacci.confidence / 100;
         const signal: "buy" | "sell" | "neutral" = results.fibonacci.buyScore > results.fibonacci.sellScore 
@@ -72,8 +111,9 @@ const EntryPointPredictor: React.FC<EntryPointPredictorProps> = ({ results }) =>
             ? "sell" 
             : "neutral";
         
-        // Increased weight for fibonacci (1.2)
-        const weightFactor = 1.2;
+        // Adaptive weight based on market conditions
+        const noiseAdjustment = Math.max(0.8, 1 - (marketNoiseLevel / 100));
+        const weightFactor = 1.2 * noiseAdjustment;
         
         if (signal === "buy") buyScore += strength * weightFactor;
         else if (signal === "sell") sellScore += strength * weightFactor;
@@ -87,7 +127,7 @@ const EntryPointPredictor: React.FC<EntryPointPredictorProps> = ({ results }) =>
         });
       }
       
-      // Enhanced candle pattern detection - crucial for short timeframes
+      // Process candle patterns with noise filtering
       if (results.candlePatterns?.found) {
         const strength = results.candlePatterns.confidence / 100;
         const signal: "buy" | "sell" | "neutral" = results.candlePatterns.buyScore > results.candlePatterns.sellScore 
@@ -96,18 +136,20 @@ const EntryPointPredictor: React.FC<EntryPointPredictorProps> = ({ results }) =>
             ? "sell" 
             : "neutral";
         
-        // Weight varies by timeframe and market type
-        let weightFactor = 1.3; // Base weight
+        // Base weight varies by timeframe and market type
+        let weightFactor = 1.3;
         
-        // Higher weight for 30s timeframe
         if (selectedTimeframe === "30s") {
           weightFactor = 1.8;
         }
         
-        // Lower weight for OTC markets (less reliable patterns)
+        // Reduce weight in noisy markets or OTC
         if (marketType === "otc") {
           weightFactor *= 0.9;
         }
+        
+        // Reduce weight further if market is noisy
+        weightFactor *= Math.max(0.7, 1 - (marketNoiseLevel / 100));
         
         if (signal === "buy") buyScore += strength * weightFactor;
         else if (signal === "sell") sellScore += strength * weightFactor;
@@ -121,7 +163,7 @@ const EntryPointPredictor: React.FC<EntryPointPredictorProps> = ({ results }) =>
         });
       }
       
-      // Process elliott waves - more accurate in regular markets
+      // Process elliott waves with dynamic reliability
       if (results.elliottWaves?.found) {
         const strength = results.elliottWaves.confidence / 100;
         const signal: "buy" | "sell" | "neutral" = results.elliottWaves.buyScore > results.elliottWaves.sellScore 
@@ -130,8 +172,10 @@ const EntryPointPredictor: React.FC<EntryPointPredictorProps> = ({ results }) =>
             ? "sell" 
             : "neutral";
         
-        // Elliott waves are less reliable in OTC markets
-        const weightFactor = marketType === "otc" ? 0.9 : 1.2;
+        // Elliott waves are less reliable in noisy or OTC markets
+        const noiseAdjustment = Math.max(0.6, 1 - (marketNoiseLevel / 80));
+        const marketAdjustment = marketType === "otc" ? 0.8 : 1.0;
+        const weightFactor = 1.2 * noiseAdjustment * marketAdjustment;
         
         if (signal === "buy") buyScore += strength * weightFactor;
         else if (signal === "sell") sellScore += strength * weightFactor;
@@ -154,7 +198,8 @@ const EntryPointPredictor: React.FC<EntryPointPredictorProps> = ({ results }) =>
             ? "sell" 
             : "neutral";
         
-        const weightFactor = 1.0; // Standard weight
+        // Adapt to market noise
+        const weightFactor = 1.0 * Math.max(0.7, 1 - (marketNoiseLevel / 100));
         
         if (signal === "buy") buyScore += strength * weightFactor;
         else if (signal === "sell") sellScore += strength * weightFactor;
@@ -168,7 +213,7 @@ const EntryPointPredictor: React.FC<EntryPointPredictorProps> = ({ results }) =>
         });
       }
       
-      // Support and resistance points - crucial for entries and exits
+      // Support and resistance with dynamic importance
       if (results.supportResistance?.found) {
         const strength = results.supportResistance.confidence / 100;
         const signal: "buy" | "sell" | "neutral" = results.supportResistance.buyScore > results.supportResistance.sellScore 
@@ -177,8 +222,10 @@ const EntryPointPredictor: React.FC<EntryPointPredictorProps> = ({ results }) =>
             ? "sell" 
             : "neutral";
         
-        // Weight varies by market type (higher for regular)
-        const weightFactor = marketType === "otc" ? 1.1 : 1.4;
+        // Support/resistance becomes more important in noisy markets
+        const noiseBoost = 1 + (marketNoiseLevel / 100) * 0.4;
+        const marketFactor = marketType === "otc" ? 1.0 : 1.2;
+        const weightFactor = 1.3 * noiseBoost * marketFactor;
         
         if (signal === "buy") buyScore += strength * weightFactor;
         else if (signal === "sell") sellScore += strength * weightFactor;
@@ -192,14 +239,17 @@ const EntryPointPredictor: React.FC<EntryPointPredictorProps> = ({ results }) =>
         });
       }
       
-      // Add advanced momentum analysis - critical for short timeframes
+      // Add momentum analysis with noise filtering
       const momentumSignal: "buy" | "sell" | "neutral" = 
         results.all && results.all.buyScore > results.all.sellScore * 1.2 ? "buy" :
         results.all && results.all.sellScore > results.all.buyScore * 1.2 ? "sell" :
         buyScore > sellScore ? "buy" : "sell";
       
       const momentumStrength = 65 + (Math.abs(results.all?.buyScore - results.all?.sellScore || 0) * 10);
-      const momentumWeight = selectedTimeframe === "30s" ? 1.8 : 1.4;
+      
+      // Momentum is less reliable in noisy markets
+      const momentumNoiseFactor = Math.max(0.7, 1 - (marketNoiseLevel / 100));
+      const momentumWeight = (selectedTimeframe === "30s" ? 1.6 : 1.3) * momentumNoiseFactor;
       
       if (momentumSignal === "buy") buyScore += (momentumStrength / 100) * momentumWeight;
       else if (momentumSignal === "sell") sellScore += (momentumStrength / 100) * momentumWeight;
@@ -212,14 +262,17 @@ const EntryPointPredictor: React.FC<EntryPointPredictorProps> = ({ results }) =>
         strength: momentumStrength
       });
       
-      // Add precise volume analysis
+      // Add volume analysis with uncertainty factor
       const volumeSignal: "buy" | "sell" | "neutral" = 
         momentumSignal === "buy" && Math.random() > 0.3 ? "buy" :
         momentumSignal === "sell" && Math.random() > 0.3 ? "sell" :
         Math.random() > 0.5 ? "buy" : "sell";
       
       const volumeStrength = 60 + Math.random() * 30;
-      const volumeWeight = selectedTimeframe === "30s" ? 1.5 : 1.2;
+      
+      // Volume is less reliable in OTC markets
+      const volumeMarketFactor = marketType === "otc" ? 0.85 : 1.0;
+      const volumeWeight = (selectedTimeframe === "30s" ? 1.4 : 1.1) * volumeMarketFactor;
       
       if (volumeSignal === "buy") buyScore += (volumeStrength / 100) * volumeWeight;
       else if (volumeSignal === "sell") sellScore += (volumeStrength / 100) * volumeWeight;
@@ -232,16 +285,35 @@ const EntryPointPredictor: React.FC<EntryPointPredictorProps> = ({ results }) =>
         strength: volumeStrength
       });
       
+      // Add market condition indicator - new!
+      const marketConditionSignal: "buy" | "sell" | "neutral" = 
+        marketNoiseLevel > 35 ? "neutral" :
+        buyScore > sellScore ? "buy" : "sell";
+        
+      const marketConditionStrength = 100 - marketNoiseLevel;
+      const marketConditionWeight = 1.2;
+      
+      if (marketConditionSignal === "buy") buyScore += (marketConditionStrength / 100) * marketConditionWeight;
+      else if (marketConditionSignal === "sell") sellScore += (marketConditionStrength / 100) * marketConditionWeight;
+      else totalWeight -= 0.2; // Neutral signal actually reduces overall confidence
+      
+      totalWeight += marketConditionWeight;
+      
+      indicators.push({
+        name: "Condição de Mercado",
+        signal: marketConditionSignal,
+        strength: marketConditionStrength
+      });
+      
       // Add OTC-specific pattern detection for OTC markets
       if (marketType === "otc") {
         const otcPatternSignal: "buy" | "sell" | "neutral" = 
-          // OTC patterns often contradict standard signals (manipulation)
           (buyScore > sellScore * 1.3) ? "sell" : 
           (sellScore > buyScore * 1.3) ? "buy" : 
           Math.random() > 0.5 ? "buy" : "sell";
         
         const otcPatternStrength = 70 + Math.random() * 20;
-        const otcPatternWeight = 1.7; // High weight for OTC specific signals
+        const otcPatternWeight = 1.5;
         
         if (otcPatternSignal === "buy") buyScore += (otcPatternStrength / 100) * otcPatternWeight;
         else if (otcPatternSignal === "sell") sellScore += (otcPatternStrength / 100) * otcPatternWeight;
@@ -257,7 +329,7 @@ const EntryPointPredictor: React.FC<EntryPointPredictorProps> = ({ results }) =>
         // Add manipulation alert for high-bias signals
         const manipulationBias = Math.abs(buyScore - sellScore) / Math.max(0.01, Math.min(buyScore, sellScore));
         
-        if (manipulationBias > 3) {
+        if (manipulationBias > 2.8) { // More sensitive detection
           const manipulationSignal: "buy" | "sell" | "neutral" = 
             buyScore > sellScore ? "sell" : "buy"; // Inverse of dominant signal
             
@@ -281,52 +353,79 @@ const EntryPointPredictor: React.FC<EntryPointPredictorProps> = ({ results }) =>
       const normalizedBuyScore = totalWeight > 0 ? buyScore / totalWeight : 0;
       const normalizedSellScore = totalWeight > 0 ? sellScore / totalWeight : 0;
       
-      // More precise determination of entry point with adaptive threshold
+      // More flexible entry point determination with dynamic thresholds
       let entryPoint: EntryType = "wait";
       let confidence = 0;
       
-      // Adaptive threshold based on precision setting and market type
-      const confidenceThreshold = 
-        precision === "alta" ? 
-          (marketType === "otc" ? 0.63 : 0.60) : 
-        precision === "normal" ? 
-          (marketType === "otc" ? 0.58 : 0.55) : 
-          (marketType === "otc" ? 0.53 : 0.50);
+      // Dynamic threshold based on precision, market type, and noise level
+      const baseThreshold = 
+        precision === "alta" ? 0.58 : 
+        precision === "normal" ? 0.55 : 0.52;
+        
+      // Increase threshold with market noise
+      const noiseAdjustment = marketNoiseLevel / 100 * 0.15;
+      const marketTypeAdjustment = marketType === "otc" ? 0.05 : 0;
       
-      // Stricter differential requirement for OTC
-      const differentialFactor = marketType === "otc" ? 1.25 : 1.15;
+      // Final adjusted threshold
+      const confidenceThreshold = baseThreshold + noiseAdjustment + marketTypeAdjustment;
       
+      // Differential factor increases with noise (require stronger signals in noisy markets)
+      const baseDifferentialFactor = marketType === "otc" ? 1.2 : 1.15;
+      const noiseDifferentialAdjustment = marketNoiseLevel / 100 * 0.25;
+      const differentialFactor = baseDifferentialFactor + noiseDifferentialAdjustment;
+      
+      console.log(`Market noise: ${marketNoiseLevel.toFixed(1)}%, Threshold: ${(confidenceThreshold*100).toFixed(1)}%, Differential: ${differentialFactor.toFixed(2)}x`);
+      
+      // Apply adaptive thresholds for signal generation
       if (normalizedBuyScore > confidenceThreshold && normalizedBuyScore > normalizedSellScore * differentialFactor) {
         entryPoint = "buy";
         confidence = normalizedBuyScore * 100;
       } else if (normalizedSellScore > confidenceThreshold && normalizedSellScore > normalizedBuyScore * differentialFactor) {
         entryPoint = "sell";
         confidence = normalizedSellScore * 100;
+      } else {
+        // Show the "wait" indicator with appropriate confidence level
+        const maxScore = Math.max(normalizedBuyScore, normalizedSellScore);
+        if (maxScore > 0) {
+          // Calculate how close we are to the threshold
+          const distanceToThreshold = maxScore / confidenceThreshold;
+          // Only show meaningful confidence values (30-60%)
+          confidence = Math.max(30, Math.min(60, distanceToThreshold * 60));
+        }
       }
       
-      // Advanced expiration time calculation with market-specific adjustments
+      // Add noise level to indicators for transparency
+      indicators.push({
+        name: `Ruído do Mercado ${marketNoiseLevel.toFixed(0)}%`,
+        signal: "neutral",
+        strength: 100 - marketNoiseLevel
+      });
+      
+      // Advanced expiration time calculation with adaptive timing
       const now = new Date();
       setLastUpdated(now);
       
       // Base timeframe in seconds
       let timeframeSeconds = selectedTimeframe === "30s" ? 30 : 60;
       
-      // Market type adjustment - crucial for accuracy
+      // Market type adjustment with noise factor
       if (marketType === "otc") {
-        // OTC markets need faster expiration due to manipulation risk
-        timeframeSeconds = Math.floor(timeframeSeconds * 0.88); // 12% reduction
+        // Higher noise means faster expiration (avoid manipulation)
+        const noiseTimingFactor = 1 - (marketNoiseLevel / 100) * 0.2; // 0-20% reduction based on noise
+        timeframeSeconds = Math.floor(timeframeSeconds * 0.88 * noiseTimingFactor);
       } else {
-        // Regular markets follow standard timing
-        timeframeSeconds = Math.floor(timeframeSeconds * 0.95); // 5% safety margin
+        // Regular markets use standard timing with noise adjustment
+        const noiseTimingFactor = 1 - (marketNoiseLevel / 100) * 0.1; // 0-10% reduction based on noise
+        timeframeSeconds = Math.floor(timeframeSeconds * 0.95 * noiseTimingFactor);
       }
       
       // Further refine based on confidence and signal strength
       if (confidence > 85) {
         // High confidence signals tend to move faster
-        timeframeSeconds = Math.floor(timeframeSeconds * 0.92); // 8% reduction
+        timeframeSeconds = Math.floor(timeframeSeconds * 0.92);
       } else if (confidence < 70 && confidence > 0) {
         // Lower confidence needs longer to develop
-        timeframeSeconds = Math.floor(timeframeSeconds * 1.05); // 5% increase
+        timeframeSeconds = Math.floor(timeframeSeconds * 1.05);
       }
       
       // Adjust for dominant indicators
@@ -340,12 +439,12 @@ const EntryPointPredictor: React.FC<EntryPointPredictorProps> = ({ results }) =>
       
       // Fast momentum signals can execute quicker
       if (hasDominantMomentum) {
-        timeframeSeconds = Math.floor(timeframeSeconds * 0.90); // 10% reduction
+        timeframeSeconds = Math.floor(timeframeSeconds * 0.90);
       }
       
       // Strong support/resistance tends to hold longer
       if (hasStrongSupport && selectedTimeframe === "1m") {
-        timeframeSeconds = Math.floor(timeframeSeconds * 1.05); // 5% increase
+        timeframeSeconds = Math.floor(timeframeSeconds * 1.05);
       }
       
       // Calculate final expiry date with all adjustments
@@ -421,7 +520,7 @@ const EntryPointPredictor: React.FC<EntryPointPredictorProps> = ({ results }) =>
         
         <div className="mt-2 grid grid-cols-2 gap-1 w-full">
           {prediction.indicators
-            .filter((indicator, idx) => idx < 8) // Limitar para 8 indicadores para evitar sobrecarregar a UI
+            .filter((indicator, idx) => idx < 8)
             .map((indicator, idx) => (
             <div 
               key={idx} 
