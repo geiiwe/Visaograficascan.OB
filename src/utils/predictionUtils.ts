@@ -2,10 +2,22 @@ import { EntryType, TimeframeType } from "@/context/AnalyzerContext";
 
 export interface PatternResult {
   found: boolean;
-  buyScore?: number;  // Made optional with ?
-  sellScore?: number;  // Made optional with ?
+  buyScore?: number;  // Mantendo opcional com ?
+  sellScore?: number;  // Mantendo opcional com ?
   confidence: number;
-  type?: string;  // Added to match patternDetection.ts interface
+  type?: string;  // Mantendo opcional
+  visualMarkers?: any[]; // Para marcadores visuais
+  fibonacciLevels?: FibonacciLevel[]; // Adicionando níveis de Fibonacci
+}
+
+// Nova interface para níveis de Fibonacci
+export interface FibonacciLevel {
+  level: number;      // O nível de Fibonacci (0, 0.236, 0.382, 0.5, 0.618, 0.786, 1)
+  price: number;      // O preço correspondente a este nível
+  strength: number;   // Força do suporte/resistência neste nível (0-100)
+  type: "support" | "resistance" | "neutral";  // Se é suporte, resistência ou neutro
+  touched: boolean;   // Se o preço tocou recentemente este nível
+  broken: boolean;    // Se o nível foi quebrado recentemente
 }
 
 export interface PredictionIndicator {
@@ -139,20 +151,58 @@ export function generateIndicators(
     });
   }
   
-  // Process fibonacci
+  // Aprimorando a análise de Fibonacci
   if (results.fibonacci?.found) {
     const strength = results.fibonacci.confidence / 100;
-    const signal: "buy" | "sell" | "neutral" = 
-      results.fibonacci.buyScore && results.fibonacci.sellScore && results.fibonacci.buyScore > results.fibonacci.sellScore 
-        ? "buy" 
-        : results.fibonacci.buyScore && results.fibonacci.sellScore && results.fibonacci.sellScore > results.fibonacci.buyScore 
-          ? "sell" 
-          : "neutral";
+    const fibBuyScore = results.fibonacci.buyScore ?? 0;
+    const fibSellScore = results.fibonacci.sellScore ?? 0;
+    
+    // Análise avançada de sinal baseada em níveis
+    let signal: "buy" | "sell" | "neutral" = "neutral";
+    let fibStrength = strength * 100;
+    
+    // Se temos níveis de Fibonacci disponíveis, use-os para análise mais profunda
+    if (results.fibonacci.fibonacciLevels && results.fibonacci.fibonacciLevels.length > 0) {
+      const levels = results.fibonacci.fibonacciLevels;
+      
+      // Contar níveis de suporte e resistência tocados e quebrados
+      const supportTouched = levels.filter(l => l.type === "support" && l.touched).length;
+      const resistanceTouched = levels.filter(l => l.type === "resistance" && l.touched).length;
+      const supportBroken = levels.filter(l => l.type === "support" && l.broken).length;
+      const resistanceBroken = levels.filter(l => l.type === "resistance" && l.broken).length;
+      
+      // Calcular forças médias
+      const avgSupportStrength = levels
+        .filter(l => l.type === "support")
+        .reduce((sum, l) => sum + l.strength, 0) / Math.max(1, levels.filter(l => l.type === "support").length);
+      
+      const avgResistanceStrength = levels
+        .filter(l => l.type === "resistance")
+        .reduce((sum, l) => sum + l.strength, 0) / Math.max(1, levels.filter(l => l.type === "resistance").length);
+      
+      // Refinando o sinal com base em níveis de Fibonacci
+      if (resistanceBroken > supportBroken && avgSupportStrength > 65) {
+        signal = "buy";
+        fibStrength = Math.min(100, fibStrength + 10);
+      } else if (supportBroken > resistanceBroken && avgResistanceStrength > 65) {
+        signal = "sell";
+        fibStrength = Math.min(100, fibStrength + 10);
+      } else if (supportTouched > resistanceTouched) {
+        signal = "buy";
+      } else if (resistanceTouched > supportTouched) {
+        signal = "sell";
+      } else {
+        signal = fibBuyScore > fibSellScore ? "buy" : "sell";
+      }
+    } else {
+      // Fallback para quando não temos níveis de Fibonacci
+      signal = fibBuyScore > fibSellScore ? "buy" : fibSellScore > fibBuyScore ? "sell" : "neutral";
+    }
     
     indicators.push({
       name: "Fibonacci",
       signal,
-      strength: strength * 100
+      strength: fibStrength
     });
   }
   
@@ -305,4 +355,48 @@ export function generateIndicators(
   });
   
   return indicators;
+}
+
+// Nova função para analisar a qualidade dos níveis de Fibonacci
+export function analyzeFibonacciQuality(levels: FibonacciLevel[] | undefined): number {
+  if (!levels || levels.length === 0) return 0;
+  
+  // Pesos para diferentes fatores
+  const touchedWeight = 1.5;   // Níveis tocados são importantes
+  const brokenWeight = 0.8;    // Níveis quebrados são menos confiáveis
+  const strengthWeight = 1.2;  // Força do nível é importante
+  
+  // Calcular qualidade com base em toques, quebras e força
+  let qualityScore = 0;
+  let totalWeight = 0;
+  
+  for (const level of levels) {
+    let levelScore = level.strength / 100; // Base na força do nível
+    
+    // Níveis tocados aumentam a qualidade
+    if (level.touched) {
+      levelScore *= touchedWeight;
+      totalWeight += touchedWeight;
+    } 
+    // Níveis quebrados diminuem a qualidade
+    else if (level.broken) {
+      levelScore *= brokenWeight;
+      totalWeight += brokenWeight;
+    }
+    // Níveis nem tocados nem quebrados
+    else {
+      totalWeight += 1;
+    }
+    
+    // Multiplicar pelo peso da força
+    levelScore *= strengthWeight;
+    totalWeight += strengthWeight - 1; // Ajuste para não contar duas vezes
+    
+    qualityScore += levelScore;
+  }
+  
+  // Normalizar para 0-100
+  const normalizedQuality = (qualityScore / totalWeight) * 100;
+  
+  return Math.min(100, Math.max(0, normalizedQuality));
 }

@@ -5,7 +5,9 @@ import {
   calculateExpirationTime, 
   generateIndicators,
   PredictionResult,
-  PatternResult
+  PatternResult,
+  analyzeFibonacciQuality,
+  FibonacciLevel
 } from "@/utils/predictionUtils";
 
 export function usePredictionEngine(results: Record<string, PatternResult>) {
@@ -52,22 +54,73 @@ export function usePredictionEngine(results: Record<string, PatternResult>) {
         totalWeight += weightFactor;
       }
       
-      // Process fibonacci with adaptive weighting
+      // Process fibonacci with enhanced weighting and level analysis
       if (results.fibonacci?.found) {
         const strength = results.fibonacci.confidence / 100;
         const fibBuyScore = results.fibonacci.buyScore ?? 0;
         const fibSellScore = results.fibonacci.sellScore ?? 0;
-        const signal: "buy" | "sell" | "neutral" = 
-          fibBuyScore > fibSellScore ? "buy" : 
-          fibSellScore > fibBuyScore ? "sell" : 
-          "neutral";
         
-        // Adaptive weight based on market conditions
+        // Analise avançada baseada em níveis de Fibonacci
+        let signal: "buy" | "sell" | "neutral" = "neutral";
+        let fibBonus = 0;
+        
+        // Se temos níveis de Fibonacci, use-os para análise mais profunda
+        if (results.fibonacci.fibonacciLevels && results.fibonacci.fibonacciLevels.length > 0) {
+          const levels = results.fibonacci.fibonacciLevels;
+          
+          // Calcular qualidade dos níveis de Fibonacci
+          const fibQuality = analyzeFibonacciQuality(levels);
+          
+          // Analisar relação de preço com níveis de Fibonacci
+          const supportLevels = levels.filter(l => l.type === "support");
+          const resistanceLevels = levels.filter(l => l.type === "resistance");
+          
+          // Verificar padrões de toque em suportes/resistências
+          const supportTouched = levels.filter(l => l.type === "support" && l.touched).length;
+          const resistanceTouched = levels.filter(l => l.type === "resistance" && l.touched).length;
+          const recentSupportTouch = supportLevels.some(l => l.touched && !l.broken);
+          const recentResistanceTouch = resistanceLevels.some(l => l.touched && !l.broken);
+          
+          // Análise de quebras de níveis
+          const supportBroken = levels.filter(l => l.type === "support" && l.broken).length;
+          const resistanceBroken = levels.filter(l => l.type === "resistance" && l.broken).length;
+          
+          // Determinar sinal baseado na análise completa
+          if (recentSupportTouch && supportTouched > resistanceTouched) {
+            signal = "buy";
+            // Bônus por qualidade de suporte
+            fibBonus = fibQuality / 200; // Máximo de 0.5 (50%)
+          } else if (recentResistanceTouch && resistanceTouched > supportTouched) {
+            signal = "sell";
+            // Bônus por qualidade de resistência
+            fibBonus = fibQuality / 200;
+          } else if (resistanceBroken > supportBroken) {
+            signal = "buy";
+            // Bônus menor por quebras - mais arriscado
+            fibBonus = fibQuality / 300;
+          } else if (supportBroken > resistanceBroken) {
+            signal = "sell";
+            // Bônus menor por quebras - mais arriscado
+            fibBonus = fibQuality / 300;
+          } else {
+            // Fallback para scores tradicionais com pequeno bônus de qualidade
+            signal = fibBuyScore > fibSellScore ? "buy" : "sell";
+            fibBonus = fibQuality / 400; // Bônus ainda menor
+          }
+          
+          // Log para debug
+          console.log(`Fibonacci quality: ${fibQuality.toFixed(1)}%, Signal: ${signal}, Bonus: ${(fibBonus * 100).toFixed(1)}%`);
+        } else {
+          // Sem níveis, use apenas scores
+          signal = fibBuyScore > fibSellScore ? "buy" : fibSellScore > fibBuyScore ? "sell" : "neutral";
+        }
+        
+        // Adaptive weight based on market conditions and fib quality
         const noiseAdjustment = Math.max(0.8, 1 - (marketNoiseLevel / 100));
-        const weightFactor = 1.2 * noiseAdjustment;
+        const weightFactor = 1.5 * noiseAdjustment; // Aumentado de 1.2 para 1.5
         
-        if (signal === "buy") buyScore += strength * weightFactor;
-        else if (signal === "sell") sellScore += strength * weightFactor;
+        if (signal === "buy") buyScore += (strength + fibBonus) * weightFactor;
+        else if (signal === "sell") sellScore += (strength + fibBonus) * weightFactor;
         
         totalWeight += weightFactor;
       }
@@ -315,6 +368,16 @@ export function usePredictionEngine(results: Record<string, PatternResult>) {
         signal: "neutral",
         strength: 100
       });
+      
+      // Adicionar indicador específico para qualidade de Fibonacci quando disponível
+      if (results.fibonacci?.fibonacciLevels && results.fibonacci.fibonacciLevels.length > 0) {
+        const fibQuality = analyzeFibonacciQuality(results.fibonacci.fibonacciLevels);
+        indicators.push({
+          name: `Qualidade Fibonacci ${fibQuality.toFixed(0)}%`,
+          signal: "neutral",
+          strength: fibQuality
+        });
+      }
       
       // Set the final prediction with all refined parameters
       setPrediction({

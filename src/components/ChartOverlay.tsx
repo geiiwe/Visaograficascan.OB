@@ -1,7 +1,7 @@
-
 import React from "react";
 import { PatternResult } from "@/utils/patternDetection";
 import { useAnalyzer } from "@/context/AnalyzerContext";
+import { FibonacciLevel } from "@/utils/predictionUtils";
 
 interface ChartOverlayProps {
   results: Record<string, PatternResult>;
@@ -132,6 +132,115 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
     });
   };
 
+  // Nova função para renderizar níveis de Fibonacci com maior destaque
+  const renderFibonacciLevels = () => {
+    // Verificar se temos resultados de Fibonacci com níveis
+    const fibResult = results.fibonacci;
+    if (!fibResult?.found || !fibResult.fibonacciLevels || fibResult.fibonacciLevels.length === 0) return null;
+    
+    const levels = fibResult.fibonacciLevels;
+    
+    return levels.map((level, idx) => {
+      // Estimar posição da linha horizontal baseada no nível
+      // Nota: Isso é uma estimativa, idealmente precisaríamos de coordenadas reais
+      // Mas para um visual estimado, podemos usar o nível relativo (0-1) na tela
+      const y = 100 - (level.level * 100); // Inverte porque em SVG 0 é topo
+      
+      // Determinar cor baseada no tipo e toques
+      let color;
+      if (level.type === "support") {
+        color = level.touched ? "#22c55e" : level.broken ? "#9ca3af" : "#4ade80";
+      } else if (level.type === "resistance") {
+        color = level.touched ? "#ef4444" : level.broken ? "#9ca3af" : "#f87171";
+      } else {
+        color = "#60a5fa";
+      }
+      
+      // Largura da linha baseada na força
+      const strokeWidth = (level.strength / 100 * 2) + 1;
+      
+      // Estilo de linha baseado em toques e quebras
+      const strokeDasharray = level.broken ? "3,3" : level.touched ? undefined : "5,3";
+      
+      // Texto do nível (ex: "0.618 - Suporte")
+      const levelText = `${level.level.toFixed(3)} - ${level.type === "support" ? "Suporte" : 
+                          level.type === "resistance" ? "Resistência" : "Neutro"}`;
+      
+      // Preço formatado
+      const priceText = `${level.price.toFixed(2)}`;
+      
+      // Marcador especial para níveis tocados recentemente
+      const showTouchMarker = level.touched && !level.broken;
+      
+      return (
+        <g key={`fib-${idx}`} style={{ filter: "url(#glow)" }}>
+          {/* Linha horizontal do nível */}
+          <line
+            x1="0%"
+            y1={`${y}%`}
+            x2="100%"
+            y2={`${y}%`}
+            stroke={color}
+            strokeWidth={strokeWidth}
+            strokeDasharray={strokeDasharray}
+            opacity={0.8}
+          />
+          
+          {/* Background para o texto */}
+          <rect
+            x="0.5%"
+            y={`${y - 3}%`}
+            width="auto"
+            height="18"
+            rx="3"
+            fill="rgba(0,0,0,0.7)"
+            className="text-box"
+          />
+          
+          {/* Texto do nível */}
+          <text
+            x="1.5%"
+            y={`${y + 0.5}%`}
+            fill={color}
+            fontSize={precision === "alta" ? "12" : "10"}
+            fontWeight="bold"
+            textAnchor="start"
+            dominantBaseline="middle"
+            className="select-none"
+          >
+            {levelText} ({level.strength}%)
+          </text>
+          
+          {/* Texto de preço do outro lado */}
+          <text
+            x="98.5%"
+            y={`${y + 0.5}%`}
+            fill={color}
+            fontSize={precision === "alta" ? "12" : "10"}
+            fontWeight="bold"
+            textAnchor="end"
+            dominantBaseline="middle"
+            className="select-none"
+          >
+            {priceText}
+          </text>
+          
+          {/* Marcador especial para níveis tocados recentemente */}
+          {showTouchMarker && (
+            <circle
+              cx="95%"
+              cy={`${y}%`}
+              r="4"
+              fill={level.type === "support" ? "#22c55e" : "#ef4444"}
+              stroke="white"
+              strokeWidth="1"
+            />
+          )}
+        </g>
+      );
+    });
+  };
+
   return (
     <svg 
       className="absolute inset-0 w-full h-full pointer-events-none z-10"
@@ -177,6 +286,18 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
             <feMergeNode in="SourceGraphic"/>
           </feMerge>
         </filter>
+        
+        {/* Filtro especial para níveis de Fibonacci */}
+        <filter id="fibonacci-glow">
+          <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
+          <feComponentTransfer in="coloredBlur">
+            <feFuncA type="linear" slope="2.5"/>
+          </feComponentTransfer>
+          <feMerge>
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
       </defs>
       
       {/* Draw selected region outline if we have a region */}
@@ -194,6 +315,9 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
           style={{ filter: "url(#glow)" }}
         />
       )}
+      
+      {/* Renderizar níveis de Fibonacci */}
+      {renderFibonacciLevels()}
       
       {/* Renderizar candles individuais */}
       {renderCandleMarkers()}
