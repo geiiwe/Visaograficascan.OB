@@ -1,11 +1,11 @@
-
 import { EntryType, TimeframeType } from "@/context/AnalyzerContext";
 
 export interface PatternResult {
   found: boolean;
-  buyScore: number;
-  sellScore: number;
+  buyScore?: number;  // Made optional with ?
+  sellScore?: number;  // Made optional with ?
   confidence: number;
+  type?: string;  // Added to match patternDetection.ts interface
 }
 
 export interface PredictionIndicator {
@@ -125,11 +125,12 @@ export function generateIndicators(
   // Process trend lines
   if (results.trendlines?.found) {
     const strength = results.trendlines.confidence / 100;
-    const signal: "buy" | "sell" | "neutral" = results.trendlines.buyScore > results.trendlines.sellScore 
-      ? "buy" 
-      : results.trendlines.sellScore > results.trendlines.buyScore 
-        ? "sell" 
-        : "neutral";
+    const signal: "buy" | "sell" | "neutral" = 
+      results.trendlines.buyScore && results.trendlines.sellScore && results.trendlines.buyScore > results.trendlines.sellScore 
+        ? "buy" 
+        : results.trendlines.buyScore && results.trendlines.sellScore && results.trendlines.sellScore > results.trendlines.buyScore 
+          ? "sell" 
+          : "neutral";
     
     indicators.push({
       name: "Linhas de Tendência",
@@ -141,11 +142,12 @@ export function generateIndicators(
   // Process fibonacci
   if (results.fibonacci?.found) {
     const strength = results.fibonacci.confidence / 100;
-    const signal: "buy" | "sell" | "neutral" = results.fibonacci.buyScore > results.fibonacci.sellScore 
-      ? "buy" 
-      : results.fibonacci.sellScore > results.fibonacci.buyScore 
-        ? "sell" 
-        : "neutral";
+    const signal: "buy" | "sell" | "neutral" = 
+      results.fibonacci.buyScore && results.fibonacci.sellScore && results.fibonacci.buyScore > results.fibonacci.sellScore 
+        ? "buy" 
+        : results.fibonacci.buyScore && results.fibonacci.sellScore && results.fibonacci.sellScore > results.fibonacci.buyScore 
+          ? "sell" 
+          : "neutral";
     
     indicators.push({
       name: "Fibonacci",
@@ -157,11 +159,12 @@ export function generateIndicators(
   // Process candle patterns
   if (results.candlePatterns?.found) {
     const strength = results.candlePatterns.confidence / 100;
-    const signal: "buy" | "sell" | "neutral" = results.candlePatterns.buyScore > results.candlePatterns.sellScore 
-      ? "buy" 
-      : results.candlePatterns.sellScore > results.candlePatterns.buyScore 
-        ? "sell" 
-        : "neutral";
+    const signal: "buy" | "sell" | "neutral" = 
+      results.candlePatterns.buyScore && results.candlePatterns.sellScore && results.candlePatterns.buyScore > results.candlePatterns.sellScore 
+        ? "buy" 
+        : results.candlePatterns.buyScore && results.candlePatterns.sellScore && results.candlePatterns.sellScore > results.candlePatterns.buyScore 
+          ? "sell" 
+          : "neutral";
     
     indicators.push({
       name: "Padrões de Candles",
@@ -173,11 +176,12 @@ export function generateIndicators(
   // Process elliott waves
   if (results.elliottWaves?.found) {
     const strength = results.elliottWaves.confidence / 100;
-    const signal: "buy" | "sell" | "neutral" = results.elliottWaves.buyScore > results.elliottWaves.sellScore 
-      ? "buy" 
-      : results.elliottWaves.sellScore > results.elliottWaves.buyScore 
-        ? "sell" 
-        : "neutral";
+    const signal: "buy" | "sell" | "neutral" = 
+      results.elliottWaves.buyScore && results.elliottWaves.sellScore && results.elliottWaves.buyScore > results.elliottWaves.sellScore 
+        ? "buy" 
+        : results.elliottWaves.buyScore && results.elliottWaves.sellScore && results.elliottWaves.sellScore > results.elliottWaves.buyScore 
+          ? "sell" 
+          : "neutral";
     
     indicators.push({
       name: "Ondas de Elliott",
@@ -189,11 +193,12 @@ export function generateIndicators(
   // Process dow theory
   if (results.dowTheory?.found) {
     const strength = results.dowTheory.confidence / 100;
-    const signal: "buy" | "sell" | "neutral" = results.dowTheory.buyScore > results.dowTheory.sellScore 
-      ? "buy" 
-      : results.dowTheory.sellScore > results.dowTheory.buyScore 
-        ? "sell" 
-        : "neutral";
+    const signal: "buy" | "sell" | "neutral" = 
+      results.dowTheory.buyScore && results.dowTheory.sellScore && results.dowTheory.buyScore > results.dowTheory.sellScore 
+        ? "buy" 
+        : results.dowTheory.buyScore && results.dowTheory.sellScore && results.dowTheory.sellScore > results.dowTheory.buyScore 
+          ? "sell" 
+          : "neutral";
     
     indicators.push({
       name: "Teoria de Dow",
@@ -205,11 +210,12 @@ export function generateIndicators(
   // Support and resistance
   if (results.supportResistance?.found) {
     const strength = results.supportResistance.confidence / 100;
-    const signal: "buy" | "sell" | "neutral" = results.supportResistance.buyScore > results.supportResistance.sellScore 
-      ? "buy" 
-      : results.supportResistance.sellScore > results.supportResistance.buyScore 
-        ? "sell" 
-        : "neutral";
+    const signal: "buy" | "sell" | "neutral" = 
+      results.supportResistance.buyScore && results.supportResistance.sellScore && results.supportResistance.buyScore > results.supportResistance.sellScore 
+        ? "buy" 
+        : results.supportResistance.buyScore && results.supportResistance.sellScore && results.supportResistance.sellScore > results.supportResistance.buyScore 
+          ? "sell" 
+          : "neutral";
     
     indicators.push({
       name: "Suporte/Resistência",
@@ -220,11 +226,11 @@ export function generateIndicators(
   
   // Add momentum analysis
   const momentumSignal: "buy" | "sell" | "neutral" = 
-    results.all && results.all.buyScore > results.all.sellScore * 1.2 ? "buy" :
-    results.all && results.all.sellScore > results.all.buyScore * 1.2 ? "sell" :
+    results.all?.buyScore && results.all?.sellScore && results.all.buyScore > results.all.sellScore * 1.2 ? "buy" :
+    results.all?.buyScore && results.all?.sellScore && results.all.sellScore > results.all.buyScore * 1.2 ? "sell" :
     buyScore > sellScore ? "buy" : "sell";
   
-  const momentumStrength = 65 + (Math.abs(results.all?.buyScore - results.all?.sellScore || 0) * 10);
+  const momentumStrength = 65 + (Math.abs((results.all?.buyScore ?? 0) - (results.all?.sellScore ?? 0)) * 10);
   
   indicators.push({
     name: "Momentum",

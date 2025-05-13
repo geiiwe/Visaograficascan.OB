@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useAnalyzer, EntryType, TimeframeType } from "@/context/AnalyzerContext";
 import { 
@@ -35,11 +34,12 @@ export function usePredictionEngine(results: Record<string, PatternResult>) {
       // Process trend lines with dynamic weighting
       if (results.trendlines?.found) {
         const strength = results.trendlines.confidence / 100;
-        const signal: "buy" | "sell" | "neutral" = results.trendlines.buyScore > results.trendlines.sellScore 
-          ? "buy" 
-          : results.trendlines.sellScore > results.trendlines.buyScore 
-            ? "sell" 
-            : "neutral";
+        const trendBuyScore = results.trendlines.buyScore ?? 0;
+        const trendSellScore = results.trendlines.sellScore ?? 0;
+        const signal: "buy" | "sell" | "neutral" = 
+          trendBuyScore > trendSellScore ? "buy" : 
+          trendSellScore > trendBuyScore ? "sell" : 
+          "neutral";
         
         // Dynamic weight based on confidence and market type
         const confidenceFactor = strength > 0.8 ? 1.2 : 1.0;
@@ -55,11 +55,12 @@ export function usePredictionEngine(results: Record<string, PatternResult>) {
       // Process fibonacci with adaptive weighting
       if (results.fibonacci?.found) {
         const strength = results.fibonacci.confidence / 100;
-        const signal: "buy" | "sell" | "neutral" = results.fibonacci.buyScore > results.fibonacci.sellScore 
-          ? "buy" 
-          : results.fibonacci.sellScore > results.fibonacci.buyScore 
-            ? "sell" 
-            : "neutral";
+        const fibBuyScore = results.fibonacci.buyScore ?? 0;
+        const fibSellScore = results.fibonacci.sellScore ?? 0;
+        const signal: "buy" | "sell" | "neutral" = 
+          fibBuyScore > fibSellScore ? "buy" : 
+          fibSellScore > fibBuyScore ? "sell" : 
+          "neutral";
         
         // Adaptive weight based on market conditions
         const noiseAdjustment = Math.max(0.8, 1 - (marketNoiseLevel / 100));
@@ -74,11 +75,12 @@ export function usePredictionEngine(results: Record<string, PatternResult>) {
       // Process candle patterns with noise filtering
       if (results.candlePatterns?.found) {
         const strength = results.candlePatterns.confidence / 100;
-        const signal: "buy" | "sell" | "neutral" = results.candlePatterns.buyScore > results.candlePatterns.sellScore 
-          ? "buy" 
-          : results.candlePatterns.sellScore > results.candlePatterns.buyScore 
-            ? "sell" 
-            : "neutral";
+        const candleBuyScore = results.candlePatterns.buyScore ?? 0;
+        const candleSellScore = results.candlePatterns.sellScore ?? 0;
+        const signal: "buy" | "sell" | "neutral" = 
+          candleBuyScore > candleSellScore ? "buy" : 
+          candleSellScore > candleBuyScore ? "sell" : 
+          "neutral";
         
         // Base weight varies by timeframe and market type
         let weightFactor = 1.3;
@@ -104,11 +106,12 @@ export function usePredictionEngine(results: Record<string, PatternResult>) {
       // Process elliott waves with dynamic reliability
       if (results.elliottWaves?.found) {
         const strength = results.elliottWaves.confidence / 100;
-        const signal: "buy" | "sell" | "neutral" = results.elliottWaves.buyScore > results.elliottWaves.sellScore 
-          ? "buy" 
-          : results.elliottWaves.sellScore > results.elliottWaves.buyScore 
-            ? "sell" 
-            : "neutral";
+        const elliottBuyScore = results.elliottWaves.buyScore ?? 0;
+        const elliottSellScore = results.elliottWaves.sellScore ?? 0;
+        const signal: "buy" | "sell" | "neutral" = 
+          elliottBuyScore > elliottSellScore ? "buy" : 
+          elliottSellScore > elliottBuyScore ? "sell" : 
+          "neutral";
         
         // Elliott waves are less reliable in noisy or OTC markets
         const noiseAdjustment = Math.max(0.6, 1 - (marketNoiseLevel / 80));
@@ -124,11 +127,12 @@ export function usePredictionEngine(results: Record<string, PatternResult>) {
       // Process dow theory with market-specific weight
       if (results.dowTheory?.found) {
         const strength = results.dowTheory.confidence / 100;
-        const signal: "buy" | "sell" | "neutral" = results.dowTheory.buyScore > results.dowTheory.sellScore 
-          ? "buy" 
-          : results.dowTheory.sellScore > results.dowTheory.buyScore 
-            ? "sell" 
-            : "neutral";
+        const dowBuyScore = results.dowTheory.buyScore ?? 0;
+        const dowSellScore = results.dowTheory.sellScore ?? 0;
+        const signal: "buy" | "sell" | "neutral" = 
+          dowBuyScore > dowSellScore ? "buy" : 
+          dowSellScore > dowBuyScore ? "sell" : 
+          "neutral";
         
         // Adapt to market noise
         const weightFactor = 1.0 * Math.max(0.7, 1 - (marketNoiseLevel / 100));
@@ -142,11 +146,12 @@ export function usePredictionEngine(results: Record<string, PatternResult>) {
       // Support and resistance with dynamic importance
       if (results.supportResistance?.found) {
         const strength = results.supportResistance.confidence / 100;
-        const signal: "buy" | "sell" | "neutral" = results.supportResistance.buyScore > results.supportResistance.sellScore 
-          ? "buy" 
-          : results.supportResistance.sellScore > results.supportResistance.buyScore 
-            ? "sell" 
-            : "neutral";
+        const supportBuyScore = results.supportResistance.buyScore ?? 0;
+        const supportSellScore = results.supportResistance.sellScore ?? 0;
+        const signal: "buy" | "sell" | "neutral" = 
+          supportBuyScore > supportSellScore ? "buy" : 
+          supportSellScore > supportBuyScore ? "sell" : 
+          "neutral";
         
         // Support/resistance becomes more important in noisy markets
         const noiseBoost = 1 + (marketNoiseLevel / 100) * 0.4;
@@ -160,12 +165,14 @@ export function usePredictionEngine(results: Record<string, PatternResult>) {
       }
       
       // Add momentum analysis with noise filtering
+      const allBuyScore = results.all?.buyScore ?? 0;
+      const allSellScore = results.all?.sellScore ?? 0;
       const momentumSignal: "buy" | "sell" | "neutral" = 
-        results.all && results.all.buyScore > results.all.sellScore * 1.2 ? "buy" :
-        results.all && results.all.sellScore > results.all.buyScore * 1.2 ? "sell" :
+        allBuyScore > allSellScore * 1.2 ? "buy" :
+        allSellScore > allBuyScore * 1.2 ? "sell" :
         buyScore > sellScore ? "buy" : "sell";
       
-      const momentumStrength = 65 + (Math.abs(results.all?.buyScore - results.all?.sellScore || 0) * 10);
+      const momentumStrength = 65 + (Math.abs(allBuyScore - allSellScore) * 10);
       
       // Momentum is less reliable in noisy markets
       const momentumNoiseFactor = Math.max(0.7, 1 - (marketNoiseLevel / 100));
