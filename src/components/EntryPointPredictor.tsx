@@ -17,8 +17,8 @@ const EntryPointPredictor: React.FC<EntryPointPredictorProps> = ({ results }) =>
 
   if (!prediction) return null;
   
-  // Get Fibonacci quality if available
-  const fibonacciQuality = results.fibonacci?.fibonacciLevels?.length ? 
+  // Get Fibonacci quality if available - fixed by using the correct property structure
+  const fibonacciQuality = results.fibonacci?.found ? 
     prediction.indicators.find(i => i.name.includes("Fibonacci"))?.strength || 0 : 0;
   
   // Determine if Fibonacci is influencing the decision
