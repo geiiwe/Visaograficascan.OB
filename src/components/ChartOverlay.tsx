@@ -1,7 +1,6 @@
 import React from "react";
-import { PatternResult } from "@/utils/patternDetection";
+import { PatternResult, FibonacciLevel } from "@/utils/predictionUtils";
 import { useAnalyzer } from "@/context/AnalyzerContext";
-import { FibonacciLevel } from "@/utils/predictionUtils";
 
 interface ChartOverlayProps {
   results: Record<string, PatternResult>;
