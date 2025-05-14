@@ -41,13 +41,15 @@ interface AnalysisLabelsProps {
   compact: boolean;
   specificTimeframe?: string;
   m1Analyses?: FastAnalysis[];
+  minimalMode?: boolean;
 }
 
 const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({ 
   results, 
   compact, 
   specificTimeframe = "30s", 
-  m1Analyses = []
+  m1Analyses = [],
+  minimalMode = false
 }) => {
   const isMobile = useMediaQuery("(max-width: 768px)");
   const { activeAnalysis } = useAnalyzer();

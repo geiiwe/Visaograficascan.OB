@@ -1,7 +1,7 @@
 
 import React from "react";
 import { cn } from "@/lib/utils";
-import { ArrowUp, ArrowDown, Timer } from "lucide-react";
+import { ArrowUp, ArrowDown, Timer, Fingerprint } from "lucide-react";
 import { EntryType, TimeframeType } from "@/context/AnalyzerContext";
 
 interface PredictionDisplayProps {
@@ -10,6 +10,7 @@ interface PredictionDisplayProps {
   expirationTime: string;
   timeframe: TimeframeType;
   marketType: string;
+  fibonacciQuality?: number;
 }
 
 const PredictionDisplay: React.FC<PredictionDisplayProps> = ({
@@ -17,15 +18,29 @@ const PredictionDisplay: React.FC<PredictionDisplayProps> = ({
   confidence,
   expirationTime,
   timeframe,
-  marketType
+  marketType,
+  fibonacciQuality = 0
 }) => {
+  // Check if prediction is Fibonacci based
+  const isFibonacciBased = fibonacciQuality > 65;
+  
   return (
     <>
-      <div className="flex items-center gap-2 mb-1">
-        <Timer className="h-4 w-4 text-white" />
-        <span className="text-sm font-bold text-white uppercase">
-          Sinal {timeframe} {marketType === "otc" && "(OTC)"}
-        </span>
+      <div className="flex items-center justify-between gap-2 mb-1 w-full">
+        <div className="flex items-center">
+          <Timer className="h-4 w-4 text-white" />
+          <span className="text-sm font-bold text-white uppercase ml-1">
+            {timeframe} {marketType === "otc" && "(OTC)"}
+          </span>
+        </div>
+        
+        {/* Show Fibonacci badge only if quality is good */}
+        {isFibonacciBased && (
+          <div className="flex items-center bg-[#f97316]/30 px-1.5 py-0.5 rounded-full">
+            <Fingerprint className="h-3.5 w-3.5 text-[#f97316]" />
+            <span className="text-xs ml-1 text-white">Fibonacci</span>
+          </div>
+        )}
       </div>
       
       {entryPoint === "wait" ? (
@@ -34,25 +49,34 @@ const PredictionDisplay: React.FC<PredictionDisplayProps> = ({
         </div>
       ) : (
         <div className={cn(
-          "flex items-center justify-center gap-2 p-2 rounded-md w-full",
+          "flex items-center justify-between p-2 rounded-md w-full",
           entryPoint === "buy" ? "bg-green-700/80" : "bg-red-700/80"
         )}>
-          {entryPoint === "buy" ? (
-            <ArrowUp className="h-5 w-5 text-white" />
-          ) : (
-            <ArrowDown className="h-5 w-5 text-white" />
-          )}
-          <span className="text-white font-bold text-lg">
-            {entryPoint === "buy" ? "COMPRA" : "VENDA"}
-          </span>
-          <span className="text-white text-xs font-medium ml-1">
-            ({Math.round(confidence)}%)
+          <div className="flex items-center">
+            {entryPoint === "buy" ? (
+              <ArrowUp className="h-5 w-5 text-white" />
+            ) : (
+              <ArrowDown className="h-5 w-5 text-white" />
+            )}
+            <span className="text-white font-bold text-lg ml-1">
+              {entryPoint === "buy" ? "COMPRA" : "VENDA"}
+            </span>
+          </div>
+          <span className="text-white text-sm font-medium px-2 py-0.5 bg-black/20 rounded-full">
+            {Math.round(confidence)}%
           </span>
         </div>
       )}
       
-      <div className="mt-2 text-xs text-white">
-        <span className="font-medium">Expira:</span> {expirationTime}
+      <div className="mt-2 flex justify-between items-center w-full text-xs text-gray-300">
+        <span>Expira: {expirationTime}</span>
+        
+        {/* Show quality percentage when Fibonacci is significant */}
+        {fibonacciQuality > 50 && (
+          <span className="text-[#f97316]">
+            Qualidade: {Math.round(fibonacciQuality)}%
+          </span>
+        )}
       </div>
     </>
   );
