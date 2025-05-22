@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useAnalyzer, EntryType, TimeframeType } from "@/context/AnalyzerContext";
 import { 
@@ -10,10 +9,11 @@ import {
   analyzeFibonacciQuality,
   FibonacciLevel,
   detectCandleVolatility,
-  VolatilityData
+  VolatilityData,
+  PatternResult
 } from "@/utils/predictionUtils";
 
-export function usePredictionEngine(results: Record<string, PatternResult>) {
+export function usePredictionEngine(results: Record<string, ExtendedPatternResult>) {
   const { 
     precision, 
     prediction, 
