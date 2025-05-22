@@ -1,10 +1,9 @@
-
 import React from "react";
-import { PatternResult, FibonacciLevel } from "@/utils/predictionUtils";
+import { ExtendedPatternResult, FibonacciLevel } from "@/utils/predictionUtils";
 import { useAnalyzer } from "@/context/AnalyzerContext";
 
 interface ChartOverlayProps {
-  results: Record<string, PatternResult>;
+  results: Record<string, ExtendedPatternResult>;
   showMarkers: boolean;
   imageRegion: { x: number; y: number; width: number; height: number } | null;
   processedImage: string | null;

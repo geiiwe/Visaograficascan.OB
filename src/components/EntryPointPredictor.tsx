@@ -1,14 +1,14 @@
 
 import React from "react";
 import { useAnalyzer } from "@/context/AnalyzerContext";
-import { PatternResult } from "@/utils/patternDetection";
+import { ExtendedPatternResult } from "@/utils/predictionUtils";
 import { cn } from "@/lib/utils";
 import { usePredictionEngine } from "@/hooks/usePredictionEngine";
 import PredictionDisplay from "./prediction/PredictionDisplay";
 import IndicatorList from "./prediction/IndicatorList";
 
 interface EntryPointPredictorProps {
-  results: Record<string, PatternResult>;
+  results: Record<string, ExtendedPatternResult>;
 }
 
 const EntryPointPredictor: React.FC<EntryPointPredictorProps> = ({ results }) => {

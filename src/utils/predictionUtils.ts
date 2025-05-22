@@ -1,6 +1,10 @@
+
 // Prediction utilities and helper functions
 import { PatternResult } from "@/utils/patternDetection";
 import { TimeframeType } from "@/context/AnalyzerContext";
+
+// Re-export PatternResult type so other files can import it from here
+export type { PatternResult };
 
 export interface PredictionIndicator {
   name: string;
@@ -23,6 +27,20 @@ export interface FibonacciLevel {
   distance: number;
   touched: boolean;
   broken: boolean;
+}
+
+// Extended PatternResult type with the additional properties we're using
+export interface ExtendedPatternResult extends PatternResult {
+  candleData?: {
+    highLowRange?: number;
+    wicksRatio?: number;
+    bodyMovement?: number;
+    consecutiveMoves?: number;
+    reversalPatterns?: number;
+  };
+  wicksProportion?: number;
+  reversalStrength?: number;
+  noiseLevel?: number;
 }
 
 /**
@@ -203,8 +221,9 @@ export function detectCandleVolatility(results: Record<string, PatternResult>): 
     let whipsawDetected = false;
     
     // Analisar dados específicos de candles, se disponíveis
-    if (results.candlePatterns.candleData) {
-      const candles = results.candlePatterns.candleData;
+    const extendedResult = results.candlePatterns as ExtendedPatternResult;
+    if (extendedResult.candleData) {
+      const candles = extendedResult.candleData;
       
       // Calcular range de preço (high-low)
       if (candles.highLowRange) {
@@ -239,8 +258,11 @@ export function detectCandleVolatility(results: Record<string, PatternResult>): 
       priceRange = 100 - allScore * 0.7;
     }
     
-    if (wicksSize === 0 && results.candlePatterns.wicksProportion) {
-      wicksSize = results.candlePatterns.wicksProportion * 100;
+    if (wicksSize === 0) {
+      const extendedResult = results.candlePatterns as ExtendedPatternResult;
+      if (extendedResult.wicksProportion) {
+        wicksSize = extendedResult.wicksProportion * 100;
+      }
     }
     
     // Calcular escore de volatilidade baseado em múltiplos fatores
@@ -254,10 +276,12 @@ export function detectCandleVolatility(results: Record<string, PatternResult>): 
     const bodyScore = Math.min(100, bodyMovement * 2);
     
     // 4. Padrões de reversão frequentes são um forte indicador de volatilidade tipo chicote
-    const reversalScore = results.candlePatterns.reversalStrength || 0;
+    const extendedResult = results.candlePatterns as ExtendedPatternResult;
+    const reversalScore = extendedResult.reversalStrength || 0;
     
     // 5. Ruído de mercado também está correlacionado com volatilidade
-    const marketNoise = results.all?.noiseLevel || 0;
+    const extendedAllResult = results.all as ExtendedPatternResult;
+    const marketNoise = extendedAllResult?.noiseLevel || 0;
     
     // Combinar todos os fatores com pesos diferentes
     let volatilityLevel = 

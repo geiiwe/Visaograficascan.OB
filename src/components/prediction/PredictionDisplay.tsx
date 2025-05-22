@@ -12,6 +12,8 @@ interface PredictionDisplayProps {
   marketType: string;
   fibonacciQuality?: number;
   hasCandleFibRelation?: boolean;
+  hasHighVolatility?: boolean;
+  volatilityLevel?: number;
   precisionLevel?: "low" | "medium" | "high";
 }
 
@@ -23,6 +25,8 @@ const PredictionDisplay: React.FC<PredictionDisplayProps> = ({
   marketType,
   fibonacciQuality = 0,
   hasCandleFibRelation = false,
+  hasHighVolatility = false,
+  volatilityLevel = 0,
   precisionLevel = "medium"
 }) => {
   // Check if prediction is Fibonacci based
@@ -30,6 +34,7 @@ const PredictionDisplay: React.FC<PredictionDisplayProps> = ({
   
   // Quality indicator based on precision and fibonacci
   const getQualityIndicator = () => {
+    if (hasHighVolatility) return "Volatilidade alta";
     if (precisionLevel === "high" && hasCandleFibRelation) return "Alta precisão";
     if (hasCandleFibRelation) return "Boa precisão";
     if (isFibonacciBased) return "Média precisão";
@@ -56,6 +61,18 @@ const PredictionDisplay: React.FC<PredictionDisplayProps> = ({
             <Fingerprint className="h-3.5 w-3.5 text-[#f97316]" />
             <span className="text-xs ml-1 text-white">
               {hasCandleFibRelation ? "Fib+Candle" : "Fibonacci"}
+            </span>
+          </div>
+        )}
+        
+        {/* Show volatility warning when relevant */}
+        {hasHighVolatility && volatilityLevel > 65 && (
+          <div className={cn(
+            "flex items-center px-1.5 py-0.5 rounded-full",
+            volatilityLevel > 75 ? "bg-red-600/60" : "bg-yellow-600/60"
+          )}>
+            <span className="text-xs text-white font-medium">
+              Vol. {volatilityLevel.toFixed(0)}%
             </span>
           </div>
         )}

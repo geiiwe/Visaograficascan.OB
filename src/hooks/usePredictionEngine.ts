@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useAnalyzer, EntryType, TimeframeType } from "@/context/AnalyzerContext";
 import { 
@@ -5,7 +6,7 @@ import {
   calculateExpirationTime, 
   generateIndicators,
   PredictionResult,
-  PatternResult,
+  ExtendedPatternResult,
   analyzeFibonacciQuality,
   FibonacciLevel,
   detectCandleVolatility,
