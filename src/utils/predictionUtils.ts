@@ -1,3 +1,4 @@
+
 // Prediction utilities and helper functions
 import { PatternResult } from "@/utils/patternDetection";
 import { TimeframeType } from "@/context/AnalyzerContext";
@@ -17,6 +18,7 @@ export interface PredictionResult {
   timeframe: TimeframeType;
   expirationTime: string;
   indicators: PredictionIndicator[];
+  analysisNarrative?: string; // Nova propriedade para explicação narrativa
 }
 
 export interface FibonacciLevel {
@@ -260,9 +262,9 @@ export function detectCandleVolatility(results: Record<string, PatternResult>): 
     }
     
     if (wicksSize === 0) {
-      const candlePatternResult = results.candlePatterns as ExtendedPatternResult;
-      if (candlePatternResult.wicksProportion) {
-        wicksSize = candlePatternResult.wicksProportion * 100;
+      const candlePatternExtendedResult = results.candlePatterns as ExtendedPatternResult;
+      if (candlePatternExtendedResult.wicksProportion) {
+        wicksSize = candlePatternExtendedResult.wicksProportion * 100;
       }
     }
     

@@ -53,28 +53,8 @@ const EntryPointPredictor: React.FC<EntryPointPredictorProps> = ({ results }) =>
     .filter(i => i.signal === prediction.entryPoint && i.strength > 70)
     .length;
     
-  // Add explanation text based on analysis - core improvement for narrative
-  let analysisExplanation = "";
-  if (hasDangerousVolatility) {
-    analysisExplanation = "Alta volatilidade detectada. Aguarde condições mais estáveis.";
-  } else if (prediction.entryPoint !== "wait") {
-    if (hasCandleFibRelation) {
-      analysisExplanation = `${prediction.entryPoint === "buy" ? "Compra" : "Venda"} confirmada por Fibonacci e padrões de candles.`;
-    } else if (fibonacciInfluencing && primaryIndicator) {
-      analysisExplanation = `Sinal baseado em níveis Fibonacci e ${primaryIndicator.name.toLowerCase()}.`;
-    } else if (primaryIndicator && secondaryIndicator) {
-      analysisExplanation = `${prediction.entryPoint === "buy" ? "Tendência de alta" : "Tendência de baixa"} indicada por ${primaryIndicator.name.toLowerCase()} e ${secondaryIndicator.name.toLowerCase()}.`;
-    } else if (primaryIndicator) {
-      analysisExplanation = `Sinal baseado principalmente em ${primaryIndicator.name.toLowerCase()}.`;
-    }
-    
-    // Add confluence info to explanation
-    if (patternConfluence >= 3 && !hasCandleFibRelation) {
-      analysisExplanation += ` Confluência de ${patternConfluence} indicadores.`;
-    }
-  } else {
-    analysisExplanation = "Sinais mistos. Aguarde confirmação de tendência.";
-  }
+  // Get the analysis narrative from the prediction engine
+  const analysisNarrative = prediction.analysisNarrative || "";
   
   // Filter indicators for display - limit to top 4 for cleaner UI
   // Prioritize Volatility and Fibonacci+Candle relationships if they exist
@@ -124,10 +104,10 @@ const EntryPointPredictor: React.FC<EntryPointPredictorProps> = ({ results }) =>
           volatilityLevel={volatilityIndicator?.strength || 0}
         />
         
-        {/* Analysis explanation to create narrative cohesion */}
-        {analysisExplanation && (
+        {/* Analysis narrative for clearer context */}
+        {analysisNarrative && (
           <div className="mt-2 px-2 py-1 bg-black/30 rounded-md w-full text-center">
-            <p className="text-xs text-white">{analysisExplanation}</p>
+            <p className="text-xs text-white">{analysisNarrative}</p>
           </div>
         )}
         
