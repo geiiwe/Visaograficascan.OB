@@ -1,24 +1,6 @@
-import { EntryType, TimeframeType } from "@/context/AnalyzerContext";
-
-export interface PatternResult {
-  found: boolean;
-  buyScore?: number;  // Mantendo opcional com ?
-  sellScore?: number;  // Mantendo opcional com ?
-  confidence: number;
-  type?: string;  // Mantendo opcional
-  visualMarkers?: any[]; // Para marcadores visuais
-  fibonacciLevels?: FibonacciLevel[]; // Adicionando níveis de Fibonacci
-}
-
-// Nova interface para níveis de Fibonacci
-export interface FibonacciLevel {
-  level: number;      // O nível de Fibonacci (0, 0.236, 0.382, 0.5, 0.618, 0.786, 1)
-  price: number;      // O preço correspondente a este nível
-  strength: number;   // Força do suporte/resistência neste nível (0-100)
-  type: "support" | "resistance" | "neutral";  // Se é suporte, resistência ou neutro
-  touched: boolean;   // Se o preço tocou recentemente este nível
-  broken: boolean;    // Se o nível foi quebrado recentemente
-}
+// Prediction utilities and helper functions
+import { PatternResult } from "@/utils/patternDetection";
+import { TimeframeType } from "@/context/AnalyzerContext";
 
 export interface PredictionIndicator {
   name: string;
@@ -27,560 +9,395 @@ export interface PredictionIndicator {
 }
 
 export interface PredictionResult {
-  entryPoint: EntryType;
+  entryPoint: "buy" | "sell" | "wait";
   confidence: number;
   timeframe: TimeframeType;
   expirationTime: string;
   indicators: PredictionIndicator[];
 }
 
-// Calculate market noise level based on conflicting signals
-export function calculateMarketNoise(results: Record<string, PatternResult>, marketType: string): number {
-  let noiseLevel = 0;
-  
-  // Check for opposite signals in recent analyses
-  if (results.candlePatterns?.found && results.trendlines?.found) {
-    const candleSignal = results.candlePatterns.buyScore > results.candlePatterns.sellScore ? "buy" : "sell";
-    const trendSignal = results.trendlines.buyScore > results.trendlines.sellScore ? "buy" : "sell";
-    
-    // Conflicting signals indicate noise
-    if (candleSignal !== trendSignal) {
-      noiseLevel += 15;
-    }
-  }
-  
-  // Adicionar análise especial para candles e níveis de Fibonacci
-  if (results.candlePatterns?.found && results.fibonacci?.found && results.fibonacci.fibonacciLevels) {
-    // Verificar candles perto de níveis de Fibonacci
-    // Isto é uma simulação simplificada - em uma implementação real, precisaríamos
-    // das coordenadas exatas das velas e níveis para fazer esta análise
-    
-    const candleScore = results.candlePatterns.buyScore > results.candlePatterns.sellScore ? 
-      results.candlePatterns.buyScore : results.candlePatterns.sellScore;
-    
-    const fibLevels = results.fibonacci.fibonacciLevels;
-    const hasTouchedLevels = fibLevels.some(level => level.touched);
-    const hasBrokenLevels = fibLevels.some(level => level.broken);
-    
-    // Se há candles fortes perto de níveis Fibonacci tocados, o sinal é mais confiável
-    if (hasTouchedLevels && candleScore > 0.7) {
-      noiseLevel -= 8; // Reduz o ruído
-    }
-    
-    // Se níveis foram quebrados recentemente, pode haver volatilidade
-    if (hasBrokenLevels) {
-      noiseLevel += 5;
-    }
-  }
-  
-  // Add noise from weak signals or conflicts
-  if (results.all) {
-    // Small difference between buy and sell scores indicates uncertainty
-    const scoreDiff = Math.abs(results.all.buyScore - results.all.sellScore);
-    if (scoreDiff < 20) {
-      noiseLevel += (20 - scoreDiff) * 1.5;
-    }
-  }
-  
-  // OTC markets are inherently noisier
-  if (marketType === "otc") {
-    noiseLevel += 10;
-  }
-  
-  return Math.min(noiseLevel, 50); // Cap noise level at 50%
+export interface FibonacciLevel {
+  level: number;
+  price: number;
+  type: "support" | "resistance";
+  distance: number;
+  touched: boolean;
+  broken: boolean;
 }
 
-// Calculate expiration time based on various factors
-export function calculateExpirationTime(
-  selectedTimeframe: TimeframeType,
-  marketType: string,
-  marketNoiseLevel: number,
-  confidence: number,
-  indicators: PredictionIndicator[]
-): { expiryDate: Date, timeframeSeconds: number } {
-  const now = new Date();
-  
-  // Base timeframe in seconds
-  let timeframeSeconds = selectedTimeframe === "30s" ? 30 : 60;
-  
-  // Market type adjustment with noise factor
-  if (marketType === "otc") {
-    // Higher noise means faster expiration (avoid manipulation)
-    const noiseTimingFactor = 1 - (marketNoiseLevel / 100) * 0.2; // 0-20% reduction based on noise
-    timeframeSeconds = Math.floor(timeframeSeconds * 0.88 * noiseTimingFactor);
-  } else {
-    // Regular markets use standard timing with noise adjustment
-    const noiseTimingFactor = 1 - (marketNoiseLevel / 100) * 0.1; // 0-10% reduction based on noise
-    timeframeSeconds = Math.floor(timeframeSeconds * 0.95 * noiseTimingFactor);
-  }
-  
-  // Further refine based on confidence and signal strength
-  if (confidence > 85) {
-    // High confidence signals tend to move faster
-    timeframeSeconds = Math.floor(timeframeSeconds * 0.92);
-  } else if (confidence < 70 && confidence > 0) {
-    // Lower confidence needs longer to develop
-    timeframeSeconds = Math.floor(timeframeSeconds * 1.05);
-  }
-  
-  // Adjust for dominant indicators
-  const hasDominantMomentum = indicators.some(i => 
-    i.name === "Momentum" && i.strength > 80
-  );
-  
-  const hasStrongSupport = indicators.some(i => 
-    i.name === "Suporte/Resistência" && i.strength > 75
-  );
-  
-  // Check for strong Fibonacci indicator
-  const hasFibonacciSignal = indicators.some(i => 
-    i.name.includes("Fibonacci") && i.strength > 70
-  );
-  
-  // Verificar se há uma relação forte entre candles e Fibonacci
-  const hasCandleFibRelation = indicators.some(i => 
-    i.name === "Padrões de Candles" && i.strength > 70
-  ) && hasFibonacciSignal;
-  
-  // Fast momentum signals can execute quicker
-  if (hasDominantMomentum) {
-    timeframeSeconds = Math.floor(timeframeSeconds * 0.90);
-  }
-  
-  // Strong support/resistance tends to hold longer
-  if (hasStrongSupport && selectedTimeframe === "1m") {
-    timeframeSeconds = Math.floor(timeframeSeconds * 1.05);
-  }
-  
-  // Relação forte entre candles e Fibonacci tende a ser mais precisa no tempo
-  if (hasCandleFibRelation) {
-    timeframeSeconds = Math.floor(timeframeSeconds * 0.93); // Mais rápido e preciso
-  }
-  
-  // Calculate final expiry date with all adjustments
-  const expiryDate = new Date(now.getTime() + timeframeSeconds * 1000);
-  
-  return { expiryDate, timeframeSeconds };
-}
-
-// Generate signal indicators from pattern results
+/**
+ * Generates trading indicators based on pattern analysis results.
+ */
 export function generateIndicators(
-  results: Record<string, PatternResult>, 
+  results: Record<string, PatternResult>,
   marketType: string,
-  marketNoiseLevel: number,
+  noiseLevel: number,
   buyScore: number,
   sellScore: number
 ): PredictionIndicator[] {
   const indicators: PredictionIndicator[] = [];
-  
-  // Process trend lines
+
+  // Trendlines
   if (results.trendlines?.found) {
-    const strength = results.trendlines.confidence / 100;
-    const signal: "buy" | "sell" | "neutral" = 
-      results.trendlines.buyScore && results.trendlines.sellScore && results.trendlines.buyScore > results.trendlines.sellScore 
-        ? "buy" 
-        : results.trendlines.buyScore && results.trendlines.sellScore && results.trendlines.sellScore > results.trendlines.buyScore 
-          ? "sell" 
-          : "neutral";
-    
+    const strength = results.trendlines.confidence;
     indicators.push({
       name: "Linhas de Tendência",
-      signal,
-      strength: strength * 100
+      signal:
+        results.trendlines.buyScore > results.trendlines.sellScore
+          ? "buy"
+          : "sell",
+      strength: strength,
     });
   }
-  
-  // Aprimorando a análise de Fibonacci
+
+  // Fibonacci
   if (results.fibonacci?.found) {
-    const strength = results.fibonacci.confidence / 100;
-    const fibBuyScore = results.fibonacci.buyScore ?? 0;
-    const fibSellScore = results.fibonacci.sellScore ?? 0;
-    
-    // Análise avançada de sinal baseada em níveis
-    let signal: "buy" | "sell" | "neutral" = "neutral";
-    let fibStrength = strength * 100;
-    
-    // Se temos níveis de Fibonacci disponíveis, use-os para análise mais profunda
-    if (results.fibonacci.fibonacciLevels && results.fibonacci.fibonacciLevels.length > 0) {
-      const levels = results.fibonacci.fibonacciLevels;
-      
-      // Contar níveis de suporte e resistência tocados e quebrados
-      const supportTouched = levels.filter(l => l.type === "support" && l.touched).length;
-      const resistanceTouched = levels.filter(l => l.type === "resistance" && l.touched).length;
-      const supportBroken = levels.filter(l => l.type === "support" && l.broken).length;
-      const resistanceBroken = levels.filter(l => l.type === "resistance" && l.broken).length;
-      
-      // Calcular forças médias
-      const avgSupportStrength = levels
-        .filter(l => l.type === "support")
-        .reduce((sum, l) => sum + l.strength, 0) / Math.max(1, levels.filter(l => l.type === "support").length);
-      
-      const avgResistanceStrength = levels
-        .filter(l => l.type === "resistance")
-        .reduce((sum, l) => sum + l.strength, 0) / Math.max(1, levels.filter(l => l.type === "resistance").length);
-      
-      // Refinando o sinal com base em níveis de Fibonacci
-      if (resistanceBroken > supportBroken && avgSupportStrength > 65) {
-        signal = "buy";
-        fibStrength = Math.min(100, fibStrength + 10);
-      } else if (supportBroken > resistanceBroken && avgResistanceStrength > 65) {
-        signal = "sell";
-        fibStrength = Math.min(100, fibStrength + 10);
-      } else if (supportTouched > resistanceTouched) {
-        signal = "buy";
-      } else if (resistanceTouched > supportTouched) {
-        signal = "sell";
-      } else {
-        signal = fibBuyScore > fibSellScore ? "buy" : "sell";
-      }
-    } else {
-      // Fallback para quando não temos níveis de Fibonacci
-      signal = fibBuyScore > fibSellScore ? "buy" : fibSellScore > fibBuyScore ? "sell" : "neutral";
-    }
-    
+    const strength = results.fibonacci.confidence;
     indicators.push({
-      name: "Fibonacci",
-      signal,
-      strength: fibStrength
+      name: "Retração de Fibonacci",
+      signal:
+        results.fibonacci.buyScore > results.fibonacci.sellScore ? "buy" : "sell",
+      strength: strength,
     });
   }
-  
-  // Process candle patterns with enhanced Fibonacci integration
+
+  // Candle Patterns
   if (results.candlePatterns?.found) {
-    const strength = results.candlePatterns.confidence / 100;
-    const candleBuyScore = results.candlePatterns.buyScore ?? 0;
-    const candleSellScore = results.candlePatterns.sellScore ?? 0;
-    let signal: "buy" | "sell" | "neutral" = 
-      candleBuyScore > candleSellScore ? "buy" : 
-      candleSellScore > candleBuyScore ? "sell" : 
-      "neutral";
-    
-    let candleStrength = strength * 100;
-    
-    // Check for Fibonacci relationship to enhance candle analysis
-    if (results.fibonacci?.found && results.fibonacci.fibonacciLevels) {
-      const fibLevels = results.fibonacci.fibonacciLevels;
-      
-      // Verify if candles are near important Fibonacci levels
-      const touchedSupports = fibLevels.filter(l => l.type === "support" && l.touched).length;
-      const touchedResistances = fibLevels.filter(l => l.type === "resistance" && l.touched).length;
-      
-      // Enhance candle signal based on Fibonacci levels
-      if (touchedSupports > 0 && signal === "buy") {
-        // Bullish candle at support is a stronger buy signal
-        candleStrength = Math.min(100, candleStrength + (touchedSupports * 5));
-        
-        // Create a new integrated indicator for this special case
-        indicators.push({
-          name: "Candles em Suporte Fibonacci",
-          signal: "buy",
-          strength: Math.min(95, candleStrength + 10)
-        });
-      } 
-      else if (touchedResistances > 0 && signal === "sell") {
-        // Bearish candle at resistance is a stronger sell signal
-        candleStrength = Math.min(100, candleStrength + (touchedResistances * 5));
-        
-        // Create a new integrated indicator for this special case
-        indicators.push({
-          name: "Candles em Resistência Fibonacci",
-          signal: "sell",
-          strength: Math.min(95, candleStrength + 10)
-        });
-      }
-      // Potential reversal patterns
-      else if (touchedSupports > 0 && signal === "sell") {
-        // Potential reversal - bear candle at support
-        indicators.push({
-          name: "Possível Reversão em Suporte",
-          signal: "sell",
-          strength: Math.min(85, candleStrength - 5) // Lower strength due to counter-trend
-        });
-      }
-      else if (touchedResistances > 0 && signal === "buy") {
-        // Potential reversal - bull candle at resistance
-        indicators.push({
-          name: "Possível Reversão em Resistência",
-          signal: "buy",
-          strength: Math.min(85, candleStrength - 5) // Lower strength due to counter-trend
-        });
-      }
-    }
-    
-    // Add the standard candle pattern indicator
+    const strength = results.candlePatterns.confidence;
     indicators.push({
-      name: "Padrões de Candles",
-      signal,
-      strength: candleStrength
+      name: "Padrões de Velas",
+      signal:
+        results.candlePatterns.buyScore > results.candlePatterns.sellScore
+          ? "buy"
+          : "sell",
+      strength: strength,
     });
   }
-  
-  // Process elliott waves
+
+  // Elliott Waves
   if (results.elliottWaves?.found) {
-    const strength = results.elliottWaves.confidence / 100;
-    const signal: "buy" | "sell" | "neutral" = 
-      results.elliottWaves.buyScore && results.elliottWaves.sellScore && results.elliottWaves.buyScore > results.elliottWaves.sellScore 
-        ? "buy" 
-        : results.elliottWaves.buyScore && results.elliottWaves.sellScore && results.elliottWaves.sellScore > results.elliottWaves.buyScore 
-          ? "sell" 
-          : "neutral";
-    
+    const strength = results.elliottWaves.confidence;
     indicators.push({
       name: "Ondas de Elliott",
-      signal,
-      strength: strength * 100
+      signal:
+        results.elliottWaves.buyScore > results.elliottWaves.sellScore
+          ? "buy"
+          : "sell",
+      strength: strength,
     });
   }
-  
-  // Process dow theory
+
+  // Dow Theory
   if (results.dowTheory?.found) {
-    const strength = results.dowTheory.confidence / 100;
-    const signal: "buy" | "sell" | "neutral" = 
-      results.dowTheory.buyScore && results.dowTheory.sellScore && results.dowTheory.buyScore > results.dowTheory.sellScore 
-        ? "buy" 
-        : results.dowTheory.buyScore && results.dowTheory.sellScore && results.dowTheory.sellScore > results.dowTheory.buyScore 
-          ? "sell" 
-          : "neutral";
-    
+    const strength = results.dowTheory.confidence;
     indicators.push({
       name: "Teoria de Dow",
-      signal,
-      strength: strength * 100
+      signal:
+        results.dowTheory.buyScore > results.dowTheory.sellScore ? "buy" : "sell",
+      strength: strength,
     });
   }
-  
-  // Support and resistance with dynamic importance
+
+  // Support and Resistance
   if (results.supportResistance?.found) {
-    const strength = results.supportResistance.confidence / 100;
-    const signal: "buy" | "sell" | "neutral" = 
-      results.supportResistance.buyScore && results.supportResistance.sellScore && results.supportResistance.buyScore > results.supportResistance.sellScore 
-        ? "buy" 
-        : results.supportResistance.buyScore && results.supportResistance.sellScore && results.supportResistance.sellScore > results.supportResistance.buyScore 
-          ? "sell" 
-          : "neutral";
-    
+    const strength = results.supportResistance.confidence;
     indicators.push({
       name: "Suporte/Resistência",
-      signal,
-      strength: strength * 100
+      signal:
+        results.supportResistance.buyScore > results.supportResistance.sellScore
+          ? "buy"
+          : "sell",
+      strength: strength,
     });
   }
-  
-  // Add momentum analysis with noise filtering
-  const momentumSignal: "buy" | "sell" | "neutral" = 
-    results.all?.buyScore && results.all?.sellScore && results.all.buyScore > results.all.sellScore * 1.2 ? "buy" :
-    results.all?.buyScore && results.all?.sellScore && results.all.sellScore > results.all.buyScore * 1.2 ? "sell" :
-    buyScore > sellScore ? "buy" : "sell";
-  
-  const momentumStrength = 65 + (Math.abs((results.all?.buyScore ?? 0) - (results.all?.sellScore ?? 0)) * 10);
-  
+
+  // Market Condition
+  const marketCondition =
+    noiseLevel > 35 ? "Mercado Incerto" : "Mercado Estável";
   indicators.push({
-    name: "Momentum",
-    signal: momentumSignal,
-    strength: momentumStrength
+    name: marketCondition,
+    signal: "neutral",
+    strength: 100 - noiseLevel,
   });
-  
-  // Add volume analysis
-  const volumeSignal: "buy" | "sell" | "neutral" = 
-    momentumSignal === "buy" && Math.random() > 0.3 ? "buy" :
-    momentumSignal === "sell" && Math.random() > 0.3 ? "sell" :
-    Math.random() > 0.5 ? "buy" : "sell";
-  
-  const volumeStrength = 60 + Math.random() * 30;
-  
-  indicators.push({
-    name: "Volume",
-    signal: volumeSignal,
-    strength: volumeStrength
-  });
-  
-  // Add market condition indicator
-  const marketConditionSignal: "buy" | "sell" | "neutral" = 
-    marketNoiseLevel > 35 ? "neutral" :
-    buyScore > sellScore ? "buy" : "sell";
-    
-  const marketConditionStrength = 100 - marketNoiseLevel;
-  
-  indicators.push({
-    name: "Condição de Mercado",
-    signal: marketConditionSignal,
-    strength: marketConditionStrength
-  });
-  
-  // Add OTC-specific pattern detection for OTC markets
+
+  // OTC-Specific Patterns
   if (marketType === "otc") {
-    const otcPatternSignal: "buy" | "sell" | "neutral" = 
-      (buyScore > sellScore * 1.3) ? "sell" : 
-      (sellScore > buyScore * 1.3) ? "buy" : 
-      Math.random() > 0.5 ? "buy" : "sell";
-    
-    const otcPatternStrength = 70 + Math.random() * 20;
-    
     indicators.push({
       name: "Padrões OTC",
-      signal: otcPatternSignal,
-      strength: otcPatternStrength
+      signal: buyScore > sellScore ? "buy" : "sell",
+      strength: 75,
     });
-    
-    // Add manipulation alert for high-bias signals
-    const manipulationBias = Math.abs(buyScore - sellScore) / Math.max(0.01, Math.min(buyScore, sellScore));
-    
-    if (manipulationBias > 2.8) {
-      const manipulationSignal: "buy" | "sell" | "neutral" = 
-        buyScore > sellScore ? "sell" : "buy"; // Inverse of dominant signal
-        
-      const manipulationStrength = 65 + Math.random() * 15;
-      
-      indicators.push({
-        name: "Alerta Manipulação",
-        signal: manipulationSignal,
-        strength: manipulationStrength
-      });
-    }
   }
-  
-  // Add noise level to indicators for transparency
-  indicators.push({
-    name: `Ruído do Mercado ${marketNoiseLevel.toFixed(0)}%`,
-    signal: "neutral",
-    strength: 100 - marketNoiseLevel
-  });
-  
+
   return indicators;
 }
 
-// Nova função para analisar a qualidade dos níveis de Fibonacci
-export function analyzeFibonacciQuality(levels: FibonacciLevel[] | undefined): number {
-  if (!levels || levels.length === 0) return 0;
-  
-  // Pesos para diferentes fatores
-  const touchedWeight = 1.5;   // Níveis tocados são importantes
-  const brokenWeight = 0.8;    // Níveis quebrados são menos confiáveis
-  const strengthWeight = 1.2;  // Força do nível é importante
-  
-  // Calcular qualidade com base em toques, quebras e força
-  let qualityScore = 0;
-  let totalWeight = 0;
-  
-  for (const level of levels) {
-    let levelScore = level.strength / 100; // Base na força do nível
-    
-    // Níveis tocados aumentam a qualidade
-    if (level.touched) {
-      levelScore *= touchedWeight;
-      totalWeight += touchedWeight;
-    } 
-    // Níveis quebrados diminuem a qualidade
-    else if (level.broken) {
-      levelScore *= brokenWeight;
-      totalWeight += brokenWeight;
-    }
-    // Níveis nem tocados nem quebrados
-    else {
-      totalWeight += 1;
-    }
-    
-    // Multiplicar pelo peso da força
-    levelScore *= strengthWeight;
-    totalWeight += strengthWeight - 1; // Ajuste para não contar duas vezes
-    
-    qualityScore += levelScore;
+/**
+ * Calculates the level of market noise based on analysis results.
+ */
+export function calculateMarketNoise(
+  results: Record<string, PatternResult>,
+  marketType: string
+): number {
+  let noiseLevel = 0;
+
+  // Adjustments based on analysis types
+  if (results.candlePatterns?.found) {
+    noiseLevel += 15;
   }
-  
-  // Normalizar para 0-100
-  const normalizedQuality = (qualityScore / totalWeight) * 100;
-  
-  return Math.min(100, Math.max(0, normalizedQuality));
+  if (results.elliottWaves?.found) {
+    noiseLevel += 10;
+  }
+  if (marketType === "otc") {
+    noiseLevel += 20;
+  }
+
+  // Confidence adjustments
+  if (results.trendlines?.found) {
+    noiseLevel -= results.trendlines.confidence / 15;
+  }
+  if (results.fibonacci?.found) {
+    noiseLevel -= results.fibonacci.confidence / 20;
+  }
+
+  // Ensure noise level is within bounds
+  noiseLevel = Math.max(0, Math.min(100, noiseLevel));
+  return noiseLevel;
 }
 
-// Nova função para analisar a relação entre candles e níveis Fibonacci
-export function analyzeCandleFibonacciRelationship(
-  candlePatterns: PatternResult | undefined, 
-  fibonacci: PatternResult | undefined
-): {
-  relationship: "strong" | "moderate" | "weak" | "none";
-  buySignal: boolean;
-  sellSignal: boolean;
-  confidence: number;
-} {
-  // Resultado padrão
-  const defaultResult = {
-    relationship: "none" as "strong" | "moderate" | "weak" | "none",
-    buySignal: false,
-    sellSignal: false,
-    confidence: 0
+// Definição do tipo para dados de volatilidade
+export interface VolatilityData {
+  volatilityLevel: number;       // 0-100%
+  volatilityType: 'low' | 'normal' | 'high' | 'whipsaw';
+  priceRange: number;            // Range de preço como % do preço médio
+  wicksSize: number;             // Tamanho médio dos pavios como % do corpo
+  bodyMovement: number;          // Variação dos corpos das velas em %
+  consecutiveMoves: number;      // Movimentos consecutivos na mesma direção
+}
+
+/**
+ * Detecta níveis e tipos de volatilidade com base nos padrões de velas
+ */
+export function detectCandleVolatility(results: Record<string, PatternResult>): VolatilityData {
+  // Valores padrão para caso os dados não estejam disponíveis
+  const defaultVolatilityData: VolatilityData = {
+    volatilityLevel: 30,
+    volatilityType: 'normal',
+    priceRange: 0,
+    wicksSize: 0,
+    bodyMovement: 0,
+    consecutiveMoves: 0
   };
   
-  // Verificar se temos os dois padrões detectados
-  if (!candlePatterns?.found || !fibonacci?.found || !fibonacci.fibonacciLevels) {
-    return defaultResult;
-  }
-  
-  // Extrair informações
-  const candleBuyScore = candlePatterns.buyScore ?? 0;
-  const candleSellScore = candlePatterns.sellScore ?? 0;
-  const candleSignal = candleBuyScore > candleSellScore ? "buy" : "sell";
-  const candleStrength = Math.max(candleBuyScore, candleSellScore);
-  
-  const fibLevels = fibonacci.fibonacciLevels;
-  
-  // Verificar relações importantes
-  const supportLevels = fibLevels.filter(l => l.type === "support");
-  const resistanceLevels = fibLevels.filter(l => l.type === "resistance");
-  
-  const touchedSupports = supportLevels.filter(l => l.touched).length;
-  const touchedResistances = resistanceLevels.filter(l => l.touched).length;
-  
-  // Calcular forças médias
-  const avgSupportStrength = supportLevels.length > 0 ? 
-    supportLevels.reduce((sum, l) => sum + l.strength, 0) / supportLevels.length : 0;
+  try {
+    // Se não temos dados de candles ou padrões detectados, retorne volatilidade padrão
+    if (!results.candlePatterns?.found) {
+      return defaultVolatilityData;
+    }
     
-  const avgResistanceStrength = resistanceLevels.length > 0 ?
-    resistanceLevels.reduce((sum, l) => sum + l.strength, 0) / resistanceLevels.length : 0;
+    // Extrair dados relevantes para análise de volatilidade
+    let priceRange = 0;
+    let wicksSize = 0;
+    let bodyMovement = 0;
+    let consecutiveMoves = 0;
+    let whipsawDetected = false;
+    
+    // Analisar dados específicos de candles, se disponíveis
+    if (results.candlePatterns.candleData) {
+      const candles = results.candlePatterns.candleData;
+      
+      // Calcular range de preço (high-low)
+      if (candles.highLowRange) {
+        priceRange = candles.highLowRange;
+      }
+      
+      // Analisar tamanho dos pavios (wicks)
+      if (candles.wicksRatio) {
+        wicksSize = candles.wicksRatio * 100; // Converter para percentual
+      }
+      
+      // Analisar movimento dos corpos das velas
+      if (candles.bodyMovement) {
+        bodyMovement = candles.bodyMovement;
+      }
+      
+      // Analisar movimentos consecutivos
+      if (candles.consecutiveMoves) {
+        consecutiveMoves = candles.consecutiveMoves;
+      }
+      
+      // Detectar padrões de chicote (whipsaw)
+      if (candles.reversalPatterns && candles.reversalPatterns > 1) {
+        whipsawDetected = true;
+      }
+    }
+    
+    // Se não temos dados específicos, usar heurísticas baseadas em scores gerais
+    if (priceRange === 0) {
+      const allScore = results.all?.confidence || 0;
+      // Alta confiança geralmente indica menos volatilidade
+      priceRange = 100 - allScore * 0.7;
+    }
+    
+    if (wicksSize === 0 && results.candlePatterns.wicksProportion) {
+      wicksSize = results.candlePatterns.wicksProportion * 100;
+    }
+    
+    // Calcular escore de volatilidade baseado em múltiplos fatores
+    // 1. Range de preço: quanto maior, maior a volatilidade
+    const priceRangeScore = Math.min(100, priceRange * 1.2);
+    
+    // 2. Tamanho dos pavios: pavios longos indicam volatilidade
+    const wicksScore = Math.min(100, wicksSize * 1.5);
+    
+    // 3. Movimento dos corpos: mudanças rápidas indicam volatilidade
+    const bodyScore = Math.min(100, bodyMovement * 2);
+    
+    // 4. Padrões de reversão frequentes são um forte indicador de volatilidade tipo chicote
+    const reversalScore = results.candlePatterns.reversalStrength || 0;
+    
+    // 5. Ruído de mercado também está correlacionado com volatilidade
+    const marketNoise = results.all?.noiseLevel || 0;
+    
+    // Combinar todos os fatores com pesos diferentes
+    let volatilityLevel = 
+      (priceRangeScore * 0.25) + 
+      (wicksScore * 0.25) + 
+      (bodyScore * 0.2) + 
+      (reversalScore * 0.2) + 
+      (marketNoise * 0.1);
+    
+    // Ajustar pela presença de padrões de reversão rápida (muito significativo)
+    if (whipsawDetected) {
+      volatilityLevel = Math.min(100, volatilityLevel * 1.3);
+    }
+    
+    // Classificar tipo de volatilidade
+    let volatilityType: 'low' | 'normal' | 'high' | 'whipsaw' = 'normal';
+    if (volatilityLevel < 30) {
+      volatilityType = 'low';
+    } else if (volatilityLevel < 65) {
+      volatilityType = 'normal';
+    } else if (volatilityLevel >= 65) {
+      if (whipsawDetected || reversalScore > 60 || wicksScore > 70) {
+        volatilityType = 'whipsaw';
+      } else {
+        volatilityType = 'high';
+      }
+    }
+    
+    return {
+      volatilityLevel,
+      volatilityType,
+      priceRange,
+      wicksSize,
+      bodyMovement,
+      consecutiveMoves
+    };
+  } catch (error) {
+    console.error("Erro ao analisar volatilidade:", error);
+    return defaultVolatilityData;
+  }
+}
+
+// Modificar função calculateExpirationTime para considerar volatilidade
+export function calculateExpirationTime(
+  timeframe: TimeframeType,
+  marketType: string,
+  noiseLevel: number,
+  confidence: number,
+  indicators: PredictionIndicator[],
+  volatilityData?: VolatilityData // Parâmetro opcional de volatilidade
+): { expiryDate: Date, timeframeSeconds: number } {
+  // Base timeframe in seconds
+  let timeframeSeconds = timeframe === "30s" ? 30 : 60;
   
-  // Análise de relações
-  let relationship: "strong" | "moderate" | "weak" | "none" = "none";
-  let buySignal = false;
-  let sellSignal = false;
-  let confidence = 0;
-  
-  // Padrões de alta perto de suportes = forte sinal de compra
-  if (candleSignal === "buy" && touchedSupports > 0 && avgSupportStrength > 60) {
-    relationship = "strong";
-    buySignal = true;
-    confidence = Math.min(95, 70 + (avgSupportStrength / 10) + (candleStrength * 10));
-  }
-  // Padrões de baixa perto de resistências = forte sinal de venda
-  else if (candleSignal === "sell" && touchedResistances > 0 && avgResistanceStrength > 60) {
-    relationship = "strong";
-    sellSignal = true;
-    confidence = Math.min(95, 70 + (avgResistanceStrength / 10) + (candleStrength * 10));
-  }
-  // Possível reversão - padrões de baixa em suporte
-  else if (candleSignal === "sell" && touchedSupports > 0) {
-    relationship = "moderate";
-    // A força do sinal de venda depende de quanto o suporte já foi testado
-    sellSignal = true;
-    confidence = Math.min(80, 50 + (touchedSupports * 5) + (candleStrength * 8));
-  }
-  // Possível reversão - padrões de alta em resistência
-  else if (candleSignal === "buy" && touchedResistances > 0) {
-    relationship = "moderate";
-    buySignal = true;
-    confidence = Math.min(80, 50 + (touchedResistances * 5) + (candleStrength * 8));
-  }
-  // Relação fraca - sem níveis significativos tocados
-  else if (candleStrength > 0.5) {
-    relationship = "weak";
-    buySignal = candleSignal === "buy";
-    sellSignal = candleSignal === "sell";
-    confidence = Math.min(65, 40 + (candleStrength * 10));
+  // Market type affects expiration
+  if (marketType === "otc") {
+    // OTC markets need a bit more time due to potential manipulation
+    timeframeSeconds = Math.ceil(timeframeSeconds * 1.15);
   }
   
-  return {
-    relationship,
-    buySignal,
-    sellSignal,
-    confidence
-  };
+  // Adjust for market noise
+  if (noiseLevel > 30) {
+    // More noise = need more time
+    const noiseAdjustment = (noiseLevel - 30) / 100;
+    timeframeSeconds = Math.ceil(timeframeSeconds * (1 + noiseAdjustment * 0.25));
+  }
+
+  // Adjust for confidence - higher confidence may mean quicker trades
+  if (confidence > 85) {
+    timeframeSeconds = Math.ceil(timeframeSeconds * 0.9);
+  } else if (confidence < 65) {
+    timeframeSeconds = Math.ceil(timeframeSeconds * 1.1);
+  }
+  
+  // Check for Fibonacci indicators which might suggest precise timing
+  const fibonacciIndicator = indicators.find(i => i.name.includes("Fibonacci"));
+  if (fibonacciIndicator && fibonacciIndicator.strength > 80) {
+    timeframeSeconds = Math.ceil(timeframeSeconds * 0.95);
+  }
+  
+  // Adjust for volatility - crucial for timing decisions
+  if (volatilityData && volatilityData.volatilityLevel > 0) {
+    // High volatility requires extending time to avoid false signals
+    if (volatilityData.volatilityLevel > 70) {
+      const volatilityExtension = (volatilityData.volatilityLevel - 70) / 30 * 0.4; 
+      timeframeSeconds = Math.ceil(timeframeSeconds * (1 + volatilityExtension));
+      console.log(`Tempo estendido em ${(volatilityExtension*100).toFixed(0)}% devido à alta volatilidade`);
+    }
+    
+    // Whipsaw volatility specifically requires more time
+    if (volatilityData.volatilityType === 'whipsaw') {
+      timeframeSeconds = Math.ceil(timeframeSeconds * 1.25); // +25% time for whipsaws
+      console.log("Tempo significativamente estendido devido a padrões de chicote");
+    }
+  }
+  
+  // Create expiry date
+  const now = new Date();
+  const expiryDate = new Date(now.getTime() + (timeframeSeconds * 1000));
+  
+  return { expiryDate, timeframeSeconds };
+}
+
+/**
+ * Analyzes the quality and reliability of Fibonacci levels.
+ */
+export function analyzeFibonacciQuality(
+  levels: FibonacciLevel[]
+): number {
+  let qualityScore = 70; // Base score
+
+  // Award points for confluence
+  const supportLevels = levels.filter((l) => l.type === "support");
+  const resistanceLevels = levels.filter((l) => l.type === "resistance");
+
+  if (supportLevels.length > 2) {
+    qualityScore += 10;
+  }
+  if (resistanceLevels.length > 2) {
+    qualityScore += 10;
+  }
+
+  // Deduct points for excessive touching or breaking
+  const supportTouched = levels.filter((l) => l.type === "support" && l.touched)
+    .length;
+  const resistanceTouched = levels.filter(
+    (l) => l.type === "resistance" && l.touched
+  ).length;
+  const supportBroken = levels.filter((l) => l.type === "support" && l.broken)
+    .length;
+  const resistanceBroken = levels.filter(
+    (l) => l.type === "resistance" && l.broken
+  ).length;
+
+  qualityScore -= supportTouched * 2;
+  qualityScore -= resistanceTouched * 2;
+  qualityScore -= supportBroken * 5;
+  qualityScore -= resistanceBroken * 5;
+
+  // Normalize score
+  qualityScore = Math.max(10, Math.min(100, qualityScore));
+  return qualityScore;
 }

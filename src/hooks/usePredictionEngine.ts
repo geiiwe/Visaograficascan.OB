@@ -7,7 +7,9 @@ import {
   PredictionResult,
   PatternResult,
   analyzeFibonacciQuality,
-  FibonacciLevel
+  FibonacciLevel,
+  detectCandleVolatility,
+  VolatilityData
 } from "@/utils/predictionUtils";
 
 export function usePredictionEngine(results: Record<string, PatternResult>) {
@@ -33,6 +35,15 @@ export function usePredictionEngine(results: Record<string, PatternResult>) {
       const marketNoiseLevel = calculateMarketNoise(results, marketType);
       console.log(`Market noise: ${marketNoiseLevel.toFixed(1)}%`);
       
+      // Detect candle volatility - crucial for avoiding false signals
+      const volatilityData = detectCandleVolatility(results);
+      console.log(`Volatilidade detectada: ${volatilityData.volatilityLevel.toFixed(1)}%, Tipo: ${volatilityData.volatilityType}`);
+      
+      // If we have dangerous volatility, adjust our analysis approach
+      if (volatilityData.volatilityLevel > 75) {
+        console.log("ALERTA: Volatilidade perigosa detectada. Ajustando análise para maior cautela.");
+      }
+      
       // Process trend lines with dynamic weighting
       if (results.trendlines?.found) {
         const strength = results.trendlines.confidence / 100;
@@ -43,10 +54,12 @@ export function usePredictionEngine(results: Record<string, PatternResult>) {
           trendSellScore > trendBuyScore ? "sell" : 
           "neutral";
         
-        // Dynamic weight based on confidence and market type
+        // Dynamic weight based on confidence, market type, and volatility
         const confidenceFactor = strength > 0.8 ? 1.2 : 1.0;
         const marketFactor = marketType === "otc" ? 0.9 : 1.1;
-        const weightFactor = 1.5 * confidenceFactor * marketFactor;
+        // Reduce weight of trend lines in high volatility - they become less reliable
+        const volatilityFactor = 1 - (Math.max(0, volatilityData.volatilityLevel - 50) / 100);
+        const weightFactor = 1.5 * confidenceFactor * marketFactor * volatilityFactor;
         
         if (signal === "buy") buyScore += strength * weightFactor;
         else if (signal === "sell") sellScore += strength * weightFactor;
@@ -115,9 +128,11 @@ export function usePredictionEngine(results: Record<string, PatternResult>) {
           signal = fibBuyScore > fibSellScore ? "buy" : fibSellScore > fibBuyScore ? "sell" : "neutral";
         }
         
-        // Adaptive weight based on market conditions and fib quality
+        // Adaptive weight based on market conditions, fib quality and volatility
         const noiseAdjustment = Math.max(0.8, 1 - (marketNoiseLevel / 100));
-        const weightFactor = 1.5 * noiseAdjustment; // Aumentado de 1.2 para 1.5
+        // Fibonacci is more reliable even during volatility, but still reduce weight slightly
+        const volatilityAdjustment = 1 - (Math.max(0, volatilityData.volatilityLevel - 65) / 200);
+        const weightFactor = 1.5 * noiseAdjustment * volatilityAdjustment;
         
         if (signal === "buy") buyScore += (strength + fibBonus) * weightFactor;
         else if (signal === "sell") sellScore += (strength + fibBonus) * weightFactor;
@@ -125,7 +140,7 @@ export function usePredictionEngine(results: Record<string, PatternResult>) {
         totalWeight += weightFactor;
       }
       
-      // Process candle patterns with noise filtering
+      // Process candle patterns with noise and volatility filtering
       if (results.candlePatterns?.found) {
         const strength = results.candlePatterns.confidence / 100;
         const candleBuyScore = results.candlePatterns.buyScore ?? 0;
@@ -149,6 +164,14 @@ export function usePredictionEngine(results: Record<string, PatternResult>) {
         
         // Reduce weight further if market is noisy
         weightFactor *= Math.max(0.7, 1 - (marketNoiseLevel / 100));
+        
+        // Heavily reduce weight with high volatility - candle patterns become unreliable
+        if (volatilityData.volatilityLevel > 65) {
+          // The higher the volatility, the less we trust candle patterns
+          const volatilityReduction = Math.min(0.9, volatilityData.volatilityLevel / 100);
+          weightFactor *= (1 - volatilityReduction);
+          console.log(`Peso de padrões de candles reduzido em ${(volatilityReduction * 100).toFixed(0)}% devido à volatilidade`);
+        }
         
         if (signal === "buy") buyScore += strength * weightFactor;
         else if (signal === "sell") sellScore += strength * weightFactor;
@@ -217,7 +240,7 @@ export function usePredictionEngine(results: Record<string, PatternResult>) {
         totalWeight += weightFactor;
       }
       
-      // Add momentum analysis with noise filtering
+      // Add momentum analysis with noise and volatility filtering
       const allBuyScore = results.all?.buyScore ?? 0;
       const allSellScore = results.all?.sellScore ?? 0;
       const momentumSignal: "buy" | "sell" | "neutral" = 
@@ -227,9 +250,13 @@ export function usePredictionEngine(results: Record<string, PatternResult>) {
       
       const momentumStrength = 65 + (Math.abs(allBuyScore - allSellScore) * 10);
       
-      // Momentum is less reliable in noisy markets
+      // Momentum is less reliable in noisy markets and highly volatile conditions
       const momentumNoiseFactor = Math.max(0.7, 1 - (marketNoiseLevel / 100));
-      const momentumWeight = (selectedTimeframe === "30s" ? 1.6 : 1.3) * momentumNoiseFactor;
+      // In high volatility, momentum can be deceptive - reduce its weight
+      const momentumVolatilityFactor = 1 - (Math.max(0, volatilityData.volatilityLevel - 50) / 150);
+      const momentumWeight = (selectedTimeframe === "30s" ? 1.6 : 1.3) * 
+                          momentumNoiseFactor * 
+                          momentumVolatilityFactor;
       
       if (momentumSignal === "buy") buyScore += (momentumStrength / 100) * momentumWeight;
       else if (momentumSignal === "sell") sellScore += (momentumStrength / 100) * momentumWeight;
@@ -246,7 +273,11 @@ export function usePredictionEngine(results: Record<string, PatternResult>) {
       
       // Volume is less reliable in OTC markets
       const volumeMarketFactor = marketType === "otc" ? 0.85 : 1.0;
-      const volumeWeight = (selectedTimeframe === "30s" ? 1.4 : 1.1) * volumeMarketFactor;
+      // In high volatility, volume spikes can be misleading
+      const volumeVolatilityFactor = 1 - (Math.max(0, volatilityData.volatilityLevel - 60) / 150);
+      const volumeWeight = (selectedTimeframe === "30s" ? 1.4 : 1.1) * 
+                        volumeMarketFactor * 
+                        volumeVolatilityFactor;
       
       if (volumeSignal === "buy") buyScore += (volumeStrength / 100) * volumeWeight;
       else if (volumeSignal === "sell") sellScore += (volumeStrength / 100) * volumeWeight;
@@ -255,10 +286,10 @@ export function usePredictionEngine(results: Record<string, PatternResult>) {
       
       // Add market condition indicator
       const marketConditionSignal: "buy" | "sell" | "neutral" = 
-        marketNoiseLevel > 35 ? "neutral" :
+        marketNoiseLevel > 35 || volatilityData.volatilityLevel > 70 ? "neutral" :
         buyScore > sellScore ? "buy" : "sell";
         
-      const marketConditionStrength = 100 - marketNoiseLevel;
+      const marketConditionStrength = 100 - Math.max(marketNoiseLevel, volatilityData.volatilityLevel);
       const marketConditionWeight = 1.2;
       
       if (marketConditionSignal === "buy") buyScore += (marketConditionStrength / 100) * marketConditionWeight;
@@ -266,6 +297,18 @@ export function usePredictionEngine(results: Record<string, PatternResult>) {
       else totalWeight -= 0.2; // Neutral signal actually reduces overall confidence
       
       totalWeight += marketConditionWeight;
+      
+      // Add volatility indicator - this will affect the final decision
+      const volatilityWeight = 1.5;
+      // If volatility is high, add a strong bias toward "wait" by reducing both buy/sell
+      if (volatilityData.volatilityLevel > 65) {
+        // Higher volatility = bigger reduction
+        const reductionFactor = (volatilityData.volatilityLevel - 65) / 100 * 1.5;
+        buyScore *= (1 - Math.min(0.8, reductionFactor));
+        sellScore *= (1 - Math.min(0.8, reductionFactor));
+        console.log(`Scores reduzidos em ${(Math.min(0.8, reductionFactor) * 100).toFixed(0)}% devido à alta volatilidade`);
+      }
+      totalWeight += volatilityWeight;
       
       // Add OTC-specific pattern detection for OTC markets
       if (marketType === "otc") {
@@ -306,36 +349,69 @@ export function usePredictionEngine(results: Record<string, PatternResult>) {
       // Generate indicators for display
       const indicators = generateIndicators(results, marketType, marketNoiseLevel, buyScore, sellScore);
       
+      // Add volatility indicator
+      indicators.push({
+        name: `Volatilidade ${volatilityData.volatilityLevel.toFixed(0)}%`,
+        signal: "neutral",
+        strength: volatilityData.volatilityLevel
+      });
+      
+      // If volatility is particularly high with whipsaws, add specific warning
+      if (volatilityData.volatilityLevel > 70 && volatilityData.volatilityType === "whipsaw") {
+        indicators.push({
+          name: `Alerta: Mercado Volátil`,
+          signal: "neutral",
+          strength: Math.min(95, volatilityData.volatilityLevel + 10)
+        });
+      }
+      
       // More flexible entry point determination with dynamic thresholds
       let entryPoint: EntryType = "wait";
       let confidence = 0;
       
-      // Dynamic threshold based on precision, market type, and noise level
+      // Dynamic threshold based on precision, market type, noise level, and volatility
       const baseThreshold = 
         precision === "alta" ? 0.58 : 
         precision === "normal" ? 0.55 : 0.52;
         
-      // Increase threshold with market noise
+      // Increase threshold with market noise and volatility
       const noiseAdjustment = marketNoiseLevel / 100 * 0.15;
+      const volatilityAdjustment = volatilityData.volatilityLevel / 100 * 0.2;
       const marketTypeAdjustment = marketType === "otc" ? 0.05 : 0;
       
-      // Final adjusted threshold
-      const confidenceThreshold = baseThreshold + noiseAdjustment + marketTypeAdjustment;
+      // Final adjusted threshold - higher in volatile conditions
+      const confidenceThreshold = baseThreshold + 
+                               noiseAdjustment + 
+                               volatilityAdjustment +
+                               marketTypeAdjustment;
       
-      // Differential factor increases with noise (require stronger signals in noisy markets)
+      // Differential factor increases with volatility (require stronger signals in volatile markets)
       const baseDifferentialFactor = marketType === "otc" ? 1.2 : 1.15;
       const noiseDifferentialAdjustment = marketNoiseLevel / 100 * 0.25;
-      const differentialFactor = baseDifferentialFactor + noiseDifferentialAdjustment;
+      const volatilityDifferentialAdjustment = volatilityData.volatilityLevel / 100 * 0.4;
+      const differentialFactor = baseDifferentialFactor + 
+                              noiseDifferentialAdjustment + 
+                              volatilityDifferentialAdjustment;
       
-      console.log(`Threshold: ${(confidenceThreshold*100).toFixed(1)}%, Differential: ${differentialFactor.toFixed(2)}x`);
+      console.log(`Threshold: ${(confidenceThreshold*100).toFixed(1)}%, Differential: ${differentialFactor.toFixed(2)}x, Volatility: ${volatilityData.volatilityLevel.toFixed(1)}%`);
       
-      // Apply adaptive thresholds for signal generation
-      if (normalizedBuyScore > confidenceThreshold && normalizedBuyScore > normalizedSellScore * differentialFactor) {
+      // Force "wait" signal if volatility is extremely high - override any other signals
+      if (volatilityData.volatilityLevel > 80) {
+        console.log("ALERTA CRÍTICO: Volatilidade extremamente alta. Forçando sinal de espera.");
+        entryPoint = "wait";
+        confidence = Math.min(75, 40 + volatilityData.volatilityLevel / 2);
+      } 
+      // Otherwise apply adaptive thresholds for signal generation
+      else if (normalizedBuyScore > confidenceThreshold && normalizedBuyScore > normalizedSellScore * differentialFactor) {
         entryPoint = "buy";
-        confidence = normalizedBuyScore * 100;
+        // Reduce confidence if volatility is high
+        const volatilityConfidenceReduction = Math.max(0, (volatilityData.volatilityLevel - 50) / 100);
+        confidence = (normalizedBuyScore * 100) * (1 - volatilityConfidenceReduction);
       } else if (normalizedSellScore > confidenceThreshold && normalizedSellScore > normalizedBuyScore * differentialFactor) {
         entryPoint = "sell";
-        confidence = normalizedSellScore * 100;
+        // Reduce confidence if volatility is high
+        const volatilityConfidenceReduction = Math.max(0, (volatilityData.volatilityLevel - 50) / 100);
+        confidence = (normalizedSellScore * 100) * (1 - volatilityConfidenceReduction);
       } else {
         // Show the "wait" indicator with appropriate confidence level
         const maxScore = Math.max(normalizedBuyScore, normalizedSellScore);
@@ -347,17 +423,18 @@ export function usePredictionEngine(results: Record<string, PatternResult>) {
         }
       }
       
-      // Advanced expiration time calculation with adaptive timing
+      // Advanced expiration time calculation with adaptive timing and volatility adjustment
       const now = new Date();
       setLastUpdated(now);
       
-      // Calculate expiration time with all factors
+      // Calculate expiration time with all factors including volatility
       const { expiryDate, timeframeSeconds } = calculateExpirationTime(
         selectedTimeframe,
         marketType,
         marketNoiseLevel,
         confidence,
-        indicators
+        indicators,
+        volatilityData // Pass volatility data for time adjustments
       );
       
       const expirationTime = `${expiryDate.getHours().toString().padStart(2, '0')}:${expiryDate.getMinutes().toString().padStart(2, '0')}:${expiryDate.getSeconds().toString().padStart(2, '0')}`;
