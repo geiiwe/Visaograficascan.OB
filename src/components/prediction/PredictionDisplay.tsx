@@ -1,7 +1,7 @@
 
 import React from "react";
 import { cn } from "@/lib/utils";
-import { ArrowUp, ArrowDown, Timer, Fingerprint } from "lucide-react";
+import { ArrowUp, ArrowDown, Timer, Fingerprint, ChevronDown, ChevronUp } from "lucide-react";
 import { EntryType, TimeframeType } from "@/context/AnalyzerContext";
 
 interface PredictionDisplayProps {
@@ -12,6 +12,7 @@ interface PredictionDisplayProps {
   marketType: string;
   fibonacciQuality?: number;
   hasCandleFibRelation?: boolean;
+  precisionLevel?: "low" | "medium" | "high";
 }
 
 const PredictionDisplay: React.FC<PredictionDisplayProps> = ({
@@ -21,10 +22,20 @@ const PredictionDisplay: React.FC<PredictionDisplayProps> = ({
   timeframe,
   marketType,
   fibonacciQuality = 0,
-  hasCandleFibRelation = false
+  hasCandleFibRelation = false,
+  precisionLevel = "medium"
 }) => {
   // Check if prediction is Fibonacci based
   const isFibonacciBased = fibonacciQuality > 65;
+  
+  // Quality indicator based on precision and fibonacci
+  const getQualityIndicator = () => {
+    if (precisionLevel === "high" && hasCandleFibRelation) return "Alta precisão";
+    if (hasCandleFibRelation) return "Boa precisão";
+    if (isFibonacciBased) return "Média precisão";
+    if (precisionLevel === "low") return "Análise rápida";
+    return "Precisão normal";
+  };
   
   return (
     <>
@@ -71,9 +82,17 @@ const PredictionDisplay: React.FC<PredictionDisplayProps> = ({
               {entryPoint === "buy" ? "COMPRA" : "VENDA"}
             </span>
           </div>
-          <span className="text-white text-sm font-medium px-2 py-0.5 bg-black/20 rounded-full">
-            {Math.round(confidence)}%
-          </span>
+          <div className="flex flex-col items-end">
+            <span className="text-white text-sm font-medium px-2 py-0.5 bg-black/20 rounded-full">
+              {Math.round(confidence)}%
+            </span>
+            {confidence >= 70 && (
+              <span className="text-xs text-green-100/80 mt-0.5">
+                {entryPoint === "buy" ? <ChevronUp className="h-3 w-3 inline" /> : <ChevronDown className="h-3 w-3 inline" />}
+                {getQualityIndicator()}
+              </span>
+            )}
+          </div>
         </div>
       )}
       
