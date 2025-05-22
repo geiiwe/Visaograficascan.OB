@@ -1,3 +1,4 @@
+
 import React from "react";
 import { PatternResult, FibonacciLevel } from "@/utils/predictionUtils";
 import { useAnalyzer } from "@/context/AnalyzerContext";
@@ -82,23 +83,65 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
     
     if (candleMarkers.length === 0) return null;
     
+    // Get Fibonacci levels if available
+    const fibLevels = results.fibonacci?.fibonacciLevels || [];
+    const hasFibLevels = fibLevels.length > 0;
+    
     return candleMarkers.map((marker, idx) => {
       // Usar os pontos para desenhar retângulos representando candles
       if (marker.points && marker.points.length >= 2) {
         const [[x1, y1], [x2, y2]] = marker.points.map(point => adjustCoordinates(point[0], point[1]));
         const isBullish = marker.label === "Bullish";
         
+        // Check if this candle is near any Fibonacci level
+        let nearFibLevel = null;
+        let distanceToFib = Infinity;
+        
+        if (hasFibLevels) {
+          // Find the closest Fibonacci level to this candle
+          fibLevels.forEach(level => {
+            // Convert level price to y coordinate (rough estimate)
+            const levelY = 100 - (level.level * 100); // Inverted because 0 is top in SVG
+            const candleY = (y1 + y2) / 2;
+            const distance = Math.abs(levelY - candleY);
+            
+            if (distance < distanceToFib && distance < 10) { // Only if within 10% of chart height
+              distanceToFib = distance;
+              nearFibLevel = level;
+            }
+          });
+        }
+        
+        // Enhance candle color based on Fibonacci relationship
+        let fillColor = isBullish ? "#22c55e80" : "#ef444480";
+        let strokeColor = isBullish ? "#22c55e" : "#ef4444";
+        let strokeWidth = getStrokeWidth("pattern") * 0.5;
+        
+        // If candle is near a Fibonacci level, enhance its appearance
+        if (nearFibLevel) {
+          // Use different styling based on the type of Fibonacci level
+          if (nearFibLevel.type === "support") {
+            strokeWidth = getStrokeWidth("pattern") * 0.8;
+            strokeColor = isBullish ? "#22c55e" : "#f97316"; // Orange for bearish at support (potential reversal)
+            fillColor = isBullish ? "#22c55eA0" : "#f97316A0"; // More opaque
+          } else if (nearFibLevel.type === "resistance") {
+            strokeWidth = getStrokeWidth("pattern") * 0.8;
+            strokeColor = isBullish ? "#f97316" : "#ef4444"; // Orange for bullish at resistance (potential reversal)
+            fillColor = isBullish ? "#f97316A0" : "#ef4444A0"; // More opaque
+          }
+        }
+        
         return (
-          <g key={`candle-${idx}`} style={getMarkerStyle(marker)}>
+          <g key={`candle-${idx}`} style={nearFibLevel ? { filter: "url(#fibonacci-glow)" } : getMarkerStyle(marker)}>
             {/* Corpo do candle */}
             <rect
               x={`${Math.min(x1, x2)}%`}
               y={`${Math.min(y1, y2)}%`}
               width={`${Math.abs(x2 - x1)}%`}
               height={`${Math.abs(y2 - y1)}%`}
-              fill={isBullish ? "#22c55e80" : "#ef444480"} // Semi-transparente
-              stroke={isBullish ? "#22c55e" : "#ef4444"}
-              strokeWidth={getStrokeWidth("pattern") * 0.5}
+              fill={fillColor}
+              stroke={strokeColor}
+              strokeWidth={strokeWidth}
             />
             
             {/* Pavio superior (simulado) */}
@@ -108,8 +151,8 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
                 y1={`${Math.min(y1, y2) - 2}%`}
                 x2={`${(x1 + x2) / 2}%`}
                 y2={`${Math.min(y1, y2)}%`}
-                stroke={isBullish ? "#22c55e" : "#ef4444"}
-                strokeWidth={getStrokeWidth("pattern") * 0.3}
+                stroke={strokeColor}
+                strokeWidth={strokeWidth * 0.6}
               />
             )}
             
@@ -120,8 +163,20 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
                 y1={`${Math.max(y1, y2)}%`}
                 x2={`${(x1 + x2) / 2}%`}
                 y2={`${Math.max(y1, y2) + 2}%`}
-                stroke={isBullish ? "#22c55e" : "#ef4444"}
-                strokeWidth={getStrokeWidth("pattern") * 0.3}
+                stroke={strokeColor}
+                strokeWidth={strokeWidth * 0.6}
+              />
+            )}
+            
+            {/* Indicator for candle near Fibonacci level */}
+            {nearFibLevel && (
+              <circle
+                cx={`${(x1 + x2) / 2}%`}
+                cy={`${Math.min(y1, y2) - 4}%`}
+                r="2"
+                fill="#f97316"
+                stroke="white"
+                strokeWidth="0.5"
               />
             )}
           </g>
@@ -172,7 +227,7 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
       const showTouchMarker = level.touched && !level.broken;
       
       return (
-        <g key={`fib-${idx}`} style={{ filter: "url(#glow)" }}>
+        <g key={`fib-${idx}`} style={{ filter: "url(#fibonacci-glow)" }}>
           {/* Linha horizontal do nível */}
           <line
             x1="0%"
@@ -315,10 +370,10 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
         />
       )}
       
-      {/* Renderizar níveis de Fibonacci */}
+      {/* Renderizar níveis de Fibonacci primeiro (background) */}
       {renderFibonacciLevels()}
       
-      {/* Renderizar candles individuais */}
+      {/* Renderizar candles individuais por cima dos níveis */}
       {renderCandleMarkers()}
       
       {/* Draw all markers from analysis results */}

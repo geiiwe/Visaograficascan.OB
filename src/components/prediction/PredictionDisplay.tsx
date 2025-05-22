@@ -11,6 +11,7 @@ interface PredictionDisplayProps {
   timeframe: TimeframeType;
   marketType: string;
   fibonacciQuality?: number;
+  hasCandleFibRelation?: boolean;
 }
 
 const PredictionDisplay: React.FC<PredictionDisplayProps> = ({
@@ -19,7 +20,8 @@ const PredictionDisplay: React.FC<PredictionDisplayProps> = ({
   expirationTime,
   timeframe,
   marketType,
-  fibonacciQuality = 0
+  fibonacciQuality = 0,
+  hasCandleFibRelation = false
 }) => {
   // Check if prediction is Fibonacci based
   const isFibonacciBased = fibonacciQuality > 65;
@@ -36,9 +38,14 @@ const PredictionDisplay: React.FC<PredictionDisplayProps> = ({
         
         {/* Show Fibonacci badge only if quality is good */}
         {isFibonacciBased && (
-          <div className="flex items-center bg-[#f97316]/30 px-1.5 py-0.5 rounded-full">
+          <div className={cn(
+            "flex items-center px-1.5 py-0.5 rounded-full",
+            hasCandleFibRelation ? "bg-[#f97316]/60" : "bg-[#f97316]/30"
+          )}>
             <Fingerprint className="h-3.5 w-3.5 text-[#f97316]" />
-            <span className="text-xs ml-1 text-white">Fibonacci</span>
+            <span className="text-xs ml-1 text-white">
+              {hasCandleFibRelation ? "Fib+Candle" : "Fibonacci"}
+            </span>
           </div>
         )}
       </div>
@@ -50,7 +57,9 @@ const PredictionDisplay: React.FC<PredictionDisplayProps> = ({
       ) : (
         <div className={cn(
           "flex items-center justify-between p-2 rounded-md w-full",
-          entryPoint === "buy" ? "bg-green-700/80" : "bg-red-700/80"
+          entryPoint === "buy" ? 
+            hasCandleFibRelation ? "bg-green-700/90" : "bg-green-700/80" : 
+            hasCandleFibRelation ? "bg-red-700/90" : "bg-red-700/80"
         )}>
           <div className="flex items-center">
             {entryPoint === "buy" ? (
@@ -73,8 +82,11 @@ const PredictionDisplay: React.FC<PredictionDisplayProps> = ({
         
         {/* Show quality percentage when Fibonacci is significant */}
         {fibonacciQuality > 50 && (
-          <span className="text-[#f97316]">
-            Qualidade: {Math.round(fibonacciQuality)}%
+          <span className={cn(
+            "text-[#f97316]",
+            hasCandleFibRelation && "font-bold"
+          )}>
+            {hasCandleFibRelation ? "Confirmado" : "Qualidade"}: {Math.round(fibonacciQuality)}%
           </span>
         )}
       </div>

@@ -49,6 +49,30 @@ export function calculateMarketNoise(results: Record<string, PatternResult>, mar
     }
   }
   
+  // Adicionar análise especial para candles e níveis de Fibonacci
+  if (results.candlePatterns?.found && results.fibonacci?.found && results.fibonacci.fibonacciLevels) {
+    // Verificar candles perto de níveis de Fibonacci
+    // Isto é uma simulação simplificada - em uma implementação real, precisaríamos
+    // das coordenadas exatas das velas e níveis para fazer esta análise
+    
+    const candleScore = results.candlePatterns.buyScore > results.candlePatterns.sellScore ? 
+      results.candlePatterns.buyScore : results.candlePatterns.sellScore;
+    
+    const fibLevels = results.fibonacci.fibonacciLevels;
+    const hasTouchedLevels = fibLevels.some(level => level.touched);
+    const hasBrokenLevels = fibLevels.some(level => level.broken);
+    
+    // Se há candles fortes perto de níveis Fibonacci tocados, o sinal é mais confiável
+    if (hasTouchedLevels && candleScore > 0.7) {
+      noiseLevel -= 8; // Reduz o ruído
+    }
+    
+    // Se níveis foram quebrados recentemente, pode haver volatilidade
+    if (hasBrokenLevels) {
+      noiseLevel += 5;
+    }
+  }
+  
   // Add noise from weak signals or conflicts
   if (results.all) {
     // Small difference between buy and sell scores indicates uncertainty
@@ -108,6 +132,16 @@ export function calculateExpirationTime(
     i.name === "Suporte/Resistência" && i.strength > 75
   );
   
+  // Check for strong Fibonacci indicator
+  const hasFibonacciSignal = indicators.some(i => 
+    i.name.includes("Fibonacci") && i.strength > 70
+  );
+  
+  // Verificar se há uma relação forte entre candles e Fibonacci
+  const hasCandleFibRelation = indicators.some(i => 
+    i.name === "Padrões de Candles" && i.strength > 70
+  ) && hasFibonacciSignal;
+  
   // Fast momentum signals can execute quicker
   if (hasDominantMomentum) {
     timeframeSeconds = Math.floor(timeframeSeconds * 0.90);
@@ -116,6 +150,11 @@ export function calculateExpirationTime(
   // Strong support/resistance tends to hold longer
   if (hasStrongSupport && selectedTimeframe === "1m") {
     timeframeSeconds = Math.floor(timeframeSeconds * 1.05);
+  }
+  
+  // Relação forte entre candles e Fibonacci tende a ser mais precisa no tempo
+  if (hasCandleFibRelation) {
+    timeframeSeconds = Math.floor(timeframeSeconds * 0.93); // Mais rápido e preciso
   }
   
   // Calculate final expiry date with all adjustments
@@ -206,20 +245,73 @@ export function generateIndicators(
     });
   }
   
-  // Process candle patterns
+  // Process candle patterns with enhanced Fibonacci integration
   if (results.candlePatterns?.found) {
     const strength = results.candlePatterns.confidence / 100;
-    const signal: "buy" | "sell" | "neutral" = 
-      results.candlePatterns.buyScore && results.candlePatterns.sellScore && results.candlePatterns.buyScore > results.candlePatterns.sellScore 
-        ? "buy" 
-        : results.candlePatterns.buyScore && results.candlePatterns.sellScore && results.candlePatterns.sellScore > results.candlePatterns.buyScore 
-          ? "sell" 
-          : "neutral";
+    const candleBuyScore = results.candlePatterns.buyScore ?? 0;
+    const candleSellScore = results.candlePatterns.sellScore ?? 0;
+    let signal: "buy" | "sell" | "neutral" = 
+      candleBuyScore > candleSellScore ? "buy" : 
+      candleSellScore > candleBuyScore ? "sell" : 
+      "neutral";
     
+    let candleStrength = strength * 100;
+    
+    // Check for Fibonacci relationship to enhance candle analysis
+    if (results.fibonacci?.found && results.fibonacci.fibonacciLevels) {
+      const fibLevels = results.fibonacci.fibonacciLevels;
+      
+      // Verify if candles are near important Fibonacci levels
+      const touchedSupports = fibLevels.filter(l => l.type === "support" && l.touched).length;
+      const touchedResistances = fibLevels.filter(l => l.type === "resistance" && l.touched).length;
+      
+      // Enhance candle signal based on Fibonacci levels
+      if (touchedSupports > 0 && signal === "buy") {
+        // Bullish candle at support is a stronger buy signal
+        candleStrength = Math.min(100, candleStrength + (touchedSupports * 5));
+        
+        // Create a new integrated indicator for this special case
+        indicators.push({
+          name: "Candles em Suporte Fibonacci",
+          signal: "buy",
+          strength: Math.min(95, candleStrength + 10)
+        });
+      } 
+      else if (touchedResistances > 0 && signal === "sell") {
+        // Bearish candle at resistance is a stronger sell signal
+        candleStrength = Math.min(100, candleStrength + (touchedResistances * 5));
+        
+        // Create a new integrated indicator for this special case
+        indicators.push({
+          name: "Candles em Resistência Fibonacci",
+          signal: "sell",
+          strength: Math.min(95, candleStrength + 10)
+        });
+      }
+      // Potential reversal patterns
+      else if (touchedSupports > 0 && signal === "sell") {
+        // Potential reversal - bear candle at support
+        indicators.push({
+          name: "Possível Reversão em Suporte",
+          signal: "sell",
+          strength: Math.min(85, candleStrength - 5) // Lower strength due to counter-trend
+        });
+      }
+      else if (touchedResistances > 0 && signal === "buy") {
+        // Potential reversal - bull candle at resistance
+        indicators.push({
+          name: "Possível Reversão em Resistência",
+          signal: "buy",
+          strength: Math.min(85, candleStrength - 5) // Lower strength due to counter-trend
+        });
+      }
+    }
+    
+    // Add the standard candle pattern indicator
     indicators.push({
       name: "Padrões de Candles",
       signal,
-      strength: strength * 100
+      strength: candleStrength
     });
   }
   
@@ -257,7 +349,7 @@ export function generateIndicators(
     });
   }
   
-  // Support and resistance
+  // Support and resistance with dynamic importance
   if (results.supportResistance?.found) {
     const strength = results.supportResistance.confidence / 100;
     const signal: "buy" | "sell" | "neutral" = 
@@ -274,7 +366,7 @@ export function generateIndicators(
     });
   }
   
-  // Add momentum analysis
+  // Add momentum analysis with noise filtering
   const momentumSignal: "buy" | "sell" | "neutral" = 
     results.all?.buyScore && results.all?.sellScore && results.all.buyScore > results.all.sellScore * 1.2 ? "buy" :
     results.all?.buyScore && results.all?.sellScore && results.all.sellScore > results.all.buyScore * 1.2 ? "sell" :
@@ -399,4 +491,96 @@ export function analyzeFibonacciQuality(levels: FibonacciLevel[] | undefined): n
   const normalizedQuality = (qualityScore / totalWeight) * 100;
   
   return Math.min(100, Math.max(0, normalizedQuality));
+}
+
+// Nova função para analisar a relação entre candles e níveis Fibonacci
+export function analyzeCandleFibonacciRelationship(
+  candlePatterns: PatternResult | undefined, 
+  fibonacci: PatternResult | undefined
+): {
+  relationship: "strong" | "moderate" | "weak" | "none";
+  buySignal: boolean;
+  sellSignal: boolean;
+  confidence: number;
+} {
+  // Resultado padrão
+  const defaultResult = {
+    relationship: "none" as "strong" | "moderate" | "weak" | "none",
+    buySignal: false,
+    sellSignal: false,
+    confidence: 0
+  };
+  
+  // Verificar se temos os dois padrões detectados
+  if (!candlePatterns?.found || !fibonacci?.found || !fibonacci.fibonacciLevels) {
+    return defaultResult;
+  }
+  
+  // Extrair informações
+  const candleBuyScore = candlePatterns.buyScore ?? 0;
+  const candleSellScore = candlePatterns.sellScore ?? 0;
+  const candleSignal = candleBuyScore > candleSellScore ? "buy" : "sell";
+  const candleStrength = Math.max(candleBuyScore, candleSellScore);
+  
+  const fibLevels = fibonacci.fibonacciLevels;
+  
+  // Verificar relações importantes
+  const supportLevels = fibLevels.filter(l => l.type === "support");
+  const resistanceLevels = fibLevels.filter(l => l.type === "resistance");
+  
+  const touchedSupports = supportLevels.filter(l => l.touched).length;
+  const touchedResistances = resistanceLevels.filter(l => l.touched).length;
+  
+  // Calcular forças médias
+  const avgSupportStrength = supportLevels.length > 0 ? 
+    supportLevels.reduce((sum, l) => sum + l.strength, 0) / supportLevels.length : 0;
+    
+  const avgResistanceStrength = resistanceLevels.length > 0 ?
+    resistanceLevels.reduce((sum, l) => sum + l.strength, 0) / resistanceLevels.length : 0;
+  
+  // Análise de relações
+  let relationship: "strong" | "moderate" | "weak" | "none" = "none";
+  let buySignal = false;
+  let sellSignal = false;
+  let confidence = 0;
+  
+  // Padrões de alta perto de suportes = forte sinal de compra
+  if (candleSignal === "buy" && touchedSupports > 0 && avgSupportStrength > 60) {
+    relationship = "strong";
+    buySignal = true;
+    confidence = Math.min(95, 70 + (avgSupportStrength / 10) + (candleStrength * 10));
+  }
+  // Padrões de baixa perto de resistências = forte sinal de venda
+  else if (candleSignal === "sell" && touchedResistances > 0 && avgResistanceStrength > 60) {
+    relationship = "strong";
+    sellSignal = true;
+    confidence = Math.min(95, 70 + (avgResistanceStrength / 10) + (candleStrength * 10));
+  }
+  // Possível reversão - padrões de baixa em suporte
+  else if (candleSignal === "sell" && touchedSupports > 0) {
+    relationship = "moderate";
+    // A força do sinal de venda depende de quanto o suporte já foi testado
+    sellSignal = true;
+    confidence = Math.min(80, 50 + (touchedSupports * 5) + (candleStrength * 8));
+  }
+  // Possível reversão - padrões de alta em resistência
+  else if (candleSignal === "buy" && touchedResistances > 0) {
+    relationship = "moderate";
+    buySignal = true;
+    confidence = Math.min(80, 50 + (touchedResistances * 5) + (candleStrength * 8));
+  }
+  // Relação fraca - sem níveis significativos tocados
+  else if (candleStrength > 0.5) {
+    relationship = "weak";
+    buySignal = candleSignal === "buy";
+    sellSignal = candleSignal === "sell";
+    confidence = Math.min(65, 40 + (candleStrength * 10));
+  }
+  
+  return {
+    relationship,
+    buySignal,
+    sellSignal,
+    confidence
+  };
 }
