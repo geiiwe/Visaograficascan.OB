@@ -1,7 +1,7 @@
 
 import React from "react";
 import { cn } from "@/lib/utils";
-import { TrendingUp, TrendingDown, Fingerprint, LineChart, AlertTriangle, Activity } from "lucide-react";
+import { TrendingUp, TrendingDown, Fingerprint, LineChart, AlertTriangle, Activity, BarChart } from "lucide-react";
 import { PredictionIndicator } from "@/utils/predictionUtils";
 
 interface IndicatorListProps {
@@ -17,7 +17,7 @@ const IndicatorList: React.FC<IndicatorListProps> = ({
 }) => {
   const visibleIndicators = indicators.filter((_, idx) => idx < maxItems);
   
-  // Group indicators by category
+  // Group indicators by category for better organization and logical flow
   const chartIndicators = visibleIndicators.filter(i => 
     !i.name.includes("Fibonacci") && 
     !i.name.includes("Candle") && 
@@ -30,6 +30,29 @@ const IndicatorList: React.FC<IndicatorListProps> = ({
     i.name.includes("Fibonacci"));
   const volatilityIndicators = visibleIndicators.filter(i => 
     i.name.includes("Volatilidade"));
+  
+  // Get icon for indicator based on type
+  const getIndicatorIcon = (indicator: PredictionIndicator) => {
+    if (indicator.name.includes("Volatilidade")) {
+      return indicator.strength > 70 ? 
+        <AlertTriangle className="h-3 w-3" /> : 
+        <Activity className="h-3 w-3" />;
+    }
+    
+    if (indicator.name.includes("Fibonacci")) {
+      return <Fingerprint className="h-3 w-3" />;
+    }
+    
+    if (indicator.signal === "buy") {
+      return <TrendingUp className="h-3 w-3" />;
+    }
+    
+    if (indicator.signal === "sell") {
+      return <TrendingDown className="h-3 w-3" />;
+    }
+    
+    return <BarChart className="h-3 w-3" />;
+  };
   
   return (
     <div className="space-y-1 w-full">
@@ -46,43 +69,35 @@ const IndicatorList: React.FC<IndicatorListProps> = ({
                 "bg-blue-800/60 text-white border-l-2 border-blue-400"
               )}
             >
-              {indicator.strength > 70 ? (
-                <AlertTriangle className="h-3 w-3" />
-              ) : (
-                <Activity className="h-3 w-3" />
-              )}
+              {getIndicatorIcon(indicator)}
               <span className="truncate font-semibold">
                 {indicator.name}
                 {indicator.strength > 70 && !compact && " - Perigo"}
               </span>
+              <span className="ml-auto text-xs opacity-80">{Math.round(indicator.strength)}%</span>
             </div>
           ))}
         </div>
       )}
 
-      {/* Standard Chart Indicators */}
-      <div className="grid grid-cols-2 gap-1 w-full">
-        {chartIndicators.map((indicator, idx) => (
-          <div 
-            key={`chart-${idx}`} 
-            className={cn(
-              "flex items-center gap-1 px-2 py-1 rounded-sm text-xs",
-              indicator.signal === "buy" ? "bg-green-800/40 text-green-100" :
-              indicator.signal === "sell" ? "bg-red-800/40 text-red-100" :
-              "bg-gray-800/40 text-gray-100"
-            )}
-          >
-            {indicator.signal === "buy" ? (
-              <TrendingUp className="h-3 w-3" />
-            ) : indicator.signal === "sell" ? (
-              <TrendingDown className="h-3 w-3" />
-            ) : (
-              <LineChart className="h-3 w-3" />
-            )}
-            <span className="truncate">{indicator.name}</span>
-          </div>
-        ))}
-      </div>
+      {/* Fibonacci-Candle Relation Indicators - High value confluence */}
+      {candleFibIndicators.length > 0 && (
+        <div className="grid grid-cols-1 gap-1 w-full">
+          {candleFibIndicators.map((indicator, idx) => (
+            <div 
+              key={`fibcandle-${idx}`} 
+              className={cn(
+                "flex items-center gap-1 px-2 py-1 rounded-sm text-xs",
+                "bg-[#f97316]/60 text-white border-l-2 border-[#f97316]"
+              )}
+            >
+              <Fingerprint className="h-3 w-3" />
+              <span className="truncate font-medium">{compact ? "Fib+Candle" : indicator.name}</span>
+              <span className="ml-auto text-xs opacity-80">{Math.round(indicator.strength)}%</span>
+            </div>
+          ))}
+        </div>
+      )}
       
       {/* Fibonacci Indicators */}
       {fibonacciIndicators.length > 0 && (
@@ -99,24 +114,28 @@ const IndicatorList: React.FC<IndicatorListProps> = ({
             >
               <Fingerprint className="h-3 w-3" />
               <span className="truncate">{indicator.name}</span>
+              <span className="ml-auto text-xs opacity-80">{Math.round(indicator.strength)}%</span>
             </div>
           ))}
         </div>
       )}
-      
-      {/* Fibonacci-Candle Relation Indicators */}
-      {candleFibIndicators.length > 0 && (
+
+      {/* Standard Chart Indicators */}
+      {chartIndicators.length > 0 && (
         <div className="grid grid-cols-2 gap-1 w-full">
-          {candleFibIndicators.map((indicator, idx) => (
+          {chartIndicators.map((indicator, idx) => (
             <div 
-              key={`fibcandle-${idx}`} 
+              key={`chart-${idx}`} 
               className={cn(
                 "flex items-center gap-1 px-2 py-1 rounded-sm text-xs",
-                "bg-[#f97316]/60 text-white border-l-2 border-[#f97316]"
+                indicator.signal === "buy" ? "bg-green-800/40 text-green-100" :
+                indicator.signal === "sell" ? "bg-red-800/40 text-red-100" :
+                "bg-gray-800/40 text-gray-100"
               )}
             >
-              <Fingerprint className="h-3 w-3" />
-              <span className="truncate">{compact ? "Fib+Candle" : indicator.name}</span>
+              {getIndicatorIcon(indicator)}
+              <span className="truncate">{indicator.name}</span>
+              <span className="ml-auto text-xs opacity-80">{Math.round(indicator.strength)}%</span>
             </div>
           ))}
         </div>

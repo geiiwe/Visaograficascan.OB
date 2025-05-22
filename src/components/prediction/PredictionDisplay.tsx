@@ -1,15 +1,15 @@
 
 import React from "react";
 import { cn } from "@/lib/utils";
-import { ArrowUp, ArrowDown, Timer, Fingerprint, ChevronDown, ChevronUp } from "lucide-react";
-import { EntryType, TimeframeType } from "@/context/AnalyzerContext";
+import { ArrowUp, ArrowDown, Timer, Fingerprint, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
+import { EntryType, TimeframeType, MarketType } from "@/context/AnalyzerContext";
 
 interface PredictionDisplayProps {
   entryPoint: EntryType;
   confidence: number;
   expirationTime: string;
   timeframe: TimeframeType;
-  marketType: string;
+  marketType: MarketType;
   fibonacciQuality?: number;
   hasCandleFibRelation?: boolean;
   hasHighVolatility?: boolean;
@@ -71,6 +71,7 @@ const PredictionDisplay: React.FC<PredictionDisplayProps> = ({
             "flex items-center px-1.5 py-0.5 rounded-full",
             volatilityLevel > 75 ? "bg-red-600/60" : "bg-yellow-600/60"
           )}>
+            {volatilityLevel > 75 && <AlertTriangle className="h-3 w-3 text-white mr-1" />}
             <span className="text-xs text-white font-medium">
               Vol. {volatilityLevel.toFixed(0)}%
             </span>

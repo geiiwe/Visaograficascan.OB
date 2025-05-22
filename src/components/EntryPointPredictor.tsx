@@ -25,15 +25,56 @@ const EntryPointPredictor: React.FC<EntryPointPredictorProps> = ({ results }) =>
   // Determine if Fibonacci is influencing the decision
   const fibonacciInfluencing = fibonacciQuality > 65;
   
-  // Check for Fibonacci and Candle relationship indicators
+  // Check for Fibonacci and Candle relationship indicators - crucial confluence
   const hasCandleFibRelation = prediction.indicators.some(i => 
     i.name.includes("Candles em") && i.name.includes("Fibonacci")
   );
   
-  // Check for high volatility
+  // Check for volatility - key factor in decision making process
   const volatilityIndicator = prediction.indicators.find(i => i.name.includes("Volatilidade"));
   const hasHighVolatility = volatilityIndicator && volatilityIndicator.strength > 65;
   const hasDangerousVolatility = volatilityIndicator && volatilityIndicator.strength > 75;
+
+  // Get the most significant indicators driving the decision
+  const primaryIndicator = prediction.indicators
+    .filter(ind => !ind.name.includes("Volatilidade") && !ind.name.includes("Tempo Exato"))
+    .sort((a, b) => b.strength - a.strength)[0];
+  
+  const secondaryIndicator = prediction.indicators
+    .filter(ind => 
+      !ind.name.includes("Volatilidade") && 
+      !ind.name.includes("Tempo Exato") &&
+      ind.name !== primaryIndicator?.name
+    )
+    .sort((a, b) => b.strength - a.strength)[0];
+  
+  // Determine the confidence adjustment based on pattern confluence
+  const patternConfluence = prediction.indicators
+    .filter(i => i.signal === prediction.entryPoint && i.strength > 70)
+    .length;
+    
+  // Add explanation text based on analysis - core improvement for narrative
+  let analysisExplanation = "";
+  if (hasDangerousVolatility) {
+    analysisExplanation = "Alta volatilidade detectada. Aguarde condições mais estáveis.";
+  } else if (prediction.entryPoint !== "wait") {
+    if (hasCandleFibRelation) {
+      analysisExplanation = `${prediction.entryPoint === "buy" ? "Compra" : "Venda"} confirmada por Fibonacci e padrões de candles.`;
+    } else if (fibonacciInfluencing && primaryIndicator) {
+      analysisExplanation = `Sinal baseado em níveis Fibonacci e ${primaryIndicator.name.toLowerCase()}.`;
+    } else if (primaryIndicator && secondaryIndicator) {
+      analysisExplanation = `${prediction.entryPoint === "buy" ? "Tendência de alta" : "Tendência de baixa"} indicada por ${primaryIndicator.name.toLowerCase()} e ${secondaryIndicator.name.toLowerCase()}.`;
+    } else if (primaryIndicator) {
+      analysisExplanation = `Sinal baseado principalmente em ${primaryIndicator.name.toLowerCase()}.`;
+    }
+    
+    // Add confluence info to explanation
+    if (patternConfluence >= 3 && !hasCandleFibRelation) {
+      analysisExplanation += ` Confluência de ${patternConfluence} indicadores.`;
+    }
+  } else {
+    analysisExplanation = "Sinais mistos. Aguarde confirmação de tendência.";
+  }
   
   // Filter indicators for display - limit to top 4 for cleaner UI
   // Prioritize Volatility and Fibonacci+Candle relationships if they exist
@@ -46,6 +87,9 @@ const EntryPointPredictor: React.FC<EntryPointPredictorProps> = ({ results }) =>
       // Second priority: Fibonacci-Candle relationships
       if (a.name.includes("Candles em") && a.name.includes("Fibonacci")) return -1;
       if (b.name.includes("Candles em") && b.name.includes("Fibonacci")) return 1;
+      // Third priority: Primary indicator that formed the decision
+      if (a.name === primaryIndicator?.name) return -1;
+      if (b.name === primaryIndicator?.name) return 1;
       // Then sort by strength
       return b.strength - a.strength;
     })
@@ -79,6 +123,13 @@ const EntryPointPredictor: React.FC<EntryPointPredictorProps> = ({ results }) =>
           hasHighVolatility={hasHighVolatility}
           volatilityLevel={volatilityIndicator?.strength || 0}
         />
+        
+        {/* Analysis explanation to create narrative cohesion */}
+        {analysisExplanation && (
+          <div className="mt-2 px-2 py-1 bg-black/30 rounded-md w-full text-center">
+            <p className="text-xs text-white">{analysisExplanation}</p>
+          </div>
+        )}
         
         {/* Only show indicators in a cleaner way if we have any */}
         {topIndicators.length > 0 && (
