@@ -8,12 +8,14 @@ interface IndicatorListProps {
   indicators: PredictionIndicator[];
   maxItems?: number;
   compact?: boolean;
+  highlightCircular?: boolean;
 }
 
 const IndicatorList: React.FC<IndicatorListProps> = ({ 
   indicators, 
   maxItems = 8,
-  compact = false
+  compact = false,
+  highlightCircular = false
 }) => {
   const visibleIndicators = indicators.filter((_, idx) => idx < maxItems);
   

@@ -15,6 +15,9 @@ interface PredictionDisplayProps {
   hasHighVolatility?: boolean;
   volatilityLevel?: number;
   precisionLevel?: "low" | "medium" | "high";
+  circularPatternLevel?: number;
+  hasCandlePattern?: boolean;
+  candlePatternLevel?: number;
 }
 
 const PredictionDisplay: React.FC<PredictionDisplayProps> = ({
@@ -27,7 +30,10 @@ const PredictionDisplay: React.FC<PredictionDisplayProps> = ({
   hasCandleFibRelation = false,
   hasHighVolatility = false,
   volatilityLevel = 0,
-  precisionLevel = "medium"
+  precisionLevel = "medium",
+  circularPatternLevel = 0,
+  hasCandlePattern = false,
+  candlePatternLevel = 0
 }) => {
   // Check if prediction is Fibonacci based
   const isFibonacciBased = fibonacciQuality > 65;
