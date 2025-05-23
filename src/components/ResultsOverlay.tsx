@@ -69,6 +69,9 @@ const ResultsOverlay = () => {
   const [showDetailedPanel, setShowDetailedPanel] = useState<boolean>(false);
   const [hasError, setHasError] = useState<boolean>(false);
   
+  // New state for controlling the overlay panel position
+  const [panelPosition, setPanelPosition] = useState<'top-right' | 'bottom-right' | 'bottom-left' | 'top-left'>('top-right');
+  
   const isMobile = useIsMobile();
   const analysisImageRef = useRef<HTMLImageElement | null>(null);
   const processedRegionRef = useRef<string | null>(null);
@@ -98,6 +101,15 @@ const ResultsOverlay = () => {
 
   const toggleDetailedPanel = () => {
     setShowDetailedPanel(!showDetailedPanel);
+  };
+  
+  // Function to change the position of the results panel
+  const rotatePanelPosition = () => {
+    const positions: Array<'top-right' | 'bottom-right' | 'bottom-left' | 'top-left'> = 
+      ['top-right', 'bottom-right', 'bottom-left', 'top-left'];
+    const currentIndex = positions.indexOf(panelPosition);
+    const nextIndex = (currentIndex + 1) % positions.length;
+    setPanelPosition(positions[nextIndex]);
   };
 
   // Cleanup function to properly handle resources
@@ -321,6 +333,22 @@ const ResultsOverlay = () => {
     return null;
   }
 
+  // Generate positioning classes for the results panel
+  const getPanelPositionClasses = () => {
+    switch (panelPosition) {
+      case 'top-right':
+        return 'top-4 right-4';
+      case 'bottom-right':
+        return 'bottom-4 right-4';
+      case 'bottom-left':
+        return 'bottom-4 left-4';
+      case 'top-left':
+        return 'top-4 left-4';
+      default:
+        return 'top-4 right-4';
+    }
+  };
+
   const indicatorStyle = {
     position: 'absolute',
     left: `${indicatorPosition.x}%`,
@@ -375,36 +403,52 @@ const ResultsOverlay = () => {
         </div>
       )}
       
-      {/* Organized modular components with proper z-index layers */}
-      <div className="absolute inset-0 z-30 pointer-events-none">
-        <TimeframeIndicator 
-          selectedTimeframe={selectedTimeframe} 
-          marketType={marketType} 
-        />
+      {/* Results panel with position control - NEW */}
+      <div className={`absolute ${getPanelPositionClasses()} z-40 pointer-events-auto`}>
+        {/* Panel position control button */}
+        <button 
+          onClick={rotatePanelPosition}
+          className="absolute -left-3 -top-3 bg-trader-blue text-white p-1 rounded-full shadow-md z-50"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+            <path d="M3 3v5h5"></path>
+          </svg>
+        </button>
         
-        <MarketTypeIndicator marketType={marketType} />
-        
-        <AIConfirmationBadge 
-          active={aiConfirmation.active}
-          verified={aiConfirmation.verified}
-          direction={aiConfirmation.direction}
-          confidence={aiConfirmation.confidence}
-          majorityDirection={aiConfirmation.majorityDirection}
-        />
-      </div>
-      
-      <div className="absolute inset-0 z-30 pointer-events-none">
-        <FastAnalysisIndicators results={fastAnalysisResults} />
+        <div className="flex flex-col gap-2">
+          {/* Time Frame and Market Type indicators */}
+          <div className="flex flex-col gap-1">
+            <TimeframeIndicator 
+              selectedTimeframe={selectedTimeframe} 
+              marketType={marketType} 
+            />
+            
+            <MarketTypeIndicator marketType={marketType} />
+            
+            <AIConfirmationBadge 
+              active={aiConfirmation.active}
+              verified={aiConfirmation.verified}
+              direction={aiConfirmation.direction}
+              confidence={aiConfirmation.confidence}
+              majorityDirection={aiConfirmation.majorityDirection}
+            />
+          </div>
+          
+          {/* Fast Analysis Indicators */}
+          <FastAnalysisIndicators results={fastAnalysisResults} />
+          
+          {/* Analysis Panel */}
+          <AnalysisPanel 
+            detailedResults={detailedResults}
+            compactMode={compactMode}
+            selectedTimeframe={selectedTimeframe}
+            fastAnalysisResults={fastAnalysisResults}
+          />
+        </div>
       </div>
       
       <div className="absolute inset-0 z-40 pointer-events-none">
-        <AnalysisPanel 
-          detailedResults={detailedResults}
-          compactMode={compactMode}
-          selectedTimeframe={selectedTimeframe}
-          fastAnalysisResults={fastAnalysisResults}
-        />
-        
         <ProcessingIndicator processingStage={processingStage} isError={hasError} />
         
         <DetailedPanelToggle 

@@ -49,7 +49,7 @@ const PredictionDisplay: React.FC<PredictionDisplayProps> = ({
   };
   
   return (
-    <>
+    <div className="bg-black/80 backdrop-blur-md p-3 rounded-lg border border-gray-700/50 shadow-xl w-full max-w-[320px]">
       <div className="flex items-center justify-between gap-2 mb-1 w-full">
         <div className="flex items-center">
           <Timer className="h-4 w-4 text-white" />
@@ -133,7 +133,7 @@ const PredictionDisplay: React.FC<PredictionDisplayProps> = ({
           </span>
         )}
       </div>
-    </>
+    </div>
   );
 };
 

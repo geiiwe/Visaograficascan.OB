@@ -57,7 +57,7 @@ const IndicatorList: React.FC<IndicatorListProps> = ({
   };
   
   return (
-    <div className="space-y-1 w-full">
+    <div className="bg-black/80 backdrop-blur-md p-3 rounded-lg border border-gray-700/50 shadow-xl w-full max-w-[320px] space-y-1">
       {/* Volatility Indicators (High Priority) */}
       {volatilityIndicators.length > 0 && (
         <div className="grid grid-cols-1 gap-1 w-full">
