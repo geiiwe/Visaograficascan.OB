@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, ReactNode } from "react";
 
 export type AnalysisType = "trendlines" | "fibonacci" | "candlePatterns" | "elliottWaves" | "dowTheory" | "all";
@@ -17,6 +16,7 @@ interface PredictionData {
     signal: "buy" | "sell" | "neutral";
     strength: number;
   }[];
+  analysisNarrative?: string; // Added missing property for narrative explanation
 }
 
 interface AnalyzerContextType {
