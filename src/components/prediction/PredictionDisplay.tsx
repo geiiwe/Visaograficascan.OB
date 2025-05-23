@@ -1,7 +1,7 @@
 
 import React from "react";
 import { cn } from "@/lib/utils";
-import { ArrowUp, ArrowDown, Timer, Fingerprint, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
+import { ArrowUp, ArrowDown, Timer, Fingerprint, ChevronDown, ChevronUp, AlertTriangle, Activity, TrendingUp } from "lucide-react";
 import { EntryType, TimeframeType, MarketType } from "@/context/AnalyzerContext";
 
 interface PredictionDisplayProps {
@@ -37,13 +37,17 @@ const PredictionDisplay: React.FC<PredictionDisplayProps> = ({
 }) => {
   // Check if prediction is Fibonacci based
   const isFibonacciBased = fibonacciQuality > 65;
+  // Check if circular pattern is significant
+  const hasCircularPattern = circularPatternLevel > 60;
   
   // Quality indicator based on precision and fibonacci
   const getQualityIndicator = () => {
     if (hasHighVolatility) return "Volatilidade alta";
     if (precisionLevel === "high" && hasCandleFibRelation) return "Alta precisão";
     if (hasCandleFibRelation) return "Boa precisão";
+    if (isFibonacciBased && hasCandlePattern) return "Confirmação dupla";
     if (isFibonacciBased) return "Média precisão";
+    if (hasCircularPattern) return "Ciclo detectado";
     if (precisionLevel === "low") return "Análise rápida";
     return "Precisão normal";
   };
@@ -58,31 +62,60 @@ const PredictionDisplay: React.FC<PredictionDisplayProps> = ({
           </span>
         </div>
         
-        {/* Show Fibonacci badge only if quality is good */}
-        {isFibonacciBased && (
-          <div className={cn(
-            "flex items-center px-1.5 py-0.5 rounded-full",
-            hasCandleFibRelation ? "bg-[#f97316]/60" : "bg-[#f97316]/30"
-          )}>
-            <Fingerprint className="h-3.5 w-3.5 text-[#f97316]" />
-            <span className="text-xs ml-1 text-white">
-              {hasCandleFibRelation ? "Fib+Candle" : "Fibonacci"}
-            </span>
-          </div>
-        )}
-        
-        {/* Show volatility warning when relevant */}
-        {hasHighVolatility && volatilityLevel > 65 && (
-          <div className={cn(
-            "flex items-center px-1.5 py-0.5 rounded-full",
-            volatilityLevel > 75 ? "bg-red-600/60" : "bg-yellow-600/60"
-          )}>
-            {volatilityLevel > 75 && <AlertTriangle className="h-3 w-3 text-white mr-1" />}
-            <span className="text-xs text-white font-medium">
-              Vol. {volatilityLevel.toFixed(0)}%
-            </span>
-          </div>
-        )}
+        {/* Show badges for analysis patterns */}
+        <div className="flex flex-wrap gap-1 justify-end">
+          {/* Fibonacci badge */}
+          {isFibonacciBased && (
+            <div className={cn(
+              "flex items-center px-1.5 py-0.5 rounded-full",
+              hasCandleFibRelation ? "bg-[#f97316]/60" : "bg-[#f97316]/30"
+            )}>
+              <Fingerprint className="h-3.5 w-3.5 text-[#f97316]" />
+              <span className="text-xs ml-1 text-white">
+                {hasCandleFibRelation ? "Fib+Candle" : "Fibonacci"}
+              </span>
+            </div>
+          )}
+          
+          {/* Circular pattern badge */}
+          {hasCircularPattern && (
+            <div className={cn(
+              "flex items-center px-1.5 py-0.5 rounded-full",
+              circularPatternLevel > 75 ? "bg-purple-600/60" : "bg-purple-600/30"
+            )}>
+              <Activity className="h-3.5 w-3.5 text-purple-300" />
+              <span className="text-xs ml-1 text-white">
+                Ciclo {Math.round(circularPatternLevel)}%
+              </span>
+            </div>
+          )}
+          
+          {/* Candle pattern badge */}
+          {hasCandlePattern && !hasCandleFibRelation && (
+            <div className={cn(
+              "flex items-center px-1.5 py-0.5 rounded-full",
+              candlePatternLevel > 75 ? "bg-blue-600/60" : "bg-blue-600/30"
+            )}>
+              <TrendingUp className="h-3.5 w-3.5 text-blue-300" />
+              <span className="text-xs ml-1 text-white">
+                Candle {Math.round(candlePatternLevel)}%
+              </span>
+            </div>
+          )}
+          
+          {/* Volatility warning when relevant */}
+          {hasHighVolatility && volatilityLevel > 65 && (
+            <div className={cn(
+              "flex items-center px-1.5 py-0.5 rounded-full",
+              volatilityLevel > 75 ? "bg-red-600/60" : "bg-yellow-600/60"
+            )}>
+              {volatilityLevel > 75 && <AlertTriangle className="h-3 w-3 text-white mr-1" />}
+              <span className="text-xs text-white font-medium">
+                Vol. {volatilityLevel.toFixed(0)}%
+              </span>
+            </div>
+          )}
+        </div>
       </div>
       
       {entryPoint === "wait" ? (
@@ -123,13 +156,25 @@ const PredictionDisplay: React.FC<PredictionDisplayProps> = ({
       <div className="mt-2 flex justify-between items-center w-full text-xs text-gray-300">
         <span>Expira: {expirationTime}</span>
         
-        {/* Show quality percentage when Fibonacci is significant */}
-        {fibonacciQuality > 50 && (
+        {/* Show quality percentage based on best available pattern */}
+        {(fibonacciQuality > 50 || hasCandlePattern || hasCircularPattern) && (
           <span className={cn(
             "text-[#f97316]",
             hasCandleFibRelation && "font-bold"
           )}>
-            {hasCandleFibRelation ? "Confirmado" : "Qualidade"}: {Math.round(fibonacciQuality)}%
+            {hasCandleFibRelation 
+              ? "Confirmado" 
+              : hasCircularPattern && fibonacciQuality > 50 
+                ? "Multi-padrão" 
+                : hasCandlePattern && fibonacciQuality > 50 
+                  ? "Multi-padrão"
+                  : "Qualidade"}: {Math.round(
+                    Math.max(
+                      fibonacciQuality, 
+                      candlePatternLevel, 
+                      circularPatternLevel * 0.9
+                    )
+                  )}%
           </span>
         )}
       </div>
