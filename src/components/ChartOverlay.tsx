@@ -1,6 +1,22 @@
+
 import React from "react";
 import { ExtendedPatternResult, FibonacciLevel } from "@/utils/predictionUtils";
 import { useAnalyzer } from "@/context/AnalyzerContext";
+
+// Define additional marker types for TypeScript
+type MarkerType = "support" | "resistance" | "trendline" | "pattern" | "indicator" | "zone" | "candle" | "cycle" | "circular";
+type MarkerStrength = "forte" | "moderado" | "fraco" | number;
+
+// Define an enhanced marker object with all possible properties
+interface VisualMarker {
+  type: MarkerType;
+  color: string;
+  points?: [number, number][];
+  label?: string;
+  strength?: MarkerStrength;
+  significance?: number;
+  direction?: "clockwise" | "counterclockwise" | "unknown";
+}
 
 interface ChartOverlayProps {
   results: Record<string, ExtendedPatternResult>;
@@ -24,7 +40,7 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
   
   const allMarkers = Object.values(results)
     .filter(result => result?.found && result.visualMarkers)
-    .flatMap(result => result.visualMarkers || []);
+    .flatMap(result => result.visualMarkers || []) as VisualMarker[];
   
   // If no markers found, don't render anything
   if (allMarkers.length === 0) return null;
@@ -59,13 +75,13 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
   };
 
   // Enhanced marker styling for better visibility
-  const getMarkerStyle = (marker: any) => {
+  const getMarkerStyle = (marker: VisualMarker) => {
     const type = marker.type || "";
     
     // Specific styling for different marker types
     if (type === "candle" || type.includes("candle")) {
       return { filter: "url(#candle-highlight)" };
-    } else if (type.includes("cycle") || type.includes("circular")) {
+    } else if (type === "cycle" || type === "circular" || type.includes("cycle") || type.includes("circular")) {
       return { filter: "url(#cycle-glow)" };
     } else if (precision === "alta") {
       return { filter: "url(#enhanced-glow)" };
@@ -82,7 +98,7 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
     if (!candleResult?.visualMarkers || candleResult.visualMarkers.length === 0) return null;
     
     // Filtrar marcadores que representam candles individuais
-    const candleMarkers = candleResult.visualMarkers.filter(
+    const candleMarkers = (candleResult.visualMarkers as VisualMarker[]).filter(
       marker => marker.type === "pattern" || marker.type === "candle" || 
       (marker.label === "Bullish" || marker.label === "Bearish")
     );
@@ -300,7 +316,7 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
               fill="none"
               stroke={color}
               strokeWidth={getStrokeWidth("pattern")}
-              strokeDasharray={pattern.strength && pattern.strength < 70 ? "5,5" : undefined}
+              strokeDasharray={pattern.strength && typeof pattern.strength === 'number' && pattern.strength < 70 ? "5,5" : undefined}
               strokeOpacity="0.7"
             />
             
@@ -344,7 +360,7 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
             </text>
             
             {/* Strength indicator */}
-            {pattern.strength && (
+            {typeof pattern.strength === 'number' && (
               <text
                 x={`${centerX}%`}
                 y={`${centerY - radius - 2}%`}
@@ -726,7 +742,7 @@ const ChartOverlay: React.FC<ChartOverlayProps> = ({
                     textAnchor="middle"
                     className="select-none"
                   >
-                    {marker.strength}
+                    {typeof marker.strength === 'number' ? marker.strength : marker.strength}
                   </text>
                 )}
               </g>

@@ -11,6 +11,33 @@ interface EntryPointPredictorProps {
   results: Record<string, ExtendedPatternResult>;
 }
 
+// Define PredictionDisplayProps to match what we pass to the component
+interface PredictionDisplayProps {
+  entryPoint: "buy" | "sell" | "wait";
+  confidence: number;
+  expirationTime: string;
+  timeframe: "30s" | "1m";
+  marketType: "regular" | "otc";
+  fibonacciQuality: number;
+  hasCandleFibRelation: boolean;
+  hasHighVolatility: boolean;
+  volatilityLevel: number;
+  circularPatternLevel: number;
+  hasCandlePattern: boolean;
+  candlePatternLevel: number;
+}
+
+// Define IndicatorListProps to match what we pass to the component
+interface IndicatorListProps {
+  indicators: { 
+    name: string; 
+    signal: "buy" | "sell" | "neutral"; 
+    strength: number; 
+  }[];
+  maxItems: number;
+  highlightCircular: boolean;
+}
+
 const EntryPointPredictor: React.FC<EntryPointPredictorProps> = ({ results }) => {
   const { selectedTimeframe, marketType, enableCircularAnalysis } = useAnalyzer();
   const prediction = usePredictionEngine(results);
@@ -145,7 +172,7 @@ const EntryPointPredictor: React.FC<EntryPointPredictorProps> = ({ results }) =>
           hasCandleFibRelation={hasCandleFibRelation}
           hasHighVolatility={hasHighVolatility}
           volatilityLevel={volatilityIndicator?.strength || 0}
-          circularPatternLevel={circularPatternIndicator?.strength || 0}
+          circularPatternLevel={circularPatternStrength}
           hasCandlePattern={hasCandlePattern}
           candlePatternLevel={candlePatternStrength}
         />

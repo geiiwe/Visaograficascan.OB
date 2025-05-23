@@ -1,3 +1,4 @@
+
 /**
  * Advanced image processing functions for technical analysis
  * with precise chart region detection and pattern recognition
@@ -782,9 +783,9 @@ export const detectCircularPatterns = async (imageData: string): Promise<{
     const img = new Image();
     img.onload = () => {
       try {
-        // Simulated circular pattern detection
+        // Simulated circular pattern detection with explicit tuple typing
         const patterns = [{
-          center: [45, 55], // Center point (45%, 55%)
+          center: [45, 55] as [number, number], // Center point (45%, 55%)
           radius: 15, // 15% of image width
           confidence: 82,
           direction: "clockwise" as const,
@@ -836,22 +837,22 @@ export const detectCandlePatterns = async (
     img.onload = () => {
       try {
         // In a real system, this would use computer vision algorithms
-        // Here we simulate detection
+        // Here we simulate detection with proper tuple typing for position
         const candles = [
           {
-            position: [30, 40, 33, 50], // x1, y1, x2, y2
+            position: [30, 40, 33, 50] as [number, number, number, number], // x1, y1, x2, y2
             type: "bullish" as const,
             confidence: 85,
             significance: 70
           },
           {
-            position: [34, 35, 37, 48], // x1, y1, x2, y2
+            position: [34, 35, 37, 48] as [number, number, number, number], // x1, y1, x2, y2
             type: "doji" as const,
             confidence: 92,
             significance: 85
           },
           {
-            position: [38, 30, 41, 45], // x1, y1, x2, y2
+            position: [38, 30, 41, 45] as [number, number, number, number], // x1, y1, x2, y2
             type: "hammer" as const,
             confidence: 88,
             significance: 90
