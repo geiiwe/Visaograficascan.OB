@@ -21,6 +21,9 @@ interface ProcessOptions {
   patternConfidence?: number;
   chartRegion?: { x: number; y: number; width: number; height: number } | null;
   disableSimulation?: boolean;
+  enableCircularAnalysis?: boolean;
+  candleDetectionPrecision?: number; // 0-100, accuracy level for candle detection
+  detectDarkBackground?: boolean; // For inverted charts
 }
 
 // Progress callback function type
@@ -648,7 +651,7 @@ export const prepareForAnalysis = async (
   console.log("Preparing image for technical analysis with advanced computer vision:", options);
   
   let processedImage = imageData;
-  const { sensitivity = 0.7 } = options;
+  const { sensitivity = 0.7, enableCircularAnalysis = true, candleDetectionPrecision = 75 } = options;
   
   // Step 1: If chart region is already defined, extract it
   if (options.chartRegion) {
@@ -694,6 +697,18 @@ export const prepareForAnalysis = async (
   if (options.histogramEqualization) {
     progressCallback?.("Equalizando histograma para melhor visualização");
     processedImage = await equalizeHistogram(processedImage);
+  }
+  
+  // Enhanced processing for candle detection
+  if (options.patternRecognition && candleDetectionPrecision > 0) {
+    progressCallback?.(`Detectando padrões de velas com precisão ${candleDetectionPrecision}%`);
+    await detectCandlePatterns(processedImage, candleDetectionPrecision);
+  }
+  
+  // Special processing for circular patterns
+  if (enableCircularAnalysis) {
+    progressCallback?.("Analisando padrões circulares e ondas");
+    await detectCircularPatterns(processedImage);
   }
   
   // Apply processing steps based on options and precision level
@@ -744,4 +759,178 @@ export const prepareForAnalysis = async (
   progressCallback?.("Finalizando processamento da imagem");
   
   return processedImage;
+};
+
+// Nova função para detectar padrões circulares nos gráficos
+export const detectCircularPatterns = async (imageData: string): Promise<{
+  found: boolean;
+  patterns: Array<{
+    center: [number, number]; // Center point as percentage of image
+    radius: number; // Radius as percentage of image width
+    confidence: number; // 0-100
+    direction: "clockwise" | "counterclockwise" | "unknown";
+    type: "cycle" | "wave" | "rotation" | "convergence" | "divergence";
+  }>;
+}> => {
+  console.log("Detectando padrões circulares no gráfico...");
+  
+  // Em um sistema real, isso usaria algoritmos avançados de visão computacional
+  // Aqui apenas simulamos a detecção
+  
+  return new Promise((resolve) => {
+    // Create an image from the data to analyze
+    const img = new Image();
+    img.onload = () => {
+      try {
+        // Simulated circular pattern detection
+        const patterns = [{
+          center: [45, 55], // Center point (45%, 55%)
+          radius: 15, // 15% of image width
+          confidence: 82,
+          direction: "clockwise" as const,
+          type: "cycle" as const
+        }];
+        
+        resolve({
+          found: true,
+          patterns
+        });
+      } catch (error) {
+        console.error("Error in circular pattern detection:", error);
+        resolve({
+          found: false,
+          patterns: []
+        });
+      }
+    };
+    
+    img.onerror = () => {
+      console.error("Failed to load image for circular pattern detection");
+      resolve({
+        found: false,
+        patterns: []
+      });
+    };
+    
+    img.src = imageData;
+  });
+};
+
+// Improved candlestick detection with precision control
+export const detectCandlePatterns = async (
+  imageData: string, 
+  sensitivity: number = 75
+): Promise<{
+  found: boolean;
+  candles: Array<{
+    position: [number, number, number, number]; // x1, y1, x2, y2 as percentages
+    type: "bullish" | "bearish" | "doji" | "hammer" | "engulfing" | "harami" | "piercing" | "darkCloud" | "morningstar" | "eveningstar";
+    confidence: number;
+    significance: number; // How important is this candle for the analysis
+  }>;
+}> => {
+  console.log(`Detectando padrões de candles com sensibilidade ${sensitivity}...`);
+  
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        // In a real system, this would use computer vision algorithms
+        // Here we simulate detection
+        const candles = [
+          {
+            position: [30, 40, 33, 50], // x1, y1, x2, y2
+            type: "bullish" as const,
+            confidence: 85,
+            significance: 70
+          },
+          {
+            position: [34, 35, 37, 48], // x1, y1, x2, y2
+            type: "doji" as const,
+            confidence: 92,
+            significance: 85
+          },
+          {
+            position: [38, 30, 41, 45], // x1, y1, x2, y2
+            type: "hammer" as const,
+            confidence: 88,
+            significance: 90
+          }
+        ];
+        
+        // Filter by sensitivity - only include candles with confidence above threshold
+        const filteredCandles = candles.filter(
+          candle => candle.confidence >= (sensitivity * 0.85)
+        );
+        
+        resolve({
+          found: filteredCandles.length > 0,
+          candles: filteredCandles
+        });
+      } catch (error) {
+        console.error("Error in candle pattern detection:", error);
+        resolve({
+          found: false,
+          candles: []
+        });
+      }
+    };
+    
+    img.onerror = () => {
+      console.error("Failed to load image for candle pattern detection");
+      resolve({
+        found: false,
+        candles: []
+      });
+    };
+    
+    img.src = imageData;
+  });
+};
+
+// Better filtering of images for specific market types
+export const getProcessOptions = (
+  precision: string,
+  timeframe: string,
+  marketType: string,
+  enableCircular: boolean = true,
+  candlePrecision: number = 75
+): ProcessOptions => {
+  const baseOptions: ProcessOptions = {
+    enhanceContrast: true,
+    removeNoise: true,
+    histogramEqualization: true,
+    edgeEnhancement: true,
+    patternRecognition: true,
+    sensitivity: precision === "alta" ? 0.9 : precision === "normal" ? 0.7 : 0.5,
+    iterations: precision === "alta" ? 2 : 1,
+    sharpness: precision === "alta" ? 1.5 : precision === "normal" ? 1.2 : 1.0,
+    disableSimulation: false,
+    enableCircularAnalysis: enableCircular,
+    candleDetectionPrecision: candlePrecision
+  };
+  
+  // Customize by market type
+  if (marketType === "otc") {
+    return {
+      ...baseOptions,
+      contourDetection: true,
+      contextAwareness: true,
+      patternConfidence: precision === "alta" ? 0.85 : 0.75,
+      detectDarkBackground: true,
+      candleDetectionPrecision: candlePrecision * 1.1, // Higher precision for OTC
+    };
+  }
+  
+  // Customize by timeframe
+  if (timeframe === "30s") {
+    return {
+      ...baseOptions,
+      iterations: precision === "alta" ? 3 : 2,
+      sharpness: precision === "alta" ? 1.8 : 1.5,
+      candleDetectionPrecision: candlePrecision * 1.2, // Higher precision for quick timeframes
+    };
+  }
+  
+  return baseOptions;
 };

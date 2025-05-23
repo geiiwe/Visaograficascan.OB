@@ -5,6 +5,8 @@ export type PrecisionLevel = "baixa" | "normal" | "alta";
 export type EntryType = "buy" | "sell" | "wait";
 export type TimeframeType = "30s" | "1m";
 export type MarketType = "regular" | "otc"; // Adicionado tipo de mercado
+export type CandleFormationType = "doji" | "hammer" | "engulfing" | "harami" | "piercing" | "darkCloud" | "morningstar" | "eveningstar";
+export type CircularPatternType = "cycle" | "wave" | "rotation" | "divergence" | "convergence";
 
 interface PredictionData {
   entryPoint: EntryType;
@@ -17,6 +19,13 @@ interface PredictionData {
     strength: number;
   }[];
   analysisNarrative?: string; // Added missing property for narrative explanation
+  candleFormations?: CandleFormationType[];
+  circularPatterns?: CircularPatternType[];
+  keyLevels?: {
+    price: number;
+    type: "support" | "resistance" | "pivot";
+    strength: number;
+  }[];
 }
 
 interface AnalyzerContextType {
@@ -52,6 +61,10 @@ interface AnalyzerContextType {
   setMarketType: (type: MarketType) => void; // Setter para tipo de mercado
   lastUpdated: Date | null;
   setLastUpdated: (date: Date | null) => void;
+  enableCircularAnalysis: boolean;
+  toggleCircularAnalysis: () => void;
+  candelPatternSensitivity: number;
+  setCandelPatternSensitivity: (sensitivity: number) => void;
 }
 
 const AnalyzerContext = createContext<AnalyzerContextType | undefined>(undefined);
@@ -79,6 +92,8 @@ export const AnalyzerProvider = ({ children }: { children: ReactNode }) => {
   const [selectedTimeframe, setSelectedTimeframe] = useState<TimeframeType>("30s");
   const [marketType, setMarketType] = useState<MarketType>("regular"); // Estado inicial como mercado regular
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [enableCircularAnalysis, setEnableCircularAnalysis] = useState(true);
+  const [candelPatternSensitivity, setCandelPatternSensitivity] = useState(75); // 0-100, where higher means more sensitive
 
   // Computed property to check if a custom region is set
   const hasCustomRegion = chartRegion !== null;
@@ -146,6 +161,10 @@ export const AnalyzerProvider = ({ children }: { children: ReactNode }) => {
     setCompactMode(prev => !prev);
   };
 
+  const toggleCircularAnalysis = () => {
+    setEnableCircularAnalysis(prev => !prev);
+  };
+
   return (
     <AnalyzerContext.Provider
       value={{
@@ -181,6 +200,10 @@ export const AnalyzerProvider = ({ children }: { children: ReactNode }) => {
         setMarketType, // Novo setter no contexto
         lastUpdated,
         setLastUpdated,
+        enableCircularAnalysis,
+        toggleCircularAnalysis,
+        candelPatternSensitivity,
+        setCandelPatternSensitivity
       }}
     >
       {children}
