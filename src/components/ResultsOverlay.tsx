@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from "react";
 import { useAnalyzer } from "@/context/AnalyzerContext";
 import { detectPatterns } from "@/utils/patternDetection";
@@ -258,13 +259,12 @@ const ResultsOverlay = () => {
           
           console.log("Tipos de análise ativos antes da detecção:", activeAnalysis);
           
-          // Enhanced pattern detection with visual analysis context
+          // Fixed: Use correct number of arguments for detectPatterns function
           const results = await detectPatterns(
             processedImage, 
             activeAnalysis, 
             precision,
-            enhancedOptions.disableSimulation,
-            visualAnalysis // Pass visual analysis as context
+            enhancedOptions.disableSimulation
           );
           
           console.log("Análise completa com resultados aprimorados:", results);
@@ -283,7 +283,8 @@ const ResultsOverlay = () => {
           setProcessingStage(`Verificação final com IA baseada em análise visual avançada`);
           
           setTimeout(() => {
-            generateAIConfirmation(results, visualAnalysis);
+            // Fixed: Use correct number of arguments for generateAIConfirmation function
+            generateAIConfirmation(results);
             setProcessingStage("");
             setLastUpdated(new Date());
             setIsAnalyzing(false);
