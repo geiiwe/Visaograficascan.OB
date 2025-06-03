@@ -19,6 +19,7 @@ import AIConfirmationBadge from "./overlay/AIConfirmationBadge";
 import FastAnalysisIndicators from "./overlay/FastAnalysisIndicators";
 import DetailedPanelToggle from "./overlay/DetailedPanelToggle";
 import AnalysisPanel from "./overlay/AnalysisPanel";
+import AnalysisContainer from "./analysis/AnalysisContainer";
 import { useMarketAnalysis, IndicatorPosition } from "@/hooks/useMarketAnalysis";
 
 const ResultsOverlay = () => {
