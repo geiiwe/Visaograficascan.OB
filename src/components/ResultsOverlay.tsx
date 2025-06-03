@@ -9,6 +9,7 @@ import DirectionIndicator from "./DirectionIndicator";
 import EntryPointPredictor from "./EntryPointPredictor";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useAutonomousAI } from "@/hooks/useAutonomousAI";
 
 // Importing the modularized components
 import ProcessingIndicator from "./overlay/ProcessingIndicator";
@@ -81,6 +82,12 @@ const ResultsOverlay = () => {
   const resultsPanelRef = useRef<HTMLDivElement | null>(null);
   const analysisInProgress = useRef<boolean>(false);
   const analysisCleanupDone = useRef<boolean>(true);
+
+  const { aiDecision, isProcessing: aiProcessing } = useAutonomousAI(
+    detailedResults,
+    enhancedAnalysisResult,
+    fastAnalysisResults
+  );
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -428,6 +435,54 @@ const ResultsOverlay = () => {
         </div>
       )}
       
+      {/* Painel de Decisão Autônoma da IA */}
+      {aiDecision && (
+        <div className="absolute top-4 left-4 z-50 pointer-events-auto">
+          <div className={`
+            ${aiDecision.action === "BUY" ? "bg-green-900/90 border-green-500/50" :
+              aiDecision.action === "SELL" ? "bg-red-900/90 border-red-500/50" :
+              "bg-yellow-900/90 border-yellow-500/50"}
+            backdrop-blur-md border rounded-lg p-3 max-w-sm
+          `}>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-3 h-3 rounded-full bg-white animate-pulse"></div>
+              <span className="text-white font-bold text-sm">DECISÃO AUTÔNOMA DA IA</span>
+            </div>
+            
+            <div className="text-white">
+              <div className="text-lg font-bold mb-1">
+                {aiDecision.action === "BUY" ? "📈 COMPRAR" :
+                 aiDecision.action === "SELL" ? "📉 VENDER" : "⏳ AGUARDAR"}
+              </div>
+              
+              <div className="text-sm opacity-90 mb-2">
+                Confiança: {aiDecision.confidence}% | Sucesso esperado: {aiDecision.expected_success_rate}%
+              </div>
+              
+              {aiDecision.action !== "WAIT" && (
+                <div className="text-sm">
+                  {aiDecision.timing.enter_now ? (
+                    <span className="text-green-300 font-semibold">⚡ ENTRAR AGORA</span>
+                  ) : (
+                    <span className="text-yellow-300">
+                      ⏰ Aguardar {aiDecision.timing.wait_seconds}s para entrada ótima
+                    </span>
+                  )}
+                </div>
+              )}
+              
+              <div className={`mt-2 px-2 py-1 rounded text-xs ${
+                aiDecision.risk_level === "LOW" ? "bg-green-700/50" :
+                aiDecision.risk_level === "MEDIUM" ? "bg-yellow-700/50" :
+                "bg-red-700/50"
+              }`}>
+                Risco: {aiDecision.risk_level}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Enhanced results panel with visual analysis insights */}
       <div className={`absolute ${getPanelPositionClasses()} z-40 pointer-events-auto`}>
         <button 
@@ -486,7 +541,10 @@ const ResultsOverlay = () => {
       </div>
       
       <div className="absolute inset-0 z-40 pointer-events-none">
-        <ProcessingIndicator processingStage={processingStage} isError={hasError} />
+        <ProcessingIndicator 
+          processingStage={aiProcessing ? "🤖 IA tomando decisão autônoma..." : processingStage} 
+          isError={hasError} 
+        />
         
         <DetailedPanelToggle 
           showDetailedPanel={showDetailedPanel}
