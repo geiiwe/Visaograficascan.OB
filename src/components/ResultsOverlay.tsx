@@ -367,21 +367,6 @@ const ResultsOverlay = () => {
     return null;
   }
 
-  const getPanelPositionClasses = () => {
-    switch (panelPosition) {
-      case 'top-right':
-        return 'top-4 right-4';
-      case 'bottom-right':
-        return 'bottom-4 right-4';
-      case 'bottom-left':
-        return 'bottom-4 left-4';
-      case 'top-left':
-        return 'top-4 left-4';
-      default:
-        return 'top-4 right-4';
-    }
-  };
-
   const indicatorStyle = {
     position: 'absolute',
     left: `${indicatorPosition.x}%`,
@@ -435,110 +420,16 @@ const ResultsOverlay = () => {
         </div>
       )}
       
-      {/* Painel de Decisão Autônoma da IA */}
-      {aiDecision && (
-        <div className="absolute top-4 left-4 z-50 pointer-events-auto">
-          <div className={`
-            ${aiDecision.action === "BUY" ? "bg-green-900/90 border-green-500/50" :
-              aiDecision.action === "SELL" ? "bg-red-900/90 border-red-500/50" :
-              "bg-yellow-900/90 border-yellow-500/50"}
-            backdrop-blur-md border rounded-lg p-3 max-w-sm
-          `}>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-3 h-3 rounded-full bg-white animate-pulse"></div>
-              <span className="text-white font-bold text-sm">DECISÃO AUTÔNOMA DA IA</span>
-            </div>
-            
-            <div className="text-white">
-              <div className="text-lg font-bold mb-1">
-                {aiDecision.action === "BUY" ? "📈 COMPRAR" :
-                 aiDecision.action === "SELL" ? "📉 VENDER" : "⏳ AGUARDAR"}
-              </div>
-              
-              <div className="text-sm opacity-90 mb-2">
-                Confiança: {aiDecision.confidence}% | Sucesso esperado: {aiDecision.expected_success_rate}%
-              </div>
-              
-              {aiDecision.action !== "WAIT" && (
-                <div className="text-sm">
-                  {aiDecision.timing.enter_now ? (
-                    <span className="text-green-300 font-semibold">⚡ ENTRAR AGORA</span>
-                  ) : (
-                    <span className="text-yellow-300">
-                      ⏰ Aguardar {aiDecision.timing.wait_seconds}s para entrada ótima
-                    </span>
-                  )}
-                </div>
-              )}
-              
-              <div className={`mt-2 px-2 py-1 rounded text-xs ${
-                aiDecision.risk_level === "LOW" ? "bg-green-700/50" :
-                aiDecision.risk_level === "MEDIUM" ? "bg-yellow-700/50" :
-                "bg-red-700/50"
-              }`}>
-                Risco: {aiDecision.risk_level}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {/* Enhanced results panel with visual analysis insights */}
-      <div className={`absolute ${getPanelPositionClasses()} z-40 pointer-events-auto`}>
-        <button 
-          onClick={rotatePanelPosition}
-          className="absolute -left-3 -top-3 bg-trader-blue text-white p-1 rounded-full shadow-md z-50"
-          title="Mover painel"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
-            <path d="M3 3v5h5"></path>
-          </svg>
-        </button>
-        
-        <div className="flex flex-col gap-2">
-          <div className="flex flex-col gap-1">
-            <TimeframeIndicator 
-              selectedTimeframe={selectedTimeframe} 
-              marketType={marketType} 
-            />
-            
-            <MarketTypeIndicator marketType={marketType} />
-            
-            <AIConfirmationBadge 
-              active={aiConfirmation.active}
-              verified={aiConfirmation.verified}
-              direction={aiConfirmation.direction}
-              confidence={aiConfirmation.confidence}
-              majorityDirection={aiConfirmation.majorityDirection}
-            />
-            
-            {/* Enhanced Analysis Quality Indicator */}
-            {enhancedAnalysisResult && enhancedAnalysisResult.visualAnalysis && (
-              <div className="bg-black/80 backdrop-blur-md px-2 py-1 rounded-md border border-gray-700/50">
-                <div className="flex items-center gap-1">
-                  <div className={`w-2 h-2 rounded-full ${
-                    enhancedAnalysisResult.visualAnalysis.chartQuality > 80 ? 'bg-green-500' :
-                    enhancedAnalysisResult.visualAnalysis.chartQuality > 60 ? 'bg-yellow-500' : 'bg-red-500'
-                  }`} />
-                  <span className="text-xs text-white font-medium">
-                    IA: {enhancedAnalysisResult.visualAnalysis.chartQuality}% | {enhancedAnalysisResult.visualAnalysis.trendDirection}
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-          
-          <FastAnalysisIndicators results={fastAnalysisResults} />
-          
-          <AnalysisPanel 
-            detailedResults={detailedResults}
-            compactMode={compactMode}
-            selectedTimeframe={selectedTimeframe}
-            fastAnalysisResults={fastAnalysisResults}
-          />
-        </div>
-      </div>
+      {/* Lateral Analysis Panel */}
+      <AnalysisContainer
+        detailedResults={detailedResults}
+        fastAnalysisResults={fastAnalysisResults}
+        timeframe={selectedTimeframe}
+        marketType={marketType}
+        visualAnalysis={enhancedAnalysisResult?.visualAnalysis}
+        position="right"
+        aiDecision={aiDecision}
+      />
       
       <div className="absolute inset-0 z-40 pointer-events-none">
         <ProcessingIndicator 
