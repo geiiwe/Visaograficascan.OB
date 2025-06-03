@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useRef } from "react";
 import { useAnalyzer } from "@/context/AnalyzerContext";
 import { detectPatterns } from "@/utils/patternDetection";
@@ -70,7 +69,7 @@ const ResultsOverlay = () => {
   
   const [showDetailedPanel, setShowDetailedPanel] = useState<boolean>(false);
   const [hasError, setHasError] = useState<boolean>(false);
-  const [visualAnalysisResult, setVisualAnalysisResult] = useState<any>(null);
+  const [enhancedAnalysisResult, setEnhancedAnalysisResult] = useState<any>(null);
   
   // New state for controlling the overlay panel position
   const [panelPosition, setPanelPosition] = useState<'top-right' | 'bottom-right' | 'bottom-left' | 'top-left'>('top-right');
@@ -167,7 +166,7 @@ const ResultsOverlay = () => {
             confidence: 0,
             majorityDirection: false
           });
-          setVisualAnalysisResult(null);
+          setEnhancedAnalysisResult(null);
           
           const originalImg = new Image();
           originalImg.src = imageData;
@@ -231,29 +230,29 @@ const ResultsOverlay = () => {
           setProcessingStage(`Executando análise visual baseada em conhecimento de livros técnicos clássicos`);
           
           // Enhanced image processing with advanced visual analysis
-          const { processedImage, visualAnalysis } = await enhancedPrepareForAnalysis(
+          const { processedImage, enhancedAnalysis } = await enhancedPrepareForAnalysis(
             regionImage, 
             enhancedOptions,
             (stage) => setProcessingStage(stage)
           );
           
-          console.log("Análise visual avançada concluída:", visualAnalysis);
-          setVisualAnalysisResult(visualAnalysis);
+          console.log("Análise visual avançada concluída:", enhancedAnalysis);
+          setEnhancedAnalysisResult(enhancedAnalysis);
           
-          // Display analysis insights
-          if (visualAnalysis.chartQuality > 80) {
-            toast.success(`Gráfico de alta qualidade detectado (${visualAnalysis.chartQuality}%). Análise otimizada.`);
-          } else if (visualAnalysis.chartQuality < 60) {
-            toast.info(`Qualidade do gráfico moderada (${visualAnalysis.chartQuality}%). Aplicando processamento adicional.`);
+          // Display analysis insights from enhanced analysis
+          if (enhancedAnalysis.visualAnalysis && enhancedAnalysis.visualAnalysis.chartQuality > 80) {
+            toast.success(`Gráfico de alta qualidade detectado (${enhancedAnalysis.visualAnalysis.chartQuality}%). Análise otimizada.`);
+          } else if (enhancedAnalysis.visualAnalysis && enhancedAnalysis.visualAnalysis.chartQuality < 60) {
+            toast.info(`Qualidade do gráfico moderada (${enhancedAnalysis.visualAnalysis.chartQuality}%). Aplicando processamento adicional.`);
           }
           
-          if (visualAnalysis.trendDirection !== "unknown") {
-            console.log(`Tendência ${visualAnalysis.trendDirection} identificada pela IA`);
+          if (enhancedAnalysis.visualAnalysis && enhancedAnalysis.visualAnalysis.trendDirection !== "unknown") {
+            console.log(`Tendência ${enhancedAnalysis.visualAnalysis.trendDirection} identificada pela IA`);
           }
           
-          if (visualAnalysis.candlePatterns.length > 0) {
-            console.log(`${visualAnalysis.candlePatterns.length} padrões de candles identificados:`, 
-              visualAnalysis.candlePatterns.map(p => p.name));
+          if (enhancedAnalysis.visualAnalysis && enhancedAnalysis.visualAnalysis.candlePatterns && enhancedAnalysis.visualAnalysis.candlePatterns.length > 0) {
+            console.log(`${enhancedAnalysis.visualAnalysis.candlePatterns.length} padrões de candles identificados:`, 
+              enhancedAnalysis.visualAnalysis.candlePatterns.map((p: any) => p.name));
           }
           
           setProcessingStage(`Detectando padrões técnicos com conhecimento aprimorado de análise gráfica`);
@@ -317,9 +316,10 @@ const ResultsOverlay = () => {
           
           // Enhanced success message with visual analysis insights
           if (foundCount > 0) {
-            const trendInfo = visualAnalysis.trendDirection !== "unknown" ? 
-              ` Tendência ${visualAnalysis.trendDirection} confirmada.` : "";
-            const qualityInfo = ` Qualidade: ${visualAnalysis.chartQuality}%.`;
+            const trendInfo = enhancedAnalysis.visualAnalysis && enhancedAnalysis.visualAnalysis.trendDirection !== "unknown" ? 
+              ` Tendência ${enhancedAnalysis.visualAnalysis.trendDirection} confirmada.` : "";
+            const qualityInfo = enhancedAnalysis.visualAnalysis ? 
+              ` Qualidade: ${enhancedAnalysis.visualAnalysis.chartQuality}%.` : "";
             
             if (directionMessage) {
               toast.success(`Análise IA concluída! ${foundCount} padrões detectados. ${directionMessage}.${trendInfo}${qualityInfo}`);
@@ -327,7 +327,7 @@ const ResultsOverlay = () => {
               toast.success(`Análise IA concluída! ${foundCount} padrões detectados.${trendInfo}${qualityInfo}`);
             }
           } else {
-            const qualityInfo = visualAnalysis.chartQuality < 70 ? 
+            const qualityInfo = enhancedAnalysis.visualAnalysis && enhancedAnalysis.visualAnalysis.chartQuality < 70 ? 
               " Considere melhorar a qualidade da imagem." : "";
             toast.info(`Análise IA concluída. Nenhum padrão técnico forte detectado.${qualityInfo}`);
           }
@@ -458,16 +458,16 @@ const ResultsOverlay = () => {
               majorityDirection={aiConfirmation.majorityDirection}
             />
             
-            {/* Visual Analysis Quality Indicator */}
-            {visualAnalysisResult && (
+            {/* Enhanced Analysis Quality Indicator */}
+            {enhancedAnalysisResult && enhancedAnalysisResult.visualAnalysis && (
               <div className="bg-black/80 backdrop-blur-md px-2 py-1 rounded-md border border-gray-700/50">
                 <div className="flex items-center gap-1">
                   <div className={`w-2 h-2 rounded-full ${
-                    visualAnalysisResult.chartQuality > 80 ? 'bg-green-500' :
-                    visualAnalysisResult.chartQuality > 60 ? 'bg-yellow-500' : 'bg-red-500'
+                    enhancedAnalysisResult.visualAnalysis.chartQuality > 80 ? 'bg-green-500' :
+                    enhancedAnalysisResult.visualAnalysis.chartQuality > 60 ? 'bg-yellow-500' : 'bg-red-500'
                   }`} />
                   <span className="text-xs text-white font-medium">
-                    IA: {visualAnalysisResult.chartQuality}% | {visualAnalysisResult.trendDirection}
+                    IA: {enhancedAnalysisResult.visualAnalysis.chartQuality}% | {enhancedAnalysisResult.visualAnalysis.trendDirection}
                   </span>
                 </div>
               </div>
