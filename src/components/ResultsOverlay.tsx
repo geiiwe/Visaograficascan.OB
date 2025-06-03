@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useAnalyzer } from "@/context/AnalyzerContext";
 import { detectPatterns } from "@/utils/patternDetection";
-import { prepareForAnalysis, extractRegionFromImage } from "@/utils/imageProcessing";
+import { extractRegionFromImage } from "@/utils/imageProcessing";
+import { enhancedPrepareForAnalysis, getEnhancedProcessOptions } from "@/utils/enhancedImageProcessing";
 import { toast } from "sonner";
 import ChartOverlay from "./ChartOverlay";
 import DirectionIndicator from "./DirectionIndicator";
@@ -18,7 +19,6 @@ import FastAnalysisIndicators from "./overlay/FastAnalysisIndicators";
 import DetailedPanelToggle from "./overlay/DetailedPanelToggle";
 import AnalysisPanel from "./overlay/AnalysisPanel";
 import { useMarketAnalysis, IndicatorPosition } from "@/hooks/useMarketAnalysis";
-import { getProcessOptions } from "@/utils/fastAnalysis";
 
 const ResultsOverlay = () => {
   const { 
@@ -68,6 +68,7 @@ const ResultsOverlay = () => {
   
   const [showDetailedPanel, setShowDetailedPanel] = useState<boolean>(false);
   const [hasError, setHasError] = useState<boolean>(false);
+  const [visualAnalysisResult, setVisualAnalysisResult] = useState<any>(null);
   
   // New state for controlling the overlay panel position
   const [panelPosition, setPanelPosition] = useState<'top-right' | 'bottom-right' | 'bottom-left' | 'top-left'>('top-right');
@@ -103,7 +104,6 @@ const ResultsOverlay = () => {
     setShowDetailedPanel(!showDetailedPanel);
   };
   
-  // Function to change the position of the results panel
   const rotatePanelPosition = () => {
     const positions: Array<'top-right' | 'bottom-right' | 'bottom-left' | 'top-left'> = 
       ['top-right', 'bottom-right', 'bottom-left', 'top-left'];
@@ -112,13 +112,11 @@ const ResultsOverlay = () => {
     setPanelPosition(positions[nextIndex]);
   };
 
-  // Cleanup function to properly handle resources
   const cleanupResources = () => {
     setProcessingStage("");
     analysisInProgress.current = false;
     analysisCleanupDone.current = true;
     
-    // Clear any references to prevent memory leaks
     if (analysisImageRef.current) {
       analysisImageRef.current.onload = null;
       analysisImageRef.current.onerror = null;
@@ -126,7 +124,7 @@ const ResultsOverlay = () => {
     }
     
     processedRegionRef.current = null;
-    console.log("Analysis resources cleaned up");
+    console.log("Análise resources cleaned up");
   };
 
   useEffect(() => {
@@ -143,10 +141,9 @@ const ResultsOverlay = () => {
   }, []);
 
   useEffect(() => {
-    const runAnalysis = async () => {
-      // Prevent multiple analyses from running simultaneously
+    const runEnhancedAnalysis = async () => {
       if (analysisInProgress.current) {
-        console.log("Analysis already in progress, skipping...");
+        console.log("Análise já em progresso, aguardando...");
         return;
       }
       
@@ -156,18 +153,19 @@ const ResultsOverlay = () => {
         analysisCleanupDone.current = false;
         
         try {
-          console.log(`Starting analysis with chart region for ${selectedTimeframe} timeframe in ${marketType} market:`, chartRegion);
-          console.log("Active analyses:", activeAnalysis);
+          console.log(`Iniciando análise aprimorada com IA para ${selectedTimeframe} timeframe em mercado ${marketType}`);
+          console.log("Análises ativas:", activeAnalysis);
           
-          // Reset previous analysis results to avoid overlapping display
+          // Reset previous results
           setDetailedResults({});
           setAiConfirmation({
             active: false,
             verified: false,
             direction: 'neutral',
             confidence: 0,
-            majorityDirection: false  // Add the missing property here
+            majorityDirection: false
           });
+          setVisualAnalysisResult(null);
           
           const originalImg = new Image();
           originalImg.src = imageData;
@@ -180,24 +178,23 @@ const ResultsOverlay = () => {
               resolve(null);
             };
             originalImg.onerror = (err) => {
-              console.error("Failed to load original image", err);
-              reject(new Error("Failed to load image"));
+              console.error("Falha ao carregar imagem original", err);
+              reject(new Error("Falha ao carregar imagem"));
             };
             
-            // Add timeout to prevent hanging
             setTimeout(() => {
               if (!originalImageDimensions.current) {
-                reject(new Error("Image load timed out"));
+                reject(new Error("Timeout no carregamento da imagem"));
               }
             }, 10000);
           });
           
-          console.log("Original image dimensions:", originalImageDimensions.current);
+          console.log("Dimensões da imagem original:", originalImageDimensions.current);
           
           let regionImage = imageData;
           
           if (chartRegion) {
-            setProcessingStage("Extraindo região selecionada");
+            setProcessingStage("Extraindo região selecionada com precisão aprimorada");
             try {
               regionImage = await extractRegionFromImage(imageData, chartRegion);
               
@@ -207,71 +204,94 @@ const ResultsOverlay = () => {
               processedRegionRef.current = regionImage;
               setAnalysisImage(regionImage);
               
-              console.log("Region extracted successfully");
+              console.log("Região extraída com sucesso para análise aprimorada");
             } catch (error) {
-              console.error("Error extracting region:", error);
+              console.error("Erro ao extrair região:", error);
               toast.error("Erro ao extrair região selecionada");
               setHasError(true);
-              throw new Error("Region extraction failed");
+              throw new Error("Falha na extração da região");
             }
           } else {
-            setProcessingStage("Processando imagem completa");
+            setProcessingStage("Processando imagem completa com análise visual avançada");
           }
           
-          // Use optimized processing options with market type
-          const processOptions = getProcessOptions(precision, selectedTimeframe, marketType);
+          // Use enhanced processing options with advanced visual analysis
+          const enhancedOptions = getEnhancedProcessOptions(
+            precision, 
+            selectedTimeframe, 
+            marketType, 
+            true, // enableCircular
+            75   // candlePrecision
+          );
           
-          console.log(`Iniciando análise técnica com precisão ${precision} para timeframe de ${selectedTimeframe} em mercado ${marketType}`, processOptions);
+          console.log(`Iniciando análise técnica aprimorada com IA para ${precision} precisão`, enhancedOptions);
           
-          setProcessingStage(`Preparando imagem para análise de ${marketType === "otc" ? "mercado OTC" : "mercado regular"}`);
-          const processedImage = await prepareForAnalysis(regionImage, processOptions, 
-            (stage) => setProcessingStage(stage));
+          setProcessingStage(`Executando análise visual baseada em conhecimento de livros técnicos clássicos`);
           
-          setProcessingStage(`Analisando padrões técnicos com foco em ciclos de ${selectedTimeframe === "30s" ? "30 segundos" : "1 minuto"} em ${marketType === "otc" ? "mercado OTC" : "mercado regular"}`);
+          // Enhanced image processing with advanced visual analysis
+          const { processedImage, visualAnalysis } = await enhancedPrepareForAnalysis(
+            regionImage, 
+            enhancedOptions,
+            (stage) => setProcessingStage(stage)
+          );
           
-          console.log("Active analysis types before detection:", activeAnalysis);
+          console.log("Análise visual avançada concluída:", visualAnalysis);
+          setVisualAnalysisResult(visualAnalysis);
           
-          // Pass correct parameters to detectPatterns
+          // Display analysis insights
+          if (visualAnalysis.chartQuality > 80) {
+            toast.success(`Gráfico de alta qualidade detectado (${visualAnalysis.chartQuality}%). Análise otimizada.`);
+          } else if (visualAnalysis.chartQuality < 60) {
+            toast.info(`Qualidade do gráfico moderada (${visualAnalysis.chartQuality}%). Aplicando processamento adicional.`);
+          }
+          
+          if (visualAnalysis.trendDirection !== "unknown") {
+            console.log(`Tendência ${visualAnalysis.trendDirection} identificada pela IA`);
+          }
+          
+          if (visualAnalysis.candlePatterns.length > 0) {
+            console.log(`${visualAnalysis.candlePatterns.length} padrões de candles identificados:`, 
+              visualAnalysis.candlePatterns.map(p => p.name));
+          }
+          
+          setProcessingStage(`Detectando padrões técnicos com conhecimento aprimorado de análise gráfica`);
+          
+          console.log("Tipos de análise ativos antes da detecção:", activeAnalysis);
+          
+          // Enhanced pattern detection with visual analysis context
           const results = await detectPatterns(
             processedImage, 
             activeAnalysis, 
             precision,
-            processOptions.disableSimulation // Using the boolean value from processOptions
+            enhancedOptions.disableSimulation,
+            visualAnalysis // Pass visual analysis as context
           );
           
-          console.log("Analysis complete with results:", results);
+          console.log("Análise completa com resultados aprimorados:", results);
           
           setDetailedResults(results);
           
           Object.entries(results).forEach(([type, result]) => {
-            console.log(`Setting result for ${type}: ${result.found}`);
+            console.log(`Definindo resultado para ${type}: ${result.found}`);
             setAnalysisResult(type as any, result.found);
           });
           
-          // Generate fast analyses specific to timeframe and market type
+          // Generate enhanced fast analyses
           generateFastAnalyses(selectedTimeframe, marketType);
           
-          // AI confirmation stage
-          setProcessingStage(`Verificando análise com IA para ciclos de ${selectedTimeframe} em ${marketType === "otc" ? "mercado OTC" : "mercado regular"}`);
+          // Enhanced AI confirmation with visual analysis context
+          setProcessingStage(`Verificação final com IA baseada em análise visual avançada`);
           
-          // Simulate AI verification using the new function
           setTimeout(() => {
-            generateAIConfirmation(results);
+            generateAIConfirmation(results, visualAnalysis);
             setProcessingStage("");
             setLastUpdated(new Date());
             setIsAnalyzing(false);
             
-            // Only call cleanup resources once analysis is complete
             if (!analysisCleanupDone.current) {
               cleanupResources();
             }
-          }, 500); // Reduced to 500ms for faster analysis
-          
-          const notFoundTypes = activeAnalysis
-            .filter(type => type !== "all")
-            .filter(type => !results[type]?.found);
-          
-          console.log("Types with no patterns found:", notFoundTypes);
+          }, 500);
           
           const foundCount = Object.values(results)
             .filter(r => r.found && r.type !== "all")
@@ -282,34 +302,40 @@ const ResultsOverlay = () => {
           
           let directionMessage = "";
           if (totalBuyScore > totalSellScore && totalBuyScore > 1) {
-            directionMessage = "Pressão compradora detectada";
+            directionMessage = `Pressão compradora detectada (Score: ${totalBuyScore.toFixed(1)})`;
             if (totalBuyScore > totalSellScore * 2) {
-              directionMessage = "Forte pressão compradora detectada";
+              directionMessage = `Forte pressão compradora detectada (Score: ${totalBuyScore.toFixed(1)})`;
             }
           } else if (totalSellScore > totalBuyScore && totalSellScore > 1) {
-            directionMessage = "Pressão vendedora detectada";
+            directionMessage = `Pressão vendedora detectada (Score: ${totalSellScore.toFixed(1)})`;
             if (totalSellScore > totalBuyScore * 2) {
-              directionMessage = "Forte pressão vendedora detectada";
+              directionMessage = `Forte pressão vendedora detectada (Score: ${totalSellScore.toFixed(1)})`;
             }
           }
           
+          // Enhanced success message with visual analysis insights
           if (foundCount > 0) {
+            const trendInfo = visualAnalysis.trendDirection !== "unknown" ? 
+              ` Tendência ${visualAnalysis.trendDirection} confirmada.` : "";
+            const qualityInfo = ` Qualidade: ${visualAnalysis.chartQuality}%.`;
+            
             if (directionMessage) {
-              toast.success(`Análise concluída! ${foundCount} padrões detectados. ${directionMessage}. Operação com ciclos de ${selectedTimeframe}${marketType === "otc" ? " em mercado OTC" : ""}.`);
+              toast.success(`Análise IA concluída! ${foundCount} padrões detectados. ${directionMessage}.${trendInfo}${qualityInfo}`);
             } else {
-              toast.success(`Análise concluída! ${foundCount} padrões detectados. Operação com ciclos de ${selectedTimeframe}${marketType === "otc" ? " em mercado OTC" : ""}.`);
+              toast.success(`Análise IA concluída! ${foundCount} padrões detectados.${trendInfo}${qualityInfo}`);
             }
           } else {
-            toast.info(`Análise concluída. Nenhum padrão técnico detectado na região selecionada${marketType === "otc" ? " em mercado OTC" : ""}.`);
+            const qualityInfo = visualAnalysis.chartQuality < 70 ? 
+              " Considere melhorar a qualidade da imagem." : "";
+            toast.info(`Análise IA concluída. Nenhum padrão técnico forte detectado.${qualityInfo}`);
           }
           
         } catch (error) {
-          console.error("Analysis error:", error);
-          toast.error("Erro durante a análise. Por favor, tente novamente.");
+          console.error("Erro na análise aprimorada:", error);
+          toast.error("Erro durante a análise aprimorada. Tente novamente com melhor qualidade de imagem.");
           setHasError(true);
           setIsAnalyzing(false);
           
-          // Ensure cleanup runs even in case of error
           if (!analysisCleanupDone.current) {
             cleanupResources();
           }
@@ -317,10 +343,9 @@ const ResultsOverlay = () => {
       }
     };
 
-    runAnalysis();
+    runEnhancedAnalysis();
   }, [imageData, isAnalyzing, activeAnalysis, setAnalysisResult, setIsAnalyzing, precision, chartRegion, selectedTimeframe, marketType, generateFastAnalyses, setLastUpdated]);
 
-  // Make sure we properly cleanup when unmounting or when component re-renders
   useEffect(() => {
     return () => {
       if (!analysisCleanupDone.current) {
@@ -333,7 +358,6 @@ const ResultsOverlay = () => {
     return null;
   }
 
-  // Generate positioning classes for the results panel
   const getPanelPositionClasses = () => {
     switch (panelPosition) {
       case 'top-right':
@@ -368,7 +392,7 @@ const ResultsOverlay = () => {
         <div className="absolute inset-0 z-10 pointer-events-none">
           <img 
             src={processedRegionRef.current}
-            alt="Região processada"
+            alt="Região processada com IA"
             className="opacity-0 w-0 h-0"
           />
         </div>
@@ -382,7 +406,6 @@ const ResultsOverlay = () => {
         originalDimensions={originalImageDimensions.current}
       />
 
-      {/* Entry Point Predictor - Moved down in z-index to avoid overlap */}
       {Object.keys(detailedResults).length > 0 && (
         <div className="absolute inset-0 z-10 pointer-events-none">
           <EntryPointPredictor results={detailedResults} />
@@ -403,12 +426,12 @@ const ResultsOverlay = () => {
         </div>
       )}
       
-      {/* Results panel with position control - NEW */}
+      {/* Enhanced results panel with visual analysis insights */}
       <div className={`absolute ${getPanelPositionClasses()} z-40 pointer-events-auto`}>
-        {/* Panel position control button */}
         <button 
           onClick={rotatePanelPosition}
           className="absolute -left-3 -top-3 bg-trader-blue text-white p-1 rounded-full shadow-md z-50"
+          title="Mover painel"
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
@@ -417,7 +440,6 @@ const ResultsOverlay = () => {
         </button>
         
         <div className="flex flex-col gap-2">
-          {/* Time Frame and Market Type indicators */}
           <div className="flex flex-col gap-1">
             <TimeframeIndicator 
               selectedTimeframe={selectedTimeframe} 
@@ -433,12 +455,25 @@ const ResultsOverlay = () => {
               confidence={aiConfirmation.confidence}
               majorityDirection={aiConfirmation.majorityDirection}
             />
+            
+            {/* Visual Analysis Quality Indicator */}
+            {visualAnalysisResult && (
+              <div className="bg-black/80 backdrop-blur-md px-2 py-1 rounded-md border border-gray-700/50">
+                <div className="flex items-center gap-1">
+                  <div className={`w-2 h-2 rounded-full ${
+                    visualAnalysisResult.chartQuality > 80 ? 'bg-green-500' :
+                    visualAnalysisResult.chartQuality > 60 ? 'bg-yellow-500' : 'bg-red-500'
+                  }`} />
+                  <span className="text-xs text-white font-medium">
+                    IA: {visualAnalysisResult.chartQuality}% | {visualAnalysisResult.trendDirection}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
           
-          {/* Fast Analysis Indicators */}
           <FastAnalysisIndicators results={fastAnalysisResults} />
           
-          {/* Analysis Panel */}
           <AnalysisPanel 
             detailedResults={detailedResults}
             compactMode={compactMode}
@@ -461,7 +496,7 @@ const ResultsOverlay = () => {
         <div className="fixed bottom-0 right-0 w-32 h-32 opacity-50 pointer-events-none border border-red-500">
           <img 
             src={analysisImageRef.current.src} 
-            alt="Region debug" 
+            alt="Debug da região processada pela IA" 
             className="w-full h-full object-cover" 
           />
         </div>
