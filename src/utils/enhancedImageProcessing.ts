@@ -4,7 +4,7 @@
  * Integrates the visual analysis engine with the existing image processing pipeline
  */
 
-import { performAdvancedVisualAnalysis } from './visualAnalysis';
+import { performEnhancedVisualAnalysis } from './enhancedVisualAnalysis';
 import { prepareForAnalysis as originalPrepareForAnalysis } from './imageProcessing';
 
 interface EnhancedProcessOptions {
@@ -28,8 +28,8 @@ interface EnhancedProcessOptions {
   enableCircularAnalysis?: boolean;
   candleDetectionPrecision?: number;
   detectDarkBackground?: boolean;
-  // New advanced options
-  useAdvancedVisualAnalysis?: boolean;
+  // New enhanced options
+  useEnhancedAnalysis?: boolean;
   precision: "baixa" | "normal" | "alta";
   timeframe: string;
   marketType: string;
@@ -44,31 +44,33 @@ export const enhancedPrepareForAnalysis = async (
   progressCallback?: ProgressCallback
 ): Promise<{
   processedImage: string;
-  visualAnalysis: any;
+  enhancedAnalysis: any;
 }> => {
-  console.log("Iniciando processamento de imagem aprimorado com análise visual avançada...");
+  console.log("Iniciando processamento de imagem aprimorado com análise de micro padrões...");
   
-  // Step 1: Perform advanced visual analysis FIRST
-  progressCallback?.("Executando análise visual avançada baseada em conhecimento de livros técnicos");
+  // Step 1: Perform enhanced visual analysis FIRST
+  progressCallback?.("Executando análise visual aprimorada com micro padrões e timing");
   
-  const visualAnalysis = await performAdvancedVisualAnalysis(imageData, {
+  const enhancedAnalysis = await performEnhancedVisualAnalysis(imageData, {
     precision: options.precision,
     timeframe: options.timeframe,
     marketType: options.marketType
   });
   
-  console.log("Análise visual concluída. Qualidade do gráfico:", visualAnalysis.chartQuality);
-  console.log("Tendência identificada:", visualAnalysis.trendDirection);
-  console.log("Padrões de candles encontrados:", visualAnalysis.candlePatterns.length);
-  console.log("Níveis de suporte/resistência:", visualAnalysis.supportResistanceLevels.length);
+  console.log("Análise visual aprimorada concluída:");
+  console.log("- Qualidade do gráfico:", enhancedAnalysis.visualAnalysis.chartQuality);
+  console.log("- Micro padrões detectados:", enhancedAnalysis.microPatterns.filter(p => p.found).length);
+  console.log("- Timing ótimo:", enhancedAnalysis.timing.optimal_entry);
+  console.log("- Recomendação:", enhancedAnalysis.recommendation.action);
+  console.log("- Nível de risco:", enhancedAnalysis.riskAssessment.level);
   
-  // Step 2: Adjust processing options based on visual analysis results
-  const adjustedOptions = adjustProcessingOptions(options, visualAnalysis);
+  // Step 2: Adjust processing options based on enhanced analysis results
+  const adjustedOptions = adjustProcessingOptionsEnhanced(options, enhancedAnalysis);
   
-  progressCallback?.("Ajustando parâmetros de processamento baseado na análise visual");
+  progressCallback?.("Ajustando parâmetros de processamento baseado na análise aprimorada");
   
   // Step 3: Apply enhanced image processing
-  progressCallback?.("Aplicando processamento de imagem otimizado");
+  progressCallback?.("Aplicando processamento de imagem otimizado com foco em micro padrões");
   
   const processedImage = await originalPrepareForAnalysis(
     imageData,
@@ -80,19 +82,19 @@ export const enhancedPrepareForAnalysis = async (
   
   return {
     processedImage,
-    visualAnalysis
+    enhancedAnalysis
   };
 };
 
-// Adjust processing options based on visual analysis results
-const adjustProcessingOptions = (
+// Adjust processing options based on enhanced analysis results
+const adjustProcessingOptionsEnhanced = (
   originalOptions: EnhancedProcessOptions,
-  visualAnalysis: any
+  enhancedAnalysis: any
 ): any => {
   const adjustedOptions = { ...originalOptions };
   
   // Adjust based on chart quality
-  if (visualAnalysis.chartQuality < 60) {
+  if (enhancedAnalysis.visualAnalysis.chartQuality < 60) {
     console.log("Baixa qualidade de gráfico detectada, aumentando processamento");
     adjustedOptions.enhanceContrast = true;
     adjustedOptions.removeNoise = true;
@@ -100,45 +102,46 @@ const adjustProcessingOptions = (
     adjustedOptions.histogramEqualization = true;
   }
   
-  // Adjust based on trend direction
-  if (visualAnalysis.trendDirection !== "unknown") {
-    console.log(`Tendência ${visualAnalysis.trendDirection} detectada, otimizando para análise de tendência`);
+  // Adjust based on micro patterns found
+  const foundPatterns = enhancedAnalysis.microPatterns.filter((p: any) => p.found);
+  if (foundPatterns.length > 0) {
+    console.log(`${foundPatterns.length} micro padrões detectados, otimizando para análise detalhada`);
     adjustedOptions.edgeEnhancement = true;
     adjustedOptions.patternRecognition = true;
-  }
-  
-  // Adjust based on candlestick patterns found
-  if (visualAnalysis.candlePatterns.length > 0) {
-    console.log(`${visualAnalysis.candlePatterns.length} padrões de candles detectados, otimizando detecção`);
     adjustedOptions.candleDetectionPrecision = Math.min(100, 
-      (adjustedOptions.candleDetectionPrecision || 75) * 1.2
+      (adjustedOptions.candleDetectionPrecision || 75) * 1.3
     );
   }
   
-  // Adjust based on support/resistance levels
-  if (visualAnalysis.supportResistanceLevels.length > 3) {
-    console.log("Múltiplos níveis de S/R detectados, aprimorando detecção de contornos");
-    adjustedOptions.contourDetection = true;
-    adjustedOptions.featureExtraction = true;
+  // Adjust based on timing analysis
+  if (enhancedAnalysis.timing.optimal_entry) {
+    console.log("Timing ótimo detectado, maximizando precisão");
+    adjustedOptions.iterations = Math.max(2, adjustedOptions.iterations || 1);
+    adjustedOptions.sensitivity = Math.min(1.0, (adjustedOptions.sensitivity || 0.7) * 1.2);
   }
   
-  // Adjust based on market structure
-  if (visualAnalysis.marketStructure.consolidation) {
-    console.log("Consolidação detectada, otimizando para padrões laterais");
-    adjustedOptions.sensitivity = Math.min(1.0, (adjustedOptions.sensitivity || 0.7) * 1.3);
-  }
-  
-  // Adjust based on volatility
-  if (visualAnalysis.priceAction.volatility > 5) {
-    console.log("Alta volatilidade detectada, ajustando filtros");
-    adjustedOptions.adaptiveThreshold = true;
+  // Adjust based on risk assessment
+  if (enhancedAnalysis.riskAssessment.level === "HIGH") {
+    console.log("Alto risco detectado, aplicando processamento conservador");
     adjustedOptions.removeNoise = true;
+    adjustedOptions.adaptiveThreshold = true;
+  } else if (enhancedAnalysis.riskAssessment.level === "LOW") {
+    console.log("Baixo risco detectado, aplicando processamento agressivo");
+    adjustedOptions.sharpness = (adjustedOptions.sharpness || 1.0) * 1.2;
+    adjustedOptions.sensitivity = Math.min(1.0, (adjustedOptions.sensitivity || 0.7) * 1.1);
+  }
+  
+  // Adjust based on recommendation confidence
+  if (enhancedAnalysis.recommendation.confidence > 80) {
+    console.log("Alta confiança na recomendação, otimizando detecção");
+    adjustedOptions.featureExtraction = true;
+    adjustedOptions.contourDetection = true;
   }
   
   return adjustedOptions;
 };
 
-// Get enhanced processing options with visual analysis integration
+// Get enhanced processing options with micro pattern analysis integration
 export const getEnhancedProcessOptions = (
   precision: string,
   timeframe: string,
@@ -158,7 +161,7 @@ export const getEnhancedProcessOptions = (
     disableSimulation: false,
     enableCircularAnalysis: enableCircular,
     candleDetectionPrecision: candlePrecision,
-    useAdvancedVisualAnalysis: true,
+    useEnhancedAnalysis: true,
     precision: precision as "baixa" | "normal" | "alta",
     timeframe,
     marketType
