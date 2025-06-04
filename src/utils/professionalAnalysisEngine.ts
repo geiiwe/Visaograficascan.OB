@@ -419,7 +419,7 @@ const makeProfessionalDecision = (
   // Verificar se temos confluências mínimas
   if (confluences < minConfluences.low_confidence) {
     return {
-      signal: "WAIT",
+      signal: "WAIT" as const,
       confidence: 30,
       timeValidity: 30
     };
@@ -428,7 +428,7 @@ const makeProfessionalDecision = (
   // Verificar se contraindicações não superam confluências
   if (contraindications >= confluences) {
     return {
-      signal: "WAIT",
+      signal: "WAIT" as const,
       confidence: 40,
       timeValidity: 30
     };
