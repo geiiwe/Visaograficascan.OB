@@ -32,7 +32,7 @@ const DEFAULT_FILTER: AlertFilter = {
   maxRiskLevel: "MEDIUM",
   timeframes: ["30s", "1m", "5m"],
   marketTypes: ["forex", "otc", "crypto"],
-  enabledTypes: ["SIGNAL", "RISK", "CRITICAL"]
+  enabledTypes: ["SIGNAL", "RISK", "SYSTEM"]
 };
 
 export class SmartAlertManager {
