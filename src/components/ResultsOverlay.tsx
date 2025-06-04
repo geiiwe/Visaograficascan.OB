@@ -1,24 +1,15 @@
+
 import React, { useEffect, useState, useRef } from "react";
 import { useAnalyzer } from "@/context/AnalyzerContext";
 import { detectPatterns } from "@/utils/patternDetection";
 import { extractRegionFromImage } from "@/utils/imageProcessing";
 import { enhancedPrepareForAnalysis, getEnhancedProcessOptions } from "@/utils/enhancedImageProcessing";
 import { toast } from "sonner";
-import ChartOverlay from "./ChartOverlay";
-import DirectionIndicator from "./DirectionIndicator";
-import EntryPointPredictor from "./EntryPointPredictor";
-import { useMediaQuery } from "@/hooks/use-media-query";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAutonomousAI } from "@/hooks/useAutonomousAI";
 
 // Importing the modularized components
 import ProcessingIndicator from "./overlay/ProcessingIndicator";
-import TimeframeIndicator from "./overlay/TimeframeIndicator";
-import MarketTypeIndicator from "./overlay/MarketTypeIndicator";
-import AIConfirmationBadge from "./overlay/AIConfirmationBadge";
-import FastAnalysisIndicators from "./overlay/FastAnalysisIndicators";
-import DetailedPanelToggle from "./overlay/DetailedPanelToggle";
-import AnalysisPanel from "./overlay/AnalysisPanel";
 import AnalysisContainer from "./analysis/AnalysisContainer";
 import { useMarketAnalysis, IndicatorPosition } from "@/hooks/useMarketAnalysis";
 
@@ -30,9 +21,7 @@ const ResultsOverlay = () => {
     activeAnalysis, 
     analysisResults,
     setAnalysisResult,
-    showVisualMarkers,
     precision,
-    compactMode,
     chartRegion,
     selectedTimeframe,
     marketType,
@@ -62,24 +51,13 @@ const ResultsOverlay = () => {
     setAnalysisResult
   });
   
-  const [indicatorPosition, setIndicatorPosition] = useState<IndicatorPosition>({
-    x: 20,
-    y: 20,
-    isDragging: false
-  });
-  
-  const [showDetailedPanel, setShowDetailedPanel] = useState<boolean>(false);
   const [hasError, setHasError] = useState<boolean>(false);
   const [enhancedAnalysisResult, setEnhancedAnalysisResult] = useState<any>(null);
-  
-  // New state for controlling the overlay panel position
-  const [panelPosition, setPanelPosition] = useState<'top-right' | 'bottom-right' | 'bottom-left' | 'top-left'>('top-right');
   
   const isMobile = useIsMobile();
   const analysisImageRef = useRef<HTMLImageElement | null>(null);
   const processedRegionRef = useRef<string | null>(null);
   const originalImageDimensions = useRef<{width: number, height: number} | null>(null);
-  const resultsPanelRef = useRef<HTMLDivElement | null>(null);
   const analysisInProgress = useRef<boolean>(false);
   const analysisCleanupDone = useRef<boolean>(true);
 
@@ -88,37 +66,6 @@ const ResultsOverlay = () => {
     enhancedAnalysisResult,
     fastAnalysisResults
   );
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setIndicatorPosition(prev => ({ ...prev, isDragging: true }));
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (indicatorPosition.isDragging && resultsPanelRef.current) {
-      const rect = resultsPanelRef.current.getBoundingClientRect();
-      const x = Math.min(Math.max(0, ((e.clientX - rect.left) / rect.width) * 100), 90);
-      const y = Math.min(Math.max(0, ((e.clientY - rect.top) / rect.height) * 100), 90);
-      
-      setIndicatorPosition(prev => ({ ...prev, x, y }));
-    }
-  };
-
-  const handleMouseUp = () => {
-    setIndicatorPosition(prev => ({ ...prev, isDragging: false }));
-  };
-
-  const toggleDetailedPanel = () => {
-    setShowDetailedPanel(!showDetailedPanel);
-  };
-  
-  const rotatePanelPosition = () => {
-    const positions: Array<'top-right' | 'bottom-right' | 'bottom-left' | 'top-left'> = 
-      ['top-right', 'bottom-right', 'bottom-left', 'top-left'];
-    const currentIndex = positions.indexOf(panelPosition);
-    const nextIndex = (currentIndex + 1) % positions.length;
-    setPanelPosition(positions[nextIndex]);
-  };
 
   const cleanupResources = () => {
     setProcessingStage("");
@@ -136,14 +83,7 @@ const ResultsOverlay = () => {
   };
 
   useEffect(() => {
-    const handleGlobalMouseUp = () => {
-      setIndicatorPosition(prev => ({ ...prev, isDragging: false }));
-    };
-    
-    window.addEventListener('mouseup', handleGlobalMouseUp);
-    
     return () => {
-      window.removeEventListener('mouseup', handleGlobalMouseUp);
       cleanupResources();
     };
   }, []);
@@ -266,7 +206,6 @@ const ResultsOverlay = () => {
           
           console.log("Tipos de análise ativos antes da detecção:", activeAnalysis);
           
-          // Fixed: Use correct number of arguments for detectPatterns function
           const results = await detectPatterns(
             processedImage, 
             activeAnalysis, 
@@ -290,7 +229,6 @@ const ResultsOverlay = () => {
           setProcessingStage(`Verificação final com IA baseada em análise visual avançada`);
           
           setTimeout(() => {
-            // Fixed: Use correct number of arguments for generateAIConfirmation function
             generateAIConfirmation(results);
             setProcessingStage("");
             setLastUpdated(new Date());
@@ -367,21 +305,8 @@ const ResultsOverlay = () => {
     return null;
   }
 
-  const indicatorStyle = {
-    position: 'absolute',
-    left: `${indicatorPosition.x}%`,
-    top: `${indicatorPosition.y}%`,
-    cursor: indicatorPosition.isDragging ? 'grabbing' : 'grab',
-    zIndex: 30
-  };
-
   return (
-    <div 
-      className="absolute inset-0 flex flex-col pointer-events-none"
-      ref={resultsPanelRef}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-    >
+    <div className="absolute inset-0 flex flex-col pointer-events-none">
       {chartRegion && processedRegionRef.current && (
         <div className="absolute inset-0 z-10 pointer-events-none">
           <img 
@@ -392,35 +317,7 @@ const ResultsOverlay = () => {
         </div>
       )}
       
-      <ChartOverlay 
-        results={detailedResults} 
-        showMarkers={showVisualMarkers}
-        imageRegion={chartRegion}
-        processedImage={processedRegionRef.current}
-        originalDimensions={originalImageDimensions.current}
-      />
-
-      {Object.keys(detailedResults).length > 0 && (
-        <div className="absolute inset-0 z-10 pointer-events-none">
-          <EntryPointPredictor results={detailedResults} />
-        </div>
-      )}
-      
-      {detailedResults.all?.found && (
-        <div className="absolute inset-0 z-30 pointer-events-none">
-          <DirectionIndicator 
-            direction={detailedResults.all?.buyScore > detailedResults.all?.sellScore ? "buy" : 
-                      detailedResults.all?.sellScore > detailedResults.all?.buyScore ? "sell" : "neutral"} 
-            strength={detailedResults.all?.buyScore > 1.5 || detailedResults.all?.sellScore > 1.5 ? "strong" : 
-                      detailedResults.all?.buyScore > 0.8 || detailedResults.all?.sellScore > 0.8 ? "moderate" : "weak"}
-            className="drag-handle pointer-events-auto"
-            style={indicatorStyle as React.CSSProperties}
-            onMouseDown={handleMouseDown}
-          />
-        </div>
-      )}
-      
-      {/* Lateral Analysis Panel */}
+      {/* APENAS o painel lateral limpo - SEM sobreposições no gráfico */}
       <AnalysisContainer
         detailedResults={detailedResults}
         fastAnalysisResults={fastAnalysisResults}
@@ -431,15 +328,11 @@ const ResultsOverlay = () => {
         aiDecision={aiDecision}
       />
       
-      <div className="absolute inset-0 z-40 pointer-events-none">
+      {/* Apenas o indicador de processamento quando necessário */}
+      <div className="absolute top-4 left-4 z-40 pointer-events-none">
         <ProcessingIndicator 
           processingStage={aiProcessing ? "🤖 IA tomando decisão autônoma..." : processingStage} 
           isError={hasError} 
-        />
-        
-        <DetailedPanelToggle 
-          showDetailedPanel={showDetailedPanel}
-          toggleDetailedPanel={toggleDetailedPanel}
         />
       </div>
       
