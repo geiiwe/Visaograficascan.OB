@@ -1,12 +1,13 @@
 
 /**
- * Hook para IA Autônoma
- * Integra o sistema de decisão autônoma com o contexto da aplicação
+ * Hook para IA Autônoma - VERSÃO APRIMORADA
+ * Integra sistema de decisão autônoma com funcionalidades avançadas
  */
 
 import { useEffect, useState } from 'react';
 import { useAnalyzer } from '@/context/AnalyzerContext';
 import { makeAutonomousDecision, AutonomousDecision, DecisionFactors } from '@/utils/autonomousDecision';
+import { useAdvancedTrading } from './useAdvancedTrading';
 import { toast } from 'sonner';
 
 export const useAutonomousAI = (
@@ -17,6 +18,16 @@ export const useAutonomousAI = (
   const { selectedTimeframe, marketType, precision } = useAnalyzer();
   const [aiDecision, setAiDecision] = useState<AutonomousDecision | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  // Integrar funcionalidades avançadas
+  const { 
+    evaluateSignalRisk, 
+    performBacktest, 
+    currentRisk, 
+    positionSizing,
+    activeAlerts,
+    accountMetrics 
+  } = useAdvancedTrading();
   
   useEffect(() => {
     if (!detailedResults || Object.keys(detailedResults).length === 0) {
@@ -43,46 +54,80 @@ export const useAutonomousAI = (
       technical_indicators: detailedResults
     };
     
-    console.log("🤖 IA preparando decisão autônoma...", factors);
+    console.log("🤖 IA preparando decisão autônoma APRIMORADA...", factors);
     
     // Pequeno delay para simular processamento da IA
-    setTimeout(() => {
+    setTimeout(async () => {
       try {
         const decision = makeAutonomousDecision(factors, selectedTimeframe, marketType);
         setAiDecision(decision);
+        
+        // ✨ NOVA FUNCIONALIDADE: Avaliar risco do sinal
+        if (decision.action !== "WAIT") {
+          const riskAssessment = evaluateSignalRisk({
+            ...decision,
+            timeframe: selectedTimeframe,
+            entry_price: 100, // Simulado
+            stop_loss: decision.action === "BUY" ? 98 : 102,
+            take_profit: decision.action === "BUY" ? 104 : 96,
+            volatility: factors.market_conditions.volatility,
+            confluences: decision.professional_analysis.confluences
+          });
+          
+          console.log("🎯 Avaliação de risco:", riskAssessment);
+        }
+        
+        // ✨ NOVA FUNCIONALIDADE: Executar backtesting com sinais similares
+        if (fastAnalysisResults.length > 5) {
+          await performBacktest(fastAnalysisResults.map(result => ({
+            action: result.direction === "up" ? "BUY" : result.direction === "down" ? "SELL" : "WAIT",
+            confidence: result.confidence,
+            confluences: 2, // Simulado
+            timeframe: selectedTimeframe
+          })));
+        }
+        
         setIsProcessing(false);
         
-        // Notificar usuário da decisão da IA
+        // Notificar usuário da decisão da IA com informações aprimoradas
         const actionText = decision.action === "BUY" ? "COMPRAR" : 
                           decision.action === "SELL" ? "VENDER" : "AGUARDAR";
         
         const emoji = decision.action === "BUY" ? "📈" : 
                      decision.action === "SELL" ? "📉" : "⏳";
         
+        const gradeEmoji = decision.professional_analysis.market_grade === "A" ? "🏆" :
+                          decision.professional_analysis.market_grade === "B" ? "🥈" : 
+                          decision.professional_analysis.market_grade === "C" ? "🥉" : "📊";
+        
         if (decision.action !== "WAIT") {
+          // Incluir informações de risco e position sizing
+          const riskInfo = currentRisk ? ` | Risco: ${currentRisk.totalRisk}` : "";
+          const positionInfo = positionSizing ? ` | Size: ${positionSizing.recommendedSize}` : "";
+          
           if (decision.timing.enter_now) {
             toast.success(
-              `${emoji} IA DECIDE: ${actionText} AGORA! (${decision.confidence}% confiança)`,
+              `${emoji} IA DECIDE: ${actionText} AGORA! ${gradeEmoji} Grade ${decision.professional_analysis.market_grade}`,
               {
-                duration: 5000,
-                description: `Taxa de sucesso esperada: ${decision.expected_success_rate}%`
+                duration: 6000,
+                description: `${decision.confidence}% confiança | Sucesso: ${decision.expected_success_rate}%${riskInfo}${positionInfo}`
               }
             );
           } else {
             toast.info(
-              `${emoji} IA DECIDE: ${actionText} em ${decision.timing.wait_seconds}s (${decision.confidence}% confiança)`,
+              `${emoji} IA DECIDE: ${actionText} em ${decision.timing.wait_seconds}s ${gradeEmoji} Grade ${decision.professional_analysis.market_grade}`,
               {
-                duration: 5000,
-                description: `Aguardando timing ótimo. Taxa esperada: ${decision.expected_success_rate}%`
+                duration: 6000,
+                description: `${decision.confidence}% confiança | Timing ótimo em breve${riskInfo}`
               }
             );
           }
         } else {
           toast.warning(
-            `⏳ IA DECIDE: AGUARDAR (${decision.confidence}% confiança)`,
+            `⏳ IA DECIDE: AGUARDAR ${gradeEmoji} Grade ${decision.professional_analysis.market_grade}`,
             {
-              duration: 4000,
-              description: "Condições não favoráveis para entrada"
+              duration: 5000,
+              description: `${decision.confidence}% confiança | Condições não favoráveis`
             }
           );
         }
@@ -94,7 +139,7 @@ export const useAutonomousAI = (
       }
     }, 1500);
     
-  }, [detailedResults, enhancedAnalysisResult, selectedTimeframe, marketType]);
+  }, [detailedResults, enhancedAnalysisResult, selectedTimeframe, marketType, evaluateSignalRisk, performBacktest, fastAnalysisResults]);
   
   // Calcular ruído de mercado baseado nos resultados
   const calculateMarketNoise = (): number => {
@@ -110,6 +155,11 @@ export const useAutonomousAI = (
   
   return {
     aiDecision,
-    isProcessing
+    isProcessing,
+    // ✨ NOVAS FUNCIONALIDADES EXPOSTAS
+    currentRisk,
+    positionSizing,
+    activeAlerts,
+    accountMetrics
   };
 };
