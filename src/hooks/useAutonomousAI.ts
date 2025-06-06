@@ -151,8 +151,8 @@ export const useAutonomousAI = (
        decision.candle_confirmation.confirmed ? ` 🕯️ Vela ${decision.candle_confirmation.confirmationType}` :
        " 🕯️ Vela não confirmou") : "";
     
-    // Informações de risco e position sizing - CORRIGIDO: acessar propriedade numérica correta
-    const riskInfo = currentRisk?.totalRisk ? ` | Risco: ${currentRisk.totalRisk.toFixed(1)}%` : "";
+    // Informações de risco e position sizing - CORRIGIDO: totalRisk é uma string, não número
+    const riskInfo = currentRisk?.totalRisk ? ` | Risco: ${currentRisk.totalRisk}` : "";
     const positionInfo = positionSizing ? ` | Size: ${positionSizing.recommendedSize}` : "";
     
     if (decision.action !== "WAIT") {
