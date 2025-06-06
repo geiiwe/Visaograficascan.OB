@@ -1,10 +1,11 @@
 /**
  * Sistema de Decisão Autônoma da IA - VERSÃO ULTRA PROFISSIONAL
- * Integra padrões clássicos + confluências múltiplas + conhecimento profissional
+ * Integra padrões clássicos + confluências múltiplas + conhecimento profissional + CONFIRMAÇÃO POR VELA
  */
 
 import { ExtendedPatternResult } from './predictionUtils';
 import { performProfessionalAnalysis, MarketContext } from './professionalAnalysisEngine';
+import { checkCandleConfirmation, registerPendingSignal, CandleConfirmation } from './candleConfirmation/candleConfirmationEngine';
 
 export interface AutonomousDecision {
   action: "BUY" | "SELL" | "WAIT";
@@ -22,6 +23,7 @@ export interface AutonomousDecision {
     contraindications: string[];
     market_grade: "A" | "B" | "C" | "D" | "F";
   };
+  candle_confirmation?: CandleConfirmation; // NOVA PROPRIEDADE
 }
 
 export interface DecisionFactors {
@@ -41,7 +43,7 @@ export const makeAutonomousDecision = (
   timeframe: string,
   marketType: string
 ): AutonomousDecision => {
-  console.log("🎓 IA iniciando decisão ULTRA PROFISSIONAL com análise técnica completa...");
+  console.log("🎓 IA iniciando decisão ULTRA PROFISSIONAL com confirmação por vela...");
   
   // Preparar contexto de mercado para análise ULTRA profissional
   const marketContext: MarketContext = {
@@ -100,15 +102,91 @@ export const makeAutonomousDecision = (
     };
   }
   
-  // Verificar timing de entrada ULTRA profissional
+  // ✨ NOVA FUNCIONALIDADE: VERIFICAR CONFIRMAÇÃO POR VELA
+  let candleConfirmation: CandleConfirmation | undefined;
+  
+  if (professionalResult.signal !== "WAIT") {
+    console.log("🕯️ Verificando confirmação da próxima vela antes de sugerir entrada...");
+    
+    candleConfirmation = checkCandleConfirmation(
+      professionalResult.signal,
+      professionalResult.confidence,
+      timeframe
+    );
+    
+    console.log(`🕯️ Confirmação por vela: ${candleConfirmation.confirmed ? 'CONFIRMADA' : 'PENDENTE/NEGATIVA'}`);
+    
+    // Se aguardando confirmação, registrar sinal pendente
+    if (candleConfirmation.waitingForConfirmation) {
+      registerPendingSignal(professionalResult.signal, professionalResult.confidence, timeframe);
+      
+      return {
+        action: "WAIT",
+        confidence: candleConfirmation.confidence,
+        timing: {
+          enter_now: false,
+          wait_seconds: candleConfirmation.timeToWait,
+          optimal_window: candleConfirmation.timeToWait / 2
+        },
+        reasoning: [
+          `🕯️ ${candleConfirmation.confirmationMessage}`,
+          `⏳ Baseado em 61,5% de assertividade (16/26 operações positivas)`,
+          `🎯 Aguardando confirmação da próxima vela para ${professionalResult.signal}`,
+          ...professionalResult.reasoning
+        ],
+        risk_level: "MEDIUM",
+        expected_success_rate: Math.max(50, candleConfirmation.confidence),
+        professional_analysis: {
+          confluences: professionalResult.confluences,
+          contraindications: professionalResult.contraindications,
+          market_grade: marketGrade
+        },
+        candle_confirmation: candleConfirmation
+      };
+    }
+    
+    // Se vela não confirmou, reduzir confiança drasticamente
+    if (!candleConfirmation.confirmed) {
+      console.log("❌ Vela seguinte NÃO confirmou o sinal - Reduzindo confiança");
+      
+      return {
+        action: "WAIT",
+        confidence: Math.max(30, candleConfirmation.confidence),
+        timing: {
+          enter_now: false,
+          wait_seconds: 60,
+          optimal_window: 30
+        },
+        reasoning: [
+          `❌ ${candleConfirmation.confirmationMessage}`,
+          `⚠️ Vela seguinte moveu-se ${candleConfirmation.nextCandleDirection} (esperado: ${professionalResult.signal === 'BUY' ? 'up' : 'down'})`,
+          `🕯️ Sistema aguarda nova confirmação baseado em dados reais`,
+          ...professionalResult.reasoning
+        ],
+        risk_level: "HIGH",
+        expected_success_rate: Math.max(40, candleConfirmation.confidence - 10),
+        professional_analysis: {
+          confluences: professionalResult.confluences,
+          contraindications: professionalResult.contraindications,
+          market_grade: marketGrade
+        },
+        candle_confirmation: candleConfirmation
+      };
+    }
+    
+    // Se vela confirmou, aumentar confiança!
+    console.log(`✅ Vela seguinte CONFIRMOU ${professionalResult.signal} - Aumentando confiança!`);
+  }
+  
+  // Verificar timing de entrada ULTRA profissional (com confirmação por vela)
   const entryTiming = calculateProfessionalTiming(
     professionalResult,
     marketContext,
     factors.timing_analysis
   );
   
-  // Calcular taxa de sucesso baseada em estatísticas ULTRA profissionais
-  const successRate = calculateProfessionalSuccessRate(
+  // Calcular taxa de sucesso baseada em estatísticas ULTRA profissionais + confirmação por vela
+  let successRate = calculateProfessionalSuccessRate(
     professionalResult.signal,
     professionalResult.confidence,
     professionalResult.confluences,
@@ -116,26 +194,47 @@ export const makeAutonomousDecision = (
     marketContext
   );
   
-  // Compilar reasoning ULTRA profissional
+  // Aplicar boost de confirmação por vela
+  if (candleConfirmation?.confirmed) {
+    const confirmationBoost = candleConfirmation.confirmationType === "strong" ? 8 :
+                            candleConfirmation.confirmationType === "moderate" ? 5 : 2;
+    successRate = Math.min(95, successRate + confirmationBoost);
+    console.log(`🚀 Taxa de sucesso aumentada em ${confirmationBoost}% pela confirmação da vela`);
+  }
+  
+  // Compilar reasoning ULTRA profissional com confirmação por vela
   const professionalReasoning = [
     `🏆 Setup ULTRA grau ${marketGrade} aprovado (${professionalResult.confluences} confluências)`,
     `📊 Análise técnica integrada: ${professionalResult.signal} com ${professionalResult.confidence}% confiança`,
     `🏛️ Padrões clássicos + Multi-indicadores + Confluências técnicas`,
-    ...professionalResult.reasoning,
+    ...professionalResult.reasoning
+  ];
+  
+  // Adicionar informações de confirmação por vela
+  if (candleConfirmation) {
+    professionalReasoning.push(`🕯️ ${candleConfirmation.confirmationMessage}`);
+    
+    if (candleConfirmation.confirmed) {
+      professionalReasoning.push(`✅ Confirmação ${candleConfirmation.confirmationType.toUpperCase()} da próxima vela`);
+      professionalReasoning.push(`📈 Baseado em resultados reais: 61,5% assertividade (16/26 ops)`);
+    }
+  }
+  
+  professionalReasoning.push(
     `⚠️ Nível de risco ULTRA: ${professionalResult.riskLevel}`,
     `🎯 Taxa de sucesso ULTRA esperada: ${successRate}%`,
-    `📚 Baseado em conhecimento de Edwards & Magee, Bulkowski, Elder, Murphy`
-  ];
+    `📚 Baseado em Edwards & Magee, Bulkowski, Elder, Murphy + dados reais`
+  );
   
   if (professionalResult.contraindications.length > 0) {
     professionalReasoning.push(`⚠️ Contraindicações: ${professionalResult.contraindications.join(", ")}`);
   }
   
-  console.log(`🏆 Decisão ULTRA final: ${professionalResult.signal} | Grau: ${marketGrade} | Sucesso esperado: ${successRate}%`);
+  console.log(`🏆 Decisão ULTRA final: ${professionalResult.signal} | Grau: ${marketGrade} | Sucesso esperado: ${successRate}% | Vela: ${candleConfirmation?.confirmed ? 'CONFIRMADA' : 'N/A'}`);
   
   return {
     action: professionalResult.signal,
-    confidence: professionalResult.confidence,
+    confidence: candleConfirmation?.confidence || professionalResult.confidence,
     timing: entryTiming,
     reasoning: professionalReasoning,
     risk_level: professionalResult.riskLevel,
@@ -144,7 +243,8 @@ export const makeAutonomousDecision = (
       confluences: professionalResult.confluences,
       contraindications: professionalResult.contraindications,
       market_grade: marketGrade
-    }
+    },
+    candle_confirmation: candleConfirmation
   };
 };
 

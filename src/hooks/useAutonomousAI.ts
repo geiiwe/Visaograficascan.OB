@@ -1,7 +1,7 @@
 
 /**
- * Hook para IA Autônoma - VERSÃO APRIMORADA
- * Integra sistema de decisão autônoma com funcionalidades avançadas
+ * Hook para IA Autônoma - VERSÃO APRIMORADA COM CONFIRMAÇÃO POR VELA
+ * Integra sistema de decisão autônoma com confirmação baseada na próxima vela
  */
 
 import { useEffect, useState } from 'react';
@@ -54,7 +54,7 @@ export const useAutonomousAI = (
       technical_indicators: detailedResults
     };
     
-    console.log("🤖 IA preparando decisão autônoma APRIMORADA...", factors);
+    console.log("🤖 IA preparando decisão autônoma APRIMORADA com confirmação por vela...", factors);
     
     // Pequeno delay para simular processamento da IA
     setTimeout(async () => {
@@ -89,7 +89,7 @@ export const useAutonomousAI = (
         
         setIsProcessing(false);
         
-        // Notificar usuário da decisão da IA com informações aprimoradas
+        // Notificar usuário da decisão da IA com informações aprimoradas + confirmação por vela
         const actionText = decision.action === "BUY" ? "COMPRAR" : 
                           decision.action === "SELL" ? "VENDER" : "AGUARDAR";
         
@@ -100,22 +100,36 @@ export const useAutonomousAI = (
                           decision.professional_analysis.market_grade === "B" ? "🥈" : 
                           decision.professional_analysis.market_grade === "C" ? "🥉" : "📊";
         
+        // ✨ NOVA FUNCIONALIDADE: Incluir informações de confirmação por vela nas notificações
+        const candleInfo = decision.candle_confirmation ? 
+          (decision.candle_confirmation.waitingForConfirmation ? " 🕯️ Aguardando vela" :
+           decision.candle_confirmation.confirmed ? ` 🕯️ Vela ${decision.candle_confirmation.confirmationType}` :
+           " 🕯️ Vela não confirmou") : "";
+        
         if (decision.action !== "WAIT") {
           // Incluir informações de risco e position sizing
           const riskInfo = currentRisk ? ` | Risco: ${currentRisk.totalRisk}` : "";
           const positionInfo = positionSizing ? ` | Size: ${positionSizing.recommendedSize}` : "";
           
-          if (decision.timing.enter_now) {
+          if (decision.timing.enter_now && decision.candle_confirmation?.confirmed) {
             toast.success(
-              `${emoji} IA DECIDE: ${actionText} AGORA! ${gradeEmoji} Grade ${decision.professional_analysis.market_grade}`,
+              `${emoji} IA DECIDE: ${actionText} AGORA! ${gradeEmoji} Grade ${decision.professional_analysis.market_grade}${candleInfo}`,
               {
-                duration: 6000,
-                description: `${decision.confidence}% confiança | Sucesso: ${decision.expected_success_rate}%${riskInfo}${positionInfo}`
+                duration: 8000,
+                description: `${decision.confidence}% confiança | Sucesso: ${decision.expected_success_rate}% | Confirmado por vela${riskInfo}${positionInfo}`
+              }
+            );
+          } else if (decision.candle_confirmation?.waitingForConfirmation) {
+            toast.info(
+              `${emoji} IA PREPARA: ${actionText} ${gradeEmoji} Grade ${decision.professional_analysis.market_grade}${candleInfo}`,
+              {
+                duration: 10000,
+                description: `${decision.confidence}% confiança | Baseado em 61,5% assertividade real | Aguardando confirmação da próxima vela`
               }
             );
           } else {
             toast.info(
-              `${emoji} IA DECIDE: ${actionText} em ${decision.timing.wait_seconds}s ${gradeEmoji} Grade ${decision.professional_analysis.market_grade}`,
+              `${emoji} IA DECIDE: ${actionText} em ${decision.timing.wait_seconds}s ${gradeEmoji} Grade ${decision.professional_analysis.market_grade}${candleInfo}`,
               {
                 duration: 6000,
                 description: `${decision.confidence}% confiança | Timing ótimo em breve${riskInfo}`
@@ -123,11 +137,17 @@ export const useAutonomousAI = (
             );
           }
         } else {
+          const waitReason = decision.candle_confirmation?.waitingForConfirmation ? 
+            "Aguardando confirmação da próxima vela" :
+            decision.candle_confirmation && !decision.candle_confirmation.confirmed ?
+            "Vela seguinte não confirmou sinal" :
+            "Condições não favoráveis";
+            
           toast.warning(
-            `⏳ IA DECIDE: AGUARDAR ${gradeEmoji} Grade ${decision.professional_analysis.market_grade}`,
+            `⏳ IA DECIDE: AGUARDAR ${gradeEmoji} Grade ${decision.professional_analysis.market_grade}${candleInfo}`,
             {
-              duration: 5000,
-              description: `${decision.confidence}% confiança | Condições não favoráveis`
+              duration: 7000,
+              description: `${decision.confidence}% confiança | ${waitReason}`
             }
           );
         }
