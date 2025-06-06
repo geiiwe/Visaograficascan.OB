@@ -1,6 +1,6 @@
 
 /**
- * Sistema de Confirmação por Vela - Aguarda Confirmação da Próxima Vela
+ * Sistema de Confirmação por Vela - VERSÃO CORRIGIDA E SINCRONIZADA
  * Baseado nos resultados reais: 16/26 operações positivas (61,5% assertividade)
  */
 
@@ -12,6 +12,7 @@ export interface CandleConfirmation {
   nextCandleDirection: "up" | "down" | "neutral" | "unknown";
   confirmationMessage: string;
   timeToWait: number; // em segundos
+  signalStrength: number; // força do sinal original
 }
 
 export interface PendingSignal {
@@ -20,9 +21,10 @@ export interface PendingSignal {
   timestamp: number;
   candleIndex: number;
   confirmationDeadline: number;
+  signalId: string;
 }
 
-// Simulação de dados de velas (em produção viria da corretora)
+// Simulação de dados de velas sincronizada
 let simulatedCandleData: Array<{
   open: number;
   high: number;
@@ -30,17 +32,30 @@ let simulatedCandleData: Array<{
   close: number;
   timestamp: number;
   volume: number;
+  index: number;
 }> = [];
 
 let pendingSignals: PendingSignal[] = [];
+let candleUpdateInterval: number | null = null;
+let currentCandleIndex = 0;
 
 export const initializeCandleConfirmation = () => {
-  // Simular dados iniciais de velas
+  // Limpar dados anteriores
+  simulatedCandleData = [];
+  pendingSignals = [];
+  currentCandleIndex = 0;
+  
+  // Parar interval anterior se existir
+  if (candleUpdateInterval) {
+    clearInterval(candleUpdateInterval);
+  }
+  
+  // Simular dados iniciais de velas com índices sequenciais
   const basePrice = 100;
   const now = Date.now();
   
-  for (let i = 0; i < 10; i++) {
-    const variation = (Math.random() - 0.5) * 0.02; // Variação de ±1%
+  for (let i = 0; i < 15; i++) {
+    const variation = (Math.random() - 0.5) * 0.02;
     const open = basePrice + (variation * basePrice);
     const close = open + ((Math.random() - 0.5) * 0.01 * basePrice);
     
@@ -49,12 +64,22 @@ export const initializeCandleConfirmation = () => {
       high: Math.max(open, close) + (Math.random() * 0.005 * basePrice),
       low: Math.min(open, close) - (Math.random() * 0.005 * basePrice),
       close,
-      timestamp: now - ((9 - i) * 30000), // Velas de 30s
-      volume: 1000 + Math.random() * 500
+      timestamp: now - ((14 - i) * 30000), // Velas de 30s
+      volume: 1000 + Math.random() * 500,
+      index: i
     });
   }
   
-  console.log("🕯️ Sistema de confirmação por vela inicializado");
+  currentCandleIndex = simulatedCandleData.length - 1;
+  
+  // Iniciar atualização automática de velas (simulando tempo real)
+  candleUpdateInterval = setInterval(() => {
+    simulateNewCandle();
+    checkAndProcessPendingSignals();
+  }, 30000); // Nova vela a cada 30 segundos
+  
+  console.log("🕯️ Sistema de confirmação por vela inicializado e sincronizado");
+  console.log(`📊 ${simulatedCandleData.length} velas históricas carregadas`);
 };
 
 export const registerPendingSignal = (
@@ -64,18 +89,21 @@ export const registerPendingSignal = (
 ): PendingSignal => {
   const now = Date.now();
   const timeframeSeconds = getTimeframeSeconds(timeframe);
+  const signalId = `${direction}_${now}_${Math.random().toString(36).substr(2, 9)}`;
   
   const pendingSignal: PendingSignal = {
     direction,
     originalConfidence: confidence,
     timestamp: now,
-    candleIndex: simulatedCandleData.length - 1,
-    confirmationDeadline: now + (timeframeSeconds * 2000) // 2 velas para confirmar
+    candleIndex: currentCandleIndex,
+    confirmationDeadline: now + (timeframeSeconds * 2000), // 2 velas para confirmar
+    signalId
   };
   
   pendingSignals.push(pendingSignal);
   
-  console.log(`🔄 Sinal ${direction} registrado para confirmação. Aguardando próxima vela...`);
+  console.log(`🔄 Sinal ${direction} registrado para confirmação (ID: ${signalId})`);
+  console.log(`⏰ Deadline: ${new Date(pendingSignal.confirmationDeadline).toLocaleTimeString()}`);
   
   return pendingSignal;
 };
@@ -86,87 +114,181 @@ export const checkCandleConfirmation = (
   timeframe: string
 ): CandleConfirmation => {
   console.log("🕯️ Verificando confirmação da próxima vela...");
+  console.log(`📊 Vela atual: ${currentCandleIndex} | Sinais pendentes: ${pendingSignals.length}`);
   
-  // Simular chegada de nova vela
-  simulateNewCandle();
-  
-  // Verificar sinais pendentes
-  const confirmedSignals = checkPendingSignals();
-  
-  // Encontrar confirmação para o sinal atual
-  const matchingConfirmation = confirmedSignals.find(
-    signal => signal.direction === originalDirection
-  );
-  
-  if (matchingConfirmation) {
-    return generateConfirmationResult(matchingConfirmation, originalConfidence, true);
+  // Verificar se temos velas suficientes para análise
+  if (simulatedCandleData.length < 2) {
+    return createPendingConfirmation(originalDirection, originalConfidence, timeframe);
   }
   
-  // Se não há confirmação ainda, verificar se devemos aguardar
-  const hasPendingSignal = pendingSignals.some(
+  // Buscar confirmação para sinais existentes
+  const matchingSignal = pendingSignals.find(
     signal => signal.direction === originalDirection && 
               Date.now() < signal.confirmationDeadline
   );
   
-  if (hasPendingSignal) {
+  if (matchingSignal) {
+    // Verificar se já temos vela confirmação disponível
+    const candlesAfterSignal = currentCandleIndex - matchingSignal.candleIndex;
+    
+    if (candlesAfterSignal >= 1) {
+      // Analisar a vela de confirmação
+      const confirmationCandleIndex = matchingSignal.candleIndex + 1;
+      const confirmationCandle = simulatedCandleData[confirmationCandleIndex];
+      
+      if (confirmationCandle) {
+        return analyzeConfirmationCandle(
+          confirmationCandle,
+          originalDirection,
+          originalConfidence,
+          matchingSignal
+        );
+      }
+    }
+    
+    // Ainda aguardando confirmação
     return {
       confirmed: false,
-      confidence: originalConfidence * 0.8, // Reduzir confiança enquanto aguarda
+      confidence: originalConfidence * 0.8,
       confirmationType: "pending",
       waitingForConfirmation: true,
       nextCandleDirection: "unknown",
-      confirmationMessage: `⏳ Aguardando confirmação da próxima vela para ${originalDirection}`,
-      timeToWait: getTimeframeSeconds(timeframe)
+      confirmationMessage: `⏳ Aguardando próxima vela para confirmar ${originalDirection} (${Math.ceil((matchingSignal.confirmationDeadline - Date.now()) / 1000)}s restantes)`,
+      timeToWait: getTimeframeSeconds(timeframe),
+      signalStrength: originalConfidence
     };
   }
   
-  // Analisar direção da última vela disponível
+  // Não há sinal pendente - analisar última vela disponível
+  return analyzeCurrentMarketCondition(originalDirection, originalConfidence, timeframe);
+};
+
+const simulateNewCandle = () => {
   const lastCandle = simulatedCandleData[simulatedCandleData.length - 1];
-  const secondLastCandle = simulatedCandleData[simulatedCandleData.length - 2];
+  if (!lastCandle) return;
   
-  if (!lastCandle || !secondLastCandle) {
-    return createPendingConfirmation(originalDirection, originalConfidence, timeframe);
+  // Simular próxima vela com base na tendência (baseado nos 61,5% de assertividade)
+  const followTrend = Math.random() < 0.62;
+  
+  const previousDirection = lastCandle.close > lastCandle.open ? 1 : -1;
+  const variation = followTrend ? 
+    (Math.random() * 0.008 + 0.002) * previousDirection : 
+    (Math.random() * 0.006 + 0.001) * -previousDirection;
+  
+  const open = lastCandle.close;
+  const close = open + (variation * open);
+  
+  currentCandleIndex++;
+  
+  const newCandle = {
+    open,
+    high: Math.max(open, close) + (Math.random() * 0.003 * open),
+    low: Math.min(open, close) - (Math.random() * 0.003 * open),
+    close,
+    timestamp: Date.now(),
+    volume: 1000 + Math.random() * 500,
+    index: currentCandleIndex
+  };
+  
+  simulatedCandleData.push(newCandle);
+  
+  // Manter apenas últimas 25 velas
+  if (simulatedCandleData.length > 25) {
+    simulatedCandleData = simulatedCandleData.slice(-25);
+    // Ajustar índices dos sinais pendentes
+    pendingSignals.forEach(signal => {
+      signal.candleIndex = Math.max(0, signal.candleIndex - 1);
+    });
   }
   
-  const candleDirection = lastCandle.close > lastCandle.open ? "up" : 
-                         lastCandle.close < lastCandle.open ? "down" : "neutral";
+  const direction = variation > 0 ? "📈" : "📉";
+  console.log(`🕯️ Nova vela simulada [${currentCandleIndex}]: ${open.toFixed(4)} → ${close.toFixed(4)} ${direction} (${(variation * 100).toFixed(2)}%)`);
+};
+
+const checkAndProcessPendingSignals = () => {
+  const now = Date.now();
+  const confirmedSignals: PendingSignal[] = [];
   
+  pendingSignals = pendingSignals.filter(signal => {
+    // Remover sinais expirados
+    if (now > signal.confirmationDeadline) {
+      console.log(`⏰ Sinal ${signal.direction} (${signal.signalId}) expirou sem confirmação`);
+      return false;
+    }
+    
+    // Verificar se há velas suficientes para confirmar
+    const candlesAfterSignal = currentCandleIndex - signal.candleIndex;
+    
+    if (candlesAfterSignal >= 1) {
+      const confirmationCandleIndex = signal.candleIndex + 1;
+      const confirmationCandle = simulatedCandleData.find(c => c.index === confirmationCandleIndex);
+      
+      if (confirmationCandle) {
+        const candleDirection = confirmationCandle.close > confirmationCandle.open ? "up" : "down";
+        const expectedDirection = signal.direction === "BUY" ? "up" : "down";
+        
+        if (candleDirection === expectedDirection) {
+          confirmedSignals.push(signal);
+          console.log(`✅ Sinal ${signal.direction} (${signal.signalId}) CONFIRMADO pela vela [${confirmationCandleIndex}]!`);
+          return false; // Remove da lista de pendentes
+        } else {
+          console.log(`❌ Sinal ${signal.direction} (${signal.signalId}) NÃO confirmado pela vela [${confirmationCandleIndex}]`);
+          return false; // Remove da lista de pendentes
+        }
+      }
+    }
+    
+    return true; // Mantém na lista de pendentes
+  });
+  
+  return confirmedSignals;
+};
+
+const analyzeConfirmationCandle = (
+  confirmationCandle: any,
+  originalDirection: "BUY" | "SELL",
+  originalConfidence: number,
+  signal: PendingSignal
+): CandleConfirmation => {
+  const candleDirection = confirmationCandle.close > confirmationCandle.open ? "up" : "down";
   const expectedDirection = originalDirection === "BUY" ? "up" : "down";
   const isConfirmed = candleDirection === expectedDirection;
   
   // Calcular força da confirmação
-  const candleSize = Math.abs(lastCandle.close - lastCandle.open);
-  const previousCandleSize = Math.abs(secondLastCandle.close - secondLastCandle.open);
-  const relativeStrength = candleSize / Math.max(previousCandleSize, candleSize * 0.1);
+  const candleSize = Math.abs(confirmationCandle.close - confirmationCandle.open);
+  const bodyPercentage = candleSize / confirmationCandle.open;
   
   let confirmationType: "strong" | "moderate" | "weak" = "weak";
   let confidenceMultiplier = 1.0;
   
   if (isConfirmed) {
-    if (relativeStrength > 1.5) {
+    if (bodyPercentage > 0.008) {
       confirmationType = "strong";
-      confidenceMultiplier = 1.2; // Aumentar confiança em 20%
-    } else if (relativeStrength > 1.0) {
+      confidenceMultiplier = 1.25; // Aumentar confiança em 25%
+    } else if (bodyPercentage > 0.004) {
       confirmationType = "moderate";
-      confidenceMultiplier = 1.1; // Aumentar confiança em 10%
+      confidenceMultiplier = 1.15; // Aumentar confiança em 15%
     } else {
       confirmationType = "weak";
-      confidenceMultiplier = 1.05; // Aumentar confiança em 5%
+      confidenceMultiplier = 1.08; // Aumentar confiança em 8%
     }
   } else {
-    confidenceMultiplier = 0.7; // Reduzir confiança se não confirmou
+    confidenceMultiplier = 0.65; // Reduzir significativamente se não confirmou
   }
   
   const finalConfidence = Math.min(95, originalConfidence * confidenceMultiplier);
   
   let confirmationMessage = "";
   if (isConfirmed) {
-    confirmationMessage = `✅ Próxima vela CONFIRMOU ${originalDirection} (${confirmationType.toUpperCase()})`;
+    confirmationMessage = `✅ Vela [${confirmationCandle.index}] CONFIRMOU ${originalDirection} (${confirmationType.toUpperCase()}) - ${(bodyPercentage * 100).toFixed(2)}% movimento`;
   } else {
-    confirmationMessage = `❌ Próxima vela NÃO confirmou ${originalDirection} - Cuidado!`;
+    confirmationMessage = `❌ Vela [${confirmationCandle.index}] NÃO confirmou ${originalDirection} - Movimento contrário detectado`;
   }
   
   console.log(confirmationMessage);
+  
+  // Remover sinal da lista de pendentes
+  pendingSignals = pendingSignals.filter(s => s.signalId !== signal.signalId);
   
   return {
     confirmed: isConfirmed,
@@ -175,94 +297,20 @@ export const checkCandleConfirmation = (
     waitingForConfirmation: false,
     nextCandleDirection: candleDirection,
     confirmationMessage,
-    timeToWait: 0
+    timeToWait: 0,
+    signalStrength: bodyPercentage * 100
   };
 };
 
-const simulateNewCandle = () => {
-  const lastCandle = simulatedCandleData[simulatedCandleData.length - 1];
-  if (!lastCandle) return;
-  
-  // Simular próxima vela com base na tendência (60% de chance de seguir a direção)
-  const followTrend = Math.random() < 0.62; // Baseado nos 61,5% de assertividade real
-  
-  const trendDirection = lastCandle.close > lastCandle.open ? 1 : -1;
-  const variation = followTrend ? 
-    (Math.random() * 0.008 + 0.002) * trendDirection : // Segue tendência
-    (Math.random() * 0.006 + 0.001) * -trendDirection; // Contra tendência
-  
-  const open = lastCandle.close;
-  const close = open + (variation * open);
-  
-  const newCandle = {
-    open,
-    high: Math.max(open, close) + (Math.random() * 0.003 * open),
-    low: Math.min(open, close) - (Math.random() * 0.003 * open),
-    close,
-    timestamp: Date.now(),
-    volume: 1000 + Math.random() * 500
-  };
-  
-  simulatedCandleData.push(newCandle);
-  
-  // Manter apenas últimas 20 velas
-  if (simulatedCandleData.length > 20) {
-    simulatedCandleData = simulatedCandleData.slice(-20);
-  }
-  
-  console.log(`🕯️ Nova vela simulada: ${open.toFixed(4)} → ${close.toFixed(4)} (${variation > 0 ? '+' : ''}${(variation * 100).toFixed(2)}%)`);
-};
-
-const checkPendingSignals = (): PendingSignal[] => {
-  const now = Date.now();
-  const confirmedSignals: PendingSignal[] = [];
-  
-  pendingSignals = pendingSignals.filter(signal => {
-    if (now > signal.confirmationDeadline) {
-      console.log(`⏰ Sinal ${signal.direction} expirou sem confirmação`);
-      return false; // Remove sinais expirados
-    }
-    
-    // Verificar se há velas suficientes para confirmar
-    const candlesAfterSignal = simulatedCandleData.length - 1 - signal.candleIndex;
-    
-    if (candlesAfterSignal >= 1) {
-      const confirmationCandle = simulatedCandleData[signal.candleIndex + 1];
-      const candleDirection = confirmationCandle.close > confirmationCandle.open ? "up" : "down";
-      const expectedDirection = signal.direction === "BUY" ? "up" : "down";
-      
-      if (candleDirection === expectedDirection) {
-        confirmedSignals.push(signal);
-        console.log(`✅ Sinal ${signal.direction} CONFIRMADO pela vela seguinte!`);
-        return false; // Remove da lista de pendentes
-      }
-    }
-    
-    return true; // Manter na lista de pendentes
-  });
-  
-  return confirmedSignals;
-};
-
-const generateConfirmationResult = (
-  signal: PendingSignal,
-  originalConfidence: number,
-  confirmed: boolean
+const analyzeCurrentMarketCondition = (
+  direction: "BUY" | "SELL",
+  confidence: number,
+  timeframe: string
 ): CandleConfirmation => {
-  const confidenceBoost = confirmed ? 1.15 : 0.8;
-  const finalConfidence = Math.min(95, originalConfidence * confidenceBoost);
+  // Registrar novo sinal para monitoramento
+  registerPendingSignal(direction, confidence, timeframe);
   
-  return {
-    confirmed,
-    confidence: finalConfidence,
-    confirmationType: confirmed ? "strong" : "weak",
-    waitingForConfirmation: false,
-    nextCandleDirection: signal.direction === "BUY" ? "up" : "down",
-    confirmationMessage: confirmed ? 
-      `✅ CONFIRMADO! Próxima vela seguiu ${signal.direction} como previsto` :
-      `❌ Vela seguinte não confirmou ${signal.direction}`,
-    timeToWait: 0
-  };
+  return createPendingConfirmation(direction, confidence, timeframe);
 };
 
 const createPendingConfirmation = (
@@ -278,8 +326,9 @@ const createPendingConfirmation = (
     confirmationType: "pending",
     waitingForConfirmation: true,
     nextCandleDirection: "unknown",
-    confirmationMessage: `⏳ Aguardando próxima vela para confirmar ${direction}...`,
-    timeToWait
+    confirmationMessage: `⏳ Aguardando próxima vela para confirmar ${direction}... (Baseado em 61,5% assertividade)`,
+    timeToWait,
+    signalStrength: confidence
   };
 };
 
@@ -293,11 +342,22 @@ const getTimeframeSeconds = (timeframe: string): number => {
   }
 };
 
+// Limpeza ao sair
+export const cleanup = () => {
+  if (candleUpdateInterval) {
+    clearInterval(candleUpdateInterval);
+    candleUpdateInterval = null;
+  }
+  pendingSignals = [];
+  console.log("🧹 Sistema de confirmação por vela limpo");
+};
+
 // Inicializar automaticamente
 initializeCandleConfirmation();
 
 export default {
   checkCandleConfirmation,
   registerPendingSignal,
-  initializeCandleConfirmation
+  initializeCandleConfirmation,
+  cleanup
 };
