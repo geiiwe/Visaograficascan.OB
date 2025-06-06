@@ -36,7 +36,8 @@ let simulatedCandleData: Array<{
 }> = [];
 
 let pendingSignals: PendingSignal[] = [];
-let candleUpdateInterval: number | null = null;
+// CORRIGIDO: Usar NodeJS.Timeout ao invés de number para compatibilidade
+let candleUpdateInterval: NodeJS.Timeout | null = null;
 let currentCandleIndex = 0;
 
 export const initializeCandleConfirmation = () => {
