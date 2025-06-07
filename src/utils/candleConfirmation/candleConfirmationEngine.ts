@@ -1,18 +1,22 @@
-
 /**
- * Sistema de Confirmação por Vela - VERSÃO CORRIGIDA E SINCRONIZADA
+ * Sistema de Confirmação por Vela - VERSÃO APRIMORADA COM VALIDAÇÃO SEQUENCIAL
  * Baseado nos resultados reais: 16/26 operações positivas (61,5% assertividade)
+ * Agora com validação de velas sequenciais para maior precisão
  */
+
+import { validateSequentialCandles, SequentialValidation } from './sequentialCandleValidator';
 
 export interface CandleConfirmation {
   confirmed: boolean;
   confidence: number;
-  confirmationType: "strong" | "moderate" | "weak" | "pending";
+  confirmationType: "strong" | "moderate" | "weak" | "pending" | "sequential";
   waitingForConfirmation: boolean;
   nextCandleDirection: "up" | "down" | "neutral" | "unknown";
   confirmationMessage: string;
   timeToWait: number; // em segundos
   signalStrength: number; // força do sinal original
+  sequentialValidation?: SequentialValidation;
+  adjustedExpirationTime?: number;
 }
 
 export interface PendingSignal {
@@ -22,6 +26,8 @@ export interface PendingSignal {
   candleIndex: number;
   confirmationDeadline: number;
   signalId: string;
+  requiresSequential: boolean;
+  originalExpirationTime: number;
 }
 
 // Simulação de dados de velas sincronizada
@@ -79,31 +85,38 @@ export const initializeCandleConfirmation = () => {
     checkAndProcessPendingSignals();
   }, 30000); // Nova vela a cada 30 segundos
   
-  console.log("🕯️ Sistema de confirmação por vela inicializado e sincronizado");
+  console.log("🕯️ Sistema de confirmação APRIMORADO inicializado com validação sequencial");
   console.log(`📊 ${simulatedCandleData.length} velas históricas carregadas`);
 };
 
 export const registerPendingSignal = (
   direction: "BUY" | "SELL",
   confidence: number,
-  timeframe: string
+  timeframe: string,
+  originalExpirationTime: number = 300
 ): PendingSignal => {
   const now = Date.now();
   const timeframeSeconds = getTimeframeSeconds(timeframe);
   const signalId = `${direction}_${now}_${Math.random().toString(36).substr(2, 9)}`;
+  
+  // Determinar se requer validação sequencial baseado na confiança
+  const requiresSequential = confidence < 75 || timeframe === "30s";
   
   const pendingSignal: PendingSignal = {
     direction,
     originalConfidence: confidence,
     timestamp: now,
     candleIndex: currentCandleIndex,
-    confirmationDeadline: now + (timeframeSeconds * 2000), // 2 velas para confirmar
-    signalId
+    confirmationDeadline: now + (timeframeSeconds * 2000),
+    signalId,
+    requiresSequential,
+    originalExpirationTime
   };
   
   pendingSignals.push(pendingSignal);
   
-  console.log(`🔄 Sinal ${direction} registrado para confirmação (ID: ${signalId})`);
+  const validationType = requiresSequential ? "SEQUENCIAL" : "SIMPLES";
+  console.log(`🔄 Sinal ${direction} registrado para confirmação ${validationType} (ID: ${signalId})`);
   console.log(`⏰ Deadline: ${new Date(pendingSignal.confirmationDeadline).toLocaleTimeString()}`);
   
   return pendingSignal;
@@ -112,10 +125,67 @@ export const registerPendingSignal = (
 export const checkCandleConfirmation = (
   originalDirection: "BUY" | "SELL",
   originalConfidence: number,
-  timeframe: string
+  timeframe: string,
+  originalExpirationTime: number = 300
 ): CandleConfirmation => {
-  console.log("🕯️ Verificando confirmação da próxima vela...");
+  console.log("🕯️ Verificando confirmação APRIMORADA com validação sequencial...");
   console.log(`📊 Vela atual: ${currentCandleIndex} | Sinais pendentes: ${pendingSignals.length}`);
+  
+  // Verificar se precisa de validação sequencial
+  const needsSequentialValidation = originalConfidence < 75 || timeframe === "30s";
+  
+  if (needsSequentialValidation) {
+    console.log("🔍 Aplicando validação sequencial para maior precisão...");
+    
+    try {
+      const sequentialValidation = validateSequentialCandles(
+        originalDirection,
+        originalConfidence,
+        timeframe,
+        originalExpirationTime
+      );
+      
+      if (sequentialValidation.isValid) {
+        // VALIDAÇÃO SEQUENCIAL COMPLETA - ENTRADA AUTORIZADA
+        console.log(`✅ Validação sequencial APROVADA: ${sequentialValidation.candlesInDirection} velas confirmaram ${originalDirection}`);
+        
+        return {
+          confirmed: true,
+          confidence: sequentialValidation.confidence,
+          confirmationType: "sequential",
+          waitingForConfirmation: false,
+          nextCandleDirection: sequentialValidation.nextCandleDirection,
+          confirmationMessage: sequentialValidation.validationMessage,
+          timeToWait: 0,
+          signalStrength: sequentialValidation.candlesInDirection * 25,
+          sequentialValidation,
+          adjustedExpirationTime: sequentialValidation.adjustedExpirationTime
+        };
+      } else {
+        // AGUARDANDO MAIS VELAS SEQUENCIAIS
+        console.log(`⏳ Validação sequencial em progresso: ${sequentialValidation.candlesInDirection}/${sequentialValidation.requiredCandles} velas`);
+        
+        return {
+          confirmed: false,
+          confidence: sequentialValidation.confidence,
+          confirmationType: "pending",
+          waitingForConfirmation: true,
+          nextCandleDirection: sequentialValidation.nextCandleDirection,
+          confirmationMessage: sequentialValidation.validationMessage,
+          timeToWait: sequentialValidation.timeToNextValidation,
+          signalStrength: sequentialValidation.candlesInDirection * 15,
+          sequentialValidation,
+          adjustedExpirationTime: sequentialValidation.adjustedExpirationTime
+        };
+      }
+    } catch (error) {
+      console.error("❌ Erro na validação sequencial:", error);
+      // Fallback para validação simples em caso de erro
+    }
+  }
+  
+  // VALIDAÇÃO SIMPLES (para sinais de alta confiança)
+  console.log("🔄 Aplicando validação simples (alta confiança)...");
   
   // Verificar se temos velas suficientes para análise
   if (simulatedCandleData.length < 2) {
@@ -161,14 +231,13 @@ export const checkCandleConfirmation = (
   }
   
   // Não há sinal pendente - analisar última vela disponível
-  return analyzeCurrentMarketCondition(originalDirection, originalConfidence, timeframe);
+  return analyzeCurrentMarketCondition(originalDirection, originalConfidence, timeframe, originalExpirationTime);
 };
 
 const simulateNewCandle = () => {
   const lastCandle = simulatedCandleData[simulatedCandleData.length - 1];
   if (!lastCandle) return;
   
-  // Simular próxima vela com base na tendência (baseado nos 61,5% de assertividade)
   const followTrend = Math.random() < 0.62;
   
   const previousDirection = lastCandle.close > lastCandle.open ? 1 : -1;
@@ -193,10 +262,8 @@ const simulateNewCandle = () => {
   
   simulatedCandleData.push(newCandle);
   
-  // Manter apenas últimas 25 velas
   if (simulatedCandleData.length > 25) {
     simulatedCandleData = simulatedCandleData.slice(-25);
-    // Ajustar índices dos sinais pendentes
     pendingSignals.forEach(signal => {
       signal.candleIndex = Math.max(0, signal.candleIndex - 1);
     });
@@ -211,13 +278,11 @@ const checkAndProcessPendingSignals = () => {
   const confirmedSignals: PendingSignal[] = [];
   
   pendingSignals = pendingSignals.filter(signal => {
-    // Remover sinais expirados
     if (now > signal.confirmationDeadline) {
       console.log(`⏰ Sinal ${signal.direction} (${signal.signalId}) expirou sem confirmação`);
       return false;
     }
     
-    // Verificar se há velas suficientes para confirmar
     const candlesAfterSignal = currentCandleIndex - signal.candleIndex;
     
     if (candlesAfterSignal >= 1) {
@@ -255,7 +320,6 @@ const analyzeConfirmationCandle = (
   const expectedDirection = originalDirection === "BUY" ? "up" : "down";
   const isConfirmed = candleDirection === expectedDirection;
   
-  // Calcular força da confirmação
   const candleSize = Math.abs(confirmationCandle.close - confirmationCandle.open);
   const bodyPercentage = candleSize / confirmationCandle.open;
   
@@ -265,16 +329,16 @@ const analyzeConfirmationCandle = (
   if (isConfirmed) {
     if (bodyPercentage > 0.008) {
       confirmationType = "strong";
-      confidenceMultiplier = 1.25; // Aumentar confiança em 25%
+      confidenceMultiplier = 1.25;
     } else if (bodyPercentage > 0.004) {
       confirmationType = "moderate";
-      confidenceMultiplier = 1.15; // Aumentar confiança em 15%
+      confidenceMultiplier = 1.15;
     } else {
       confirmationType = "weak";
-      confidenceMultiplier = 1.08; // Aumentar confiança em 8%
+      confidenceMultiplier = 1.08;
     }
   } else {
-    confidenceMultiplier = 0.65; // Reduzir significativamente se não confirmou
+    confidenceMultiplier = 0.65;
   }
   
   const finalConfidence = Math.min(95, originalConfidence * confidenceMultiplier);
@@ -288,7 +352,6 @@ const analyzeConfirmationCandle = (
   
   console.log(confirmationMessage);
   
-  // Remover sinal da lista de pendentes
   pendingSignals = pendingSignals.filter(s => s.signalId !== signal.signalId);
   
   return {
@@ -306,10 +369,10 @@ const analyzeConfirmationCandle = (
 const analyzeCurrentMarketCondition = (
   direction: "BUY" | "SELL",
   confidence: number,
-  timeframe: string
+  timeframe: string,
+  originalExpirationTime: number
 ): CandleConfirmation => {
-  // Registrar novo sinal para monitoramento
-  registerPendingSignal(direction, confidence, timeframe);
+  registerPendingSignal(direction, confidence, timeframe, originalExpirationTime);
   
   return createPendingConfirmation(direction, confidence, timeframe);
 };
@@ -327,7 +390,7 @@ const createPendingConfirmation = (
     confirmationType: "pending",
     waitingForConfirmation: true,
     nextCandleDirection: "unknown",
-    confirmationMessage: `⏳ Aguardando próxima vela para confirmar ${direction}... (Baseado em 61,5% assertividade)`,
+    confirmationMessage: `⏳ Aguardando confirmação para ${direction}... (Sistema aprimorado com validação sequencial)`,
     timeToWait,
     signalStrength: confidence
   };

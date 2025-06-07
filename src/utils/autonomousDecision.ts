@@ -1,11 +1,11 @@
 /**
- * Sistema de Decisão Autônoma da IA - VERSÃO SINCRONIZADA E COERENTE
- * Integra padrões clássicos + confluências múltiplas + conhecimento profissional + CONFIRMAÇÃO POR VELA
+ * Sistema de Decisão Autônoma da IA - VERSÃO APRIMORADA COM VALIDAÇÃO SEQUENCIAL
+ * Integra padrões clássicos + confluências múltiplas + conhecimento profissional + CONFIRMAÇÃO SEQUENCIAL DE VELAS
  */
 
 import { ExtendedPatternResult } from './predictionUtils';
 import { performProfessionalAnalysis, MarketContext } from './professionalAnalysisEngine';
-import { checkCandleConfirmation, registerPendingSignal, CandleConfirmation } from './candleConfirmation/candleConfirmationEngine';
+import { checkCandleConfirmation, CandleConfirmation } from './candleConfirmation/candleConfirmationEngine';
 
 export interface AutonomousDecision {
   action: "BUY" | "SELL" | "WAIT";
@@ -48,7 +48,7 @@ export const makeAutonomousDecision = (
   timeframe: string,
   marketType: string
 ): AutonomousDecision => {
-  console.log("🎓 IA iniciando decisão SINCRONIZADA com confirmação por vela...");
+  console.log("🎓 IA iniciando decisão APRIMORADA com validação sequencial de velas...");
   
   const decisionFlow: AutonomousDecision['decision_flow'] = [];
   
@@ -121,34 +121,52 @@ export const makeAutonomousDecision = (
     details: `Setup grau ${marketGrade} aprovado para análise ULTRA`
   });
   
-  // PASSO 5: Verificar confirmação por vela (CRÍTICO)
+  // PASSO 5: Verificar confirmação APRIMORADA por vela (com validação sequencial)
   let candleConfirmation: CandleConfirmation | undefined;
   
   if (professionalResult.signal !== "WAIT") {
     decisionFlow.push({
       step: "candle_confirmation_check",
       status: "pending",
-      details: `Verificando confirmação da próxima vela para ${professionalResult.signal}`
+      details: `Verificando confirmação APRIMORADA (sequencial) para ${professionalResult.signal}`
     });
     
-    console.log("🕯️ Verificando confirmação da próxima vela antes de sugerir entrada...");
+    console.log("🕯️ Verificando confirmação APRIMORADA com validação sequencial...");
     
     try {
+      // Calcular tempo de expiração baseado no timeframe e confluências
+      const baseExpirationTime = calculateBaseExpirationTime(timeframe, professionalResult.confluences);
+      
       candleConfirmation = checkCandleConfirmation(
         professionalResult.signal,
         professionalResult.confidence,
-        timeframe
+        timeframe,
+        baseExpirationTime
       );
       
-      console.log(`🕯️ Confirmação por vela: ${candleConfirmation.confirmed ? 'CONFIRMADA' : candleConfirmation.waitingForConfirmation ? 'PENDENTE' : 'NEGATIVA'}`);
+      console.log(`🕯️ Confirmação APRIMORADA: ${candleConfirmation.confirmed ? 'CONFIRMADA' : candleConfirmation.waitingForConfirmation ? 'PENDENTE' : 'NEGATIVA'}`);
       
-      // AGUARDANDO CONFIRMAÇÃO
+      // Log adicional para validação sequencial
+      if (candleConfirmation.sequentialValidation) {
+        const seq = candleConfirmation.sequentialValidation;
+        console.log(`🔄 Validação sequencial: ${seq.candlesInDirection}/${seq.requiredCandles} velas | Válida: ${seq.isValid}`);
+      }
+      
+      // AGUARDANDO CONFIRMAÇÃO (simples ou sequencial)
       if (candleConfirmation.waitingForConfirmation) {
+        const validationType = candleConfirmation.sequentialValidation ? "SEQUENCIAL" : "SIMPLES";
+        
         decisionFlow.push({
           step: "candle_confirmation_check",
           status: "pending",
-          details: `Aguardando confirmação da próxima vela (${candleConfirmation.timeToWait}s)`
+          details: `Aguardando confirmação ${validationType} (${candleConfirmation.timeToWait}s)`
         });
+        
+        let waitDescription = `⏳ ${candleConfirmation.confirmationMessage}`;
+        if (candleConfirmation.sequentialValidation) {
+          const seq = candleConfirmation.sequentialValidation;
+          waitDescription += ` | Progresso: ${seq.candlesInDirection}/${seq.requiredCandles}`;
+        }
         
         return {
           action: "WAIT",
@@ -159,11 +177,11 @@ export const makeAutonomousDecision = (
             optimal_window: candleConfirmation.timeToWait / 2
           },
           reasoning: [
-            `🕯️ ${candleConfirmation.confirmationMessage}`,
-            `⏳ Baseado em 61,5% de assertividade (16/26 operações positivas)`,
-            `🎯 Sistema aguarda confirmação para ${professionalResult.signal}`,
+            waitDescription,
+            `🎯 Sistema APRIMORADO aguarda confirmação para ${professionalResult.signal}`,
             `🎓 Setup grau ${marketGrade} pré-aprovado`,
-            ...professionalResult.reasoning.slice(0, 2) // Apenas primeiros 2 para não sobrecarregar
+            `🔄 Validação ${validationType.toLowerCase()} em andamento`,
+            ...professionalResult.reasoning.slice(0, 1)
           ],
           risk_level: "MEDIUM",
           expected_success_rate: Math.max(55, candleConfirmation.confidence),
@@ -177,30 +195,35 @@ export const makeAutonomousDecision = (
         };
       }
       
-      // VELA NÃO CONFIRMOU
+      // CONFIRMAÇÃO NEGATIVA
       if (!candleConfirmation.confirmed) {
         decisionFlow.push({
           step: "candle_confirmation_check",
           status: "failed",
-          details: `Vela seguinte NÃO confirmou ${professionalResult.signal} - Direção: ${candleConfirmation.nextCandleDirection}`
+          details: `Confirmação ${candleConfirmation.confirmationType} NEGATIVA para ${professionalResult.signal}`
         });
         
-        console.log("❌ Vela seguinte NÃO confirmou o sinal - Aguardando nova oportunidade");
+        console.log("❌ Confirmação NEGATIVA - Sistema aguarda nova oportunidade");
+        
+        let negativeReason = `❌ ${candleConfirmation.confirmationMessage}`;
+        if (candleConfirmation.sequentialValidation && !candleConfirmation.sequentialValidation.isValid) {
+          negativeReason += ` | Validação sequencial falhou`;
+        }
         
         return {
           action: "WAIT",
           confidence: Math.max(35, candleConfirmation.confidence),
           timing: {
             enter_now: false,
-            wait_seconds: 60,
-            optimal_window: 30
+            wait_seconds: candleConfirmation.timeToWait || 90,
+            optimal_window: 45
           },
           reasoning: [
-            `❌ ${candleConfirmation.confirmationMessage}`,
-            `⚠️ Movimento contrário detectado: ${candleConfirmation.nextCandleDirection}`,
-            `🕯️ Sistema aguarda nova confirmação baseado em dados reais`,
+            negativeReason,
+            `⚠️ Sistema APRIMORADO detectou reversão ou inconsistência`,
             `📊 Setup ${marketGrade} permanece válido para próxima oportunidade`,
-            "🎯 Proteção baseada em 61,5% de assertividade histórica"
+            "🎯 Proteção baseada em validação sequencial de velas",
+            "🔄 Aguardando nova confirmação com critérios aprimorados"
           ],
           risk_level: "HIGH",
           expected_success_rate: Math.max(40, candleConfirmation.confidence - 10),
@@ -214,32 +237,33 @@ export const makeAutonomousDecision = (
         };
       }
       
-      // VELA CONFIRMOU - SUCESSO!
+      // CONFIRMAÇÃO POSITIVA - SUCESSO!
+      const validationType = candleConfirmation.confirmationType === "sequential" ? "SEQUENCIAL" : "SIMPLES";
+      
       decisionFlow.push({
         step: "candle_confirmation_check",
         status: "completed",
-        details: `Vela CONFIRMOU ${professionalResult.signal} (${candleConfirmation.confirmationType}) - Força: ${candleConfirmation.signalStrength.toFixed(1)}%`
+        details: `Confirmação ${validationType} APROVADA para ${professionalResult.signal} - Força: ${candleConfirmation.signalStrength.toFixed(1)}%`
       });
       
-      console.log(`✅ Vela seguinte CONFIRMOU ${professionalResult.signal} - Aumentando confiança!`);
+      console.log(`✅ Confirmação ${validationType} APROVADA para ${professionalResult.signal}!`);
       
     } catch (error) {
       decisionFlow.push({
         step: "candle_confirmation_check",
         status: "failed",
-        details: `Erro na verificação de vela: ${error}`
+        details: `Erro na verificação APRIMORADA: ${error}`
       });
       
-      console.error("Erro na verificação de confirmação por vela:", error);
-      // Continuar sem confirmação por vela em caso de erro
+      console.error("Erro na verificação de confirmação APRIMORADA:", error);
     }
   }
   
-  // PASSO 6: Calcular timing e taxa de sucesso
+  // PASSO 6: Calcular timing APRIMORADO e taxa de sucesso
   decisionFlow.push({
     step: "timing_calculation",
     status: "completed",
-    details: "Calculando timing de entrada e taxa de sucesso"
+    details: "Calculando timing APRIMORADO e taxa de sucesso"
   });
   
   const entryTiming = calculateProfessionalTiming(
@@ -257,23 +281,40 @@ export const makeAutonomousDecision = (
     marketContext
   );
   
-  // Aplicar boost de confirmação por vela
+  // Aplicar boost APRIMORADO de confirmação por vela
   if (candleConfirmation?.confirmed) {
-    const confirmationBoost = candleConfirmation.confirmationType === "strong" ? 10 :
-                            candleConfirmation.confirmationType === "moderate" ? 6 : 3;
+    let confirmationBoost = 0;
+    
+    if (candleConfirmation.confirmationType === "sequential") {
+      // Boost maior para validação sequencial
+      const sequentialBoost = candleConfirmation.sequentialValidation?.candlesInDirection || 2;
+      confirmationBoost = Math.min(15, sequentialBoost * 3);
+      console.log(`🚀 Taxa de sucesso aumentada em ${confirmationBoost}% pela validação SEQUENCIAL de ${sequentialBoost} velas`);
+    } else {
+      // Boost padrão para confirmação simples
+      confirmationBoost = candleConfirmation.confirmationType === "strong" ? 10 :
+                         candleConfirmation.confirmationType === "moderate" ? 6 : 3;
+      console.log(`🚀 Taxa de sucesso aumentada em ${confirmationBoost}% pela confirmação ${candleConfirmation.confirmationType}`);
+    }
+    
     successRate = Math.min(95, successRate + confirmationBoost);
-    console.log(`🚀 Taxa de sucesso aumentada em ${confirmationBoost}% pela confirmação ${candleConfirmation.confirmationType} da vela`);
   }
   
-  // PASSO 7: Compilar reasoning final
+  // PASSO 7: Compilar reasoning APRIMORADO
   const professionalReasoning = [
     `🏆 Setup ULTRA grau ${marketGrade} APROVADO (${professionalResult.confluences} confluências)`,
-    `📊 Análise técnica: ${professionalResult.signal} com ${professionalResult.confidence}% confiança`
+    `📊 Análise técnica APRIMORADA: ${professionalResult.signal} com ${professionalResult.confidence}% confiança`
   ];
   
-  // Adicionar informações de confirmação por vela
+  // Adicionar informações APRIMORADAS de confirmação por vela
   if (candleConfirmation) {
-    professionalReasoning.push(`🕯️ ${candleConfirmation.confirmationMessage}`);
+    if (candleConfirmation.confirmationType === "sequential") {
+      const seq = candleConfirmation.sequentialValidation!;
+      professionalReasoning.push(`🕯️ Validação SEQUENCIAL: ${seq.candlesInDirection} velas confirmaram direção`);
+      professionalReasoning.push(`⏰ Tempo ajustado: ${seq.adjustedExpirationTime}s (otimizado pela sequência)`);
+    } else {
+      professionalReasoning.push(`🕯️ ${candleConfirmation.confirmationMessage}`);
+    }
     
     if (candleConfirmation.confirmed) {
       professionalReasoning.push(`✅ Confirmação ${candleConfirmation.confirmationType.toUpperCase()} validada`);
@@ -284,16 +325,16 @@ export const makeAutonomousDecision = (
   professionalReasoning.push(
     `🎯 Taxa de sucesso esperada: ${successRate}%`,
     `⚠️ Nível de risco: ${professionalResult.riskLevel}`,
-    `📚 Baseado em Edwards & Magee + Elder + dados reais (61,5% assertividade)`
+    `📚 Baseado em Edwards & Magee + Elder + validação sequencial aprimorada`
   );
   
   decisionFlow.push({
     step: "final_decision",
     status: "completed",
-    details: `Decisão: ${professionalResult.signal} | Confiança: ${candleConfirmation?.confidence || professionalResult.confidence}% | Sucesso esperado: ${successRate}%`
+    details: `Decisão: ${professionalResult.signal} | Confiança: ${candleConfirmation?.confidence || professionalResult.confidence}% | Sucesso: ${successRate}% | Validação: ${candleConfirmation?.confirmationType || 'N/A'}`
   });
   
-  console.log(`🏆 Decisão ULTRA final: ${professionalResult.signal} | Grau: ${marketGrade} | Sucesso: ${successRate}% | Vela: ${candleConfirmation?.confirmed ? 'CONFIRMADA' : 'N/A'}`);
+  console.log(`🏆 Decisão ULTRA APRIMORADA: ${professionalResult.signal} | Grau: ${marketGrade} | Sucesso: ${successRate}% | Validação: ${candleConfirmation?.confirmationType || 'N/A'}`);
   
   return {
     action: professionalResult.signal,
@@ -310,6 +351,27 @@ export const makeAutonomousDecision = (
     candle_confirmation: candleConfirmation,
     decision_flow: decisionFlow
   };
+};
+
+// Função para calcular tempo de expiração base
+const calculateBaseExpirationTime = (timeframe: string, confluences: number): number => {
+  const baseTimeframes = {
+    "30s": 180,  // 3 minutos base
+    "1m": 300,   // 5 minutos base
+    "5m": 900,   // 15 minutos base
+    "15m": 1800  // 30 minutos base
+  };
+  
+  let baseTime = baseTimeframes[timeframe as keyof typeof baseTimeframes] || 300;
+  
+  // Ajustar baseado nas confluências
+  if (confluences >= 5) {
+    baseTime *= 1.3; // Mais confluências = mais tempo
+  } else if (confluences <= 2) {
+    baseTime *= 0.8; // Poucas confluências = menos tempo
+  }
+  
+  return Math.round(baseTime);
 };
 
 // Função auxiliar para criar decisão de espera
@@ -336,8 +398,8 @@ const createWaitDecision = (
     reasoning: [
       `❌ ${reason}`,
       `📊 Setup grau ${marketGrade} - Requer mínimo grau B`,
-      "🎓 Aguardando setup ULTRA profissional",
-      "🏛️ Padrões clássicos + Multi-indicadores necessários",
+      "🎓 Aguardando setup ULTRA profissional com validação sequencial",
+      "🏛️ Padrões clássicos + Multi-indicadores + Confirmação sequencial necessários",
       ...professionalResult.reasoning.slice(0, 2)
     ],
     risk_level: "HIGH",
@@ -406,7 +468,7 @@ const calculateProfessionalTiming = (
   const optimalEntry = timingAnalysis?.optimal_entry || false;
   const timeRemaining = professionalResult.timeValidity;
   
-  // Entrada imediata apenas se vela confirmou E setup é de alta qualidade
+  // Entrada imediata apenas se confirmação for positiva E setup de alta qualidade
   const enterNow = optimalEntry && 
                    candleConfirmation?.confirmed === true &&
                    professionalResult.confidence >= 80 && 

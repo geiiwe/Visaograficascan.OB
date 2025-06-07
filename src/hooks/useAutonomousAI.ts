@@ -1,7 +1,6 @@
-
 /**
- * Hook para IA Autônoma - VERSÃO SINCRONIZADA E COERENTE
- * Sistema integrado com confirmação por vela e fluxo de decisão estruturado
+ * Hook para IA Autônoma - VERSÃO APRIMORADA COM VALIDAÇÃO SEQUENCIAL
+ * Sistema integrado com confirmação sequencial de velas e ajuste dinâmico de expiração
  */
 
 import { useEffect, useState, useCallback } from 'react';
@@ -65,7 +64,7 @@ export const useAutonomousAI = (
       technical_indicators: detailedResults
     };
     
-    console.log("🤖 IA processando decisão SINCRONIZADA com confirmação por vela...");
+    console.log("🤖 IA processando decisão APRIMORADA com validação sequencial...");
     console.log("📊 Fatores de decisão:", {
       microPatterns: factors.micro_patterns.length,
       volatility: factors.market_conditions.volatility,
@@ -80,11 +79,12 @@ export const useAutonomousAI = (
       const decision = makeAutonomousDecision(factors, selectedTimeframe, marketType);
       setAiDecision(decision);
       
-      console.log("✅ Decisão IA processada:", {
+      console.log("✅ Decisão IA APRIMORADA processada:", {
         action: decision.action,
         confidence: decision.confidence,
         grade: decision.professional_analysis.market_grade,
-        candleConfirmation: decision.candle_confirmation?.confirmed
+        candleConfirmation: decision.candle_confirmation?.confirmed,
+        sequentialValidation: decision.candle_confirmation?.sequentialValidation?.isValid
       });
       
       // ✨ Avaliar risco do sinal se aplicável
@@ -120,8 +120,8 @@ export const useAutonomousAI = (
         }
       }
       
-      // Notificar usuário com informações estruturadas
-      notifyUserDecision(decision, factors);
+      // Notificar usuário com informações APRIMORADAS
+      notifyUserDecisionAdvanced(decision, factors);
       
     } catch (error) {
       console.error("❌ Erro na decisão autônoma da IA:", error);
@@ -133,8 +133,8 @@ export const useAutonomousAI = (
     }
   }, [detailedResults, enhancedAnalysisResult, selectedTimeframe, marketType, evaluateSignalRisk, performBacktest, fastAnalysisResults, lastAnalysisTimestamp]);
   
-  // Função para notificar usuário de forma estruturada
-  const notifyUserDecision = (decision: AutonomousDecision, factors: DecisionFactors) => {
+  // Função APRIMORADA para notificar usuário
+  const notifyUserDecisionAdvanced = (decision: AutonomousDecision, factors: DecisionFactors) => {
     const actionText = decision.action === "BUY" ? "COMPRAR" : 
                       decision.action === "SELL" ? "VENDER" : "AGUARDAR";
     
@@ -145,42 +145,70 @@ export const useAutonomousAI = (
                       decision.professional_analysis.market_grade === "B" ? "🥈" : 
                       decision.professional_analysis.market_grade === "C" ? "🥉" : "📊";
     
-    // Informações de confirmação por vela
-    const candleInfo = decision.candle_confirmation ? 
-      (decision.candle_confirmation.waitingForConfirmation ? " 🕯️ Aguardando vela" :
-       decision.candle_confirmation.confirmed ? ` 🕯️ Vela ${decision.candle_confirmation.confirmationType}` :
-       " 🕯️ Vela não confirmou") : "";
+    // Informações APRIMORADAS de confirmação por vela
+    let candleInfo = "";
+    let sequentialInfo = "";
     
-    // Informações de risco e position sizing - CORRIGIDO: totalRisk é uma string, não número
+    if (decision.candle_confirmation) {
+      const confirmation = decision.candle_confirmation;
+      
+      if (confirmation.waitingForConfirmation) {
+        if (confirmation.sequentialValidation) {
+          const seq = confirmation.sequentialValidation;
+          candleInfo = ` 🕯️ Aguardando velas sequenciais (${seq.candlesInDirection}/${seq.requiredCandles})`;
+          sequentialInfo = ` | Validação: ${seq.candlesInDirection}/${seq.requiredCandles}`;
+        } else {
+          candleInfo = " 🕯️ Aguardando próxima vela";
+        }
+      } else if (confirmation.confirmed) {
+        if (confirmation.confirmationType === "sequential") {
+          const seq = confirmation.sequentialValidation!;
+          candleInfo = ` 🕯️ ${seq.candlesInDirection} velas CONFIRMARAM`;
+          sequentialInfo = ` | Tempo ajustado: ${seq.adjustedExpirationTime}s`;
+        } else {
+          candleInfo = ` 🕯️ Vela ${confirmation.confirmationType}`;
+        }
+      } else {
+        candleInfo = " 🕯️ Vela não confirmou";
+      }
+    }
+    
+    // Informações de risco e position sizing
     const riskInfo = currentRisk?.totalRisk ? ` | Risco: ${currentRisk.totalRisk}` : "";
     const positionInfo = positionSizing ? ` | Size: ${positionSizing.recommendedSize}` : "";
     
     if (decision.action !== "WAIT") {
       if (decision.timing.enter_now && decision.candle_confirmation?.confirmed) {
-        // ENTRADA IMEDIATA CONFIRMADA
+        // ENTRADA IMEDIATA CONFIRMADA (com validação sequencial se aplicável)
+        const validationType = decision.candle_confirmation.confirmationType === "sequential" ? 
+          "SEQUENCIAL" : "SIMPLES";
+          
         toast.success(
-          `${emoji} IA CONFIRMA: ${actionText} AGORA! ${gradeEmoji} Grau ${decision.professional_analysis.market_grade}${candleInfo}`,
+          `${emoji} IA CONFIRMA ${validationType}: ${actionText} AGORA! ${gradeEmoji} Grau ${decision.professional_analysis.market_grade}${candleInfo}`,
           {
-            duration: 10000,
-            description: `${decision.confidence.toFixed(1)}% confiança | Sucesso: ${decision.expected_success_rate}% | Vela confirmada${riskInfo}${positionInfo}`
+            duration: 12000,
+            description: `${decision.confidence.toFixed(1)}% confiança | Sucesso: ${decision.expected_success_rate}%${sequentialInfo}${riskInfo}${positionInfo}`
           }
         );
       } else if (decision.candle_confirmation?.waitingForConfirmation) {
-        // AGUARDANDO CONFIRMAÇÃO
+        // AGUARDANDO CONFIRMAÇÃO (simples ou sequencial)
+        const validationType = decision.candle_confirmation.sequentialValidation ? 
+          "SEQUENCIAL" : "SIMPLES";
+          
         toast.info(
-          `${emoji} IA PREPARA: ${actionText} ${gradeEmoji} Grau ${decision.professional_analysis.market_grade}${candleInfo}`,
+          `${emoji} IA PREPARA ${validationType}: ${actionText} ${gradeEmoji} Grau ${decision.professional_analysis.market_grade}${candleInfo}`,
           {
-            duration: 12000,
-            description: `${decision.confidence.toFixed(1)}% confiança | Aguardando confirmação da próxima vela | Baseado em 61,5% assertividade`
+            duration: 15000,
+            description: `${decision.confidence.toFixed(1)}% confiança | Aguardando confirmação | Sistema aprimorado ativo`
           }
         );
       } else if (decision.candle_confirmation && !decision.candle_confirmation.confirmed) {
-        // VELA NÃO CONFIRMOU
+        // CONFIRMAÇÃO NEGATIVA
         toast.warning(
-          `⚠️ IA ALERTA: Vela não confirmou ${actionText} ${gradeEmoji}${candleInfo}`,
+          `⚠️ IA ALERTA: Confirmação negativa para ${actionText} ${gradeEmoji}${candleInfo}`,
           {
-            duration: 8000,
-            description: `${decision.confidence.toFixed(1)}% confiança | Aguardando nova oportunidade | Proteção ativa`
+            duration: 10000,
+            description: `${decision.confidence.toFixed(1)}% confiança | Aguardando nova oportunidade | Proteção sequencial ativa`
           }
         );
       } else {
@@ -188,31 +216,40 @@ export const useAutonomousAI = (
         toast.info(
           `${emoji} IA DECIDE: ${actionText} em ${decision.timing.wait_seconds}s ${gradeEmoji} Grau ${decision.professional_analysis.market_grade}${candleInfo}`,
           {
-            duration: 8000,
-            description: `${decision.confidence.toFixed(1)}% confiança | Timing ótimo em breve${riskInfo}`
+            duration: 10000,
+            description: `${decision.confidence.toFixed(1)}% confiança | Timing otimizado${riskInfo}`
           }
         );
       }
     } else {
-      // AGUARDAR
-      const waitReason = decision.candle_confirmation?.waitingForConfirmation ? 
-        "Aguardando confirmação da próxima vela" :
-        decision.candle_confirmation && !decision.candle_confirmation.confirmed ?
-        "Vela seguinte não confirmou sinal" :
-        "Condições não favoráveis";
+      // AGUARDAR (com contexto aprimorado)
+      let waitReason = "Condições não favoráveis";
+      
+      if (decision.candle_confirmation?.sequentialValidation) {
+        waitReason = `Aguardando ${decision.candle_confirmation.sequentialValidation.requiredCandles} velas sequenciais`;
+      } else if (decision.candle_confirmation?.waitingForConfirmation) {
+        waitReason = "Aguardando confirmação da próxima vela";
+      } else if (decision.candle_confirmation && !decision.candle_confirmation.confirmed) {
+        waitReason = "Confirmação por vela negativa";
+      }
         
       toast.warning(
         `⏳ IA DECIDE: AGUARDAR ${gradeEmoji} Grau ${decision.professional_analysis.market_grade}${candleInfo}`,
         {
-          duration: 8000,
-          description: `${decision.confidence.toFixed(1)}% confiança | ${waitReason}`
+          duration: 10000,
+          description: `${decision.confidence.toFixed(1)}% confiança | ${waitReason} | Sistema aprimorado ativo`
         }
       );
     }
     
-    // Log detalhado do fluxo de decisão
+    // Log APRIMORADO do fluxo de decisão
     if (decision.decision_flow) {
-      console.log("📋 Fluxo de decisão:", decision.decision_flow);
+      console.log("📋 Fluxo de decisão aprimorado:", decision.decision_flow);
+    }
+    
+    // Log adicional para validação sequencial
+    if (decision.candle_confirmation?.sequentialValidation) {
+      console.log("🔄 Validação sequencial:", decision.candle_confirmation.sequentialValidation);
     }
   };
   
@@ -238,7 +275,7 @@ export const useAutonomousAI = (
   // Cleanup ao desmontar componente
   useEffect(() => {
     return () => {
-      console.log("🧹 Limpando hook useAutonomousAI");
+      console.log("🧹 Limpando hook useAutonomousAI aprimorado");
     };
   }, []);
   
