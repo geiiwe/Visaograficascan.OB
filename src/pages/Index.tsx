@@ -98,11 +98,6 @@ const Index = () => {
           <p className="text-gray-400">
             Análises técnicas avançadas com inteligência artificial
           </p>
-          {!isAuthenticated && (
-            <p className="text-yellow-400 mt-2 text-sm">
-              ⚠️ Faça login para acessar todas as funcionalidades
-            </p>
-          )}
         </div>
 
         {/* Existing analyzer content */}
