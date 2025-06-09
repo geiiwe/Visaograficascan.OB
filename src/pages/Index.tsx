@@ -1,8 +1,8 @@
-
 import React from "react";
 import { AnalyzerProvider } from "@/context/AnalyzerContext";
 import GraphAnalyzer from "@/components/GraphAnalyzer";
 import DisclaimerAlert from "@/components/DisclaimerAlert";
+import AuthButton from "@/components/AuthButton";
 import { BarChart3, Camera, ChartLine, TrendingUp, LineChart, Activity, BarChart4, Fingerprint, CandlestickChart, TrendingDown, BarChart, ShieldCheck, Star, Award, Clock, BookOpen, AlertTriangle, HelpCircle } from "lucide-react";
 
 const Index = () => {
@@ -15,10 +15,13 @@ const Index = () => {
               <ChartLine className="h-6 w-6 text-trader-blue" />
               <h1 className="text-xl font-bold">Analisador Gráfico Inteligente</h1>
             </div>
-            <div className="flex items-center space-x-1 text-trader-gray text-sm">
-              <Camera className="h-4 w-4" />
-              <span>v1.5</span>
-              <span className="ml-2 bg-trader-blue/20 text-trader-blue text-xs px-2 py-0.5 rounded-full">PRO</span>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-1 text-trader-gray text-sm">
+                <Camera className="h-4 w-4" />
+                <span>v1.5</span>
+                <span className="ml-2 bg-trader-blue/20 text-trader-blue text-xs px-2 py-0.5 rounded-full">PRO</span>
+              </div>
+              <AuthButton />
             </div>
           </div>
         </header>
