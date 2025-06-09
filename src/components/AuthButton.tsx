@@ -17,6 +17,14 @@ const AuthButton = () => {
           <span>{user.email}</span>
         </div>
         <Button
+          onClick={() => navigate('/dashboard')}
+          variant="ghost"
+          size="sm"
+          className="text-trader-gray hover:text-white"
+        >
+          Dashboard
+        </Button>
+        <Button
           onClick={signOut}
           variant="ghost"
           size="sm"
