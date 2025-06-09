@@ -12,17 +12,17 @@ import {
   analyzeVolatility
 } from '@/utils/advancedAnalysis';
 
-export function analyzeImage(imageData: any) {
+export function analyzeImage(imageData: any, timeframe: string = '1m') {
   // Chame os módulos de patternDetection, enhancedImageProcessing, etc.
   // E agora também as análises avançadas
-  const volume = analyzeVolume(imageData);
-  const divergences = detectDivergences(imageData);
-  const harmonics = detectHarmonicPatterns(imageData);
-  const movingAverages = analyzeMovingAverages(imageData);
-  const dynamicSR = detectDynamicSupportResistance(imageData);
-  const continuation = detectContinuationPatterns(imageData);
-  const gaps = detectGaps(imageData);
-  const volatility = analyzeVolatility(imageData);
+  const volume = analyzeVolume(imageData, timeframe);
+  const divergences = detectDivergences(imageData, timeframe);
+  const harmonics = detectHarmonicPatterns(imageData, timeframe);
+  const movingAverages = analyzeMovingAverages(imageData, timeframe);
+  const dynamicSR = detectDynamicSupportResistance(imageData, timeframe);
+  const continuation = detectContinuationPatterns(imageData, timeframe);
+  const gaps = detectGaps(imageData, timeframe);
+  const volatility = analyzeVolatility(imageData, timeframe);
 
   return {
     volume,

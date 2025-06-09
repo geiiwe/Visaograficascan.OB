@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, ReactNode } from "react";
 
 export type AnalysisType = "trendlines" | "fibonacci" | "candlePatterns" | "elliottWaves" | "dowTheory" | "all";
@@ -90,7 +89,7 @@ export const AnalyzerProvider = ({ children }: { children: ReactNode }) => {
   const [chartRegion, setChartRegion] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   const [indicatorPosition, setIndicatorPosition] = useState<{ x: number; y: number }>({ x: 20, y: 20 });
   const [prediction, setPrediction] = useState<PredictionData | null>(null);
-  const [selectedTimeframe, setSelectedTimeframe] = useState<TimeframeType>("30s");
+  const [selectedTimeframe, setSelectedTimeframe] = useState<TimeframeType>("1m");
   const [marketType, setMarketType] = useState<MarketType>("regular"); // Estado inicial como mercado regular
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [enableCircularAnalysis, setEnableCircularAnalysis] = useState(true);
