@@ -159,53 +159,69 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({
   const foundCount = foundResults.length;
   
   // Calculate overall market direction based on results
-  const { direction, strength } = useMemo(() => {
+  const { direction, strength, reason } = useMemo(() => {
     if (foundCount === 0 && m1Analyses.length === 0) {
-      return { direction: "neutral" as MarketDirection, strength: "weak" as SignalStrength };
+      return { direction: "neutral" as MarketDirection, strength: "weak" as SignalStrength, reason: "Nenhum padrão detectado" };
     }
-    
     let buyScore = 0;
     let sellScore = 0;
-    
-    // Analyze each result to determine direction
-    Object.values(results).forEach(result => {
+    let buyConfluence = 0;
+    let sellConfluence = 0;
+    let motivos: string[] = [];
+    let volatilidade = results.all?.volatilityLevel || 0;
+    let marketNoise = results.all?.marketNoiseLevel || 0;
+
+    // Filtros de segurança
+    if (volatilidade > 70 || marketNoise > 60) {
+      return {
+        direction: "wait" as MarketDirection,
+        strength: "weak" as SignalStrength,
+        reason: "Mercado instável ou volátil demais"
+      };
+    }
+
+    // Análise de confluência dos principais sinais
+    Object.entries(results).forEach(([type, result]) => {
       if (!result.found) return;
-      
-      // Extract decision from recommendation
       const decision = extractDecision(result.recommendation || "");
-      
-      // Add to score based on confidence and decision
       if (decision?.includes("COMPRA")) {
         buyScore += result.confidence / 100;
+        buyConfluence++;
+        motivos.push(`${type} indica compra (confiança ${result.confidence}%)`);
       } else if (decision?.includes("VENDA")) {
         sellScore += result.confidence / 100;
+        sellConfluence++;
+        motivos.push(`${type} indica venda (confiança ${result.confidence}%)`);
       }
     });
-    
-    // Adiciona pontuação das análises rápidas de M1
     m1Analyses.forEach(analysis => {
       if (!analysis.found) return;
-      const factor = analysis.strength / 200; // Convertendo para escala similar
+      const factor = analysis.strength / 200;
       if (analysis.direction === "up") {
         buyScore += factor;
+        buyConfluence++;
+        motivos.push(`${analysis.name} (M1) indica compra (força ${analysis.strength}%)`);
       } else if (analysis.direction === "down") {
         sellScore += factor;
+        sellConfluence++;
+        motivos.push(`${analysis.name} (M1) indica venda (força ${analysis.strength}%)`);
       }
     });
-    
-    // Determine direction based on scores
+
+    // Regras de confluência: só entra se pelo menos 2 sinais concordarem
     let direction: MarketDirection = "neutral";
     let strength: SignalStrength = "weak";
-    
-    if (buyScore > sellScore && buyScore > 0.5) {
+    let reason = "Confluência insuficiente ou sinais conflitantes";
+    if (buyScore > sellScore && buyScore > 0.5 && buyConfluence >= 2) {
       direction = "buy";
       strength = buyScore > 1.5 ? "strong" : buyScore > 0.8 ? "moderate" : "weak";
-    } else if (sellScore > buyScore && sellScore > 0.5) {
+      reason = motivos.filter(m => m.includes("compra")).join("; ");
+    } else if (sellScore > buyScore && sellScore > 0.5 && sellConfluence >= 2) {
       direction = "sell";
       strength = sellScore > 1.5 ? "strong" : sellScore > 0.8 ? "moderate" : "weak";
+      reason = motivos.filter(m => m.includes("venda")).join("; ");
     }
-    
-    return { direction, strength };
+    return { direction, strength, reason };
   }, [results, foundCount, m1Analyses]);
   
   // Check if AI confirmation is available
