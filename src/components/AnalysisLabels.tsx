@@ -266,6 +266,16 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({
     (results.all.buyScore && results.all.buyScore > 0.5) || 
     (results.all.sellScore && results.all.sellScore > 0.5);
   
+  // Score mínimo para considerar análise válida
+  const SCORE_MINIMO = 0.7;
+  const scoreAtual = Math.max(
+    results.all?.buyScore || 0,
+    results.all?.sellScore || 0
+  );
+
+  // Função para checar se a imagem/análise é ruim (simulação)
+  const isImagemRuim = foundCount === 0 || scoreAtual < SCORE_MINIMO;
+  
   // Render message when no patterns were found
   if (noResultsFound) {
     return (
@@ -466,6 +476,18 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({
             </HoverCard>
           );
         })}
+        
+        {isImagemRuim && (
+          <div className="text-xs text-yellow-500 bg-yellow-100 rounded p-2 mb-2">
+            Imagem ou análise inconclusiva. Tente tirar uma nova foto com melhor enquadramento, brilho e foco.
+          </div>
+        )}
+        
+        {!isImagemRuim && (
+          <div className="text-xs text-blue-500 bg-blue-100 rounded p-2 mb-2">
+            <strong>Motivo da decisão:</strong> {reason}
+          </div>
+        )}
       </div>
     );
   }
