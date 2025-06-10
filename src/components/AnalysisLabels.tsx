@@ -158,6 +158,9 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({
   const activatedCount = activeItems.length;
   const foundCount = foundResults.length;
   
+  // Histórico simples em memória (pode ser global ou movido para contexto se necessário)
+  let lastDecision: { timestamp: number, direction: string, score: number, pattern: string } | null = null;
+
   // Calculate overall market direction based on results
   const { direction, strength, reason } = useMemo(() => {
     if (foundCount === 0 && m1Analyses.length === 0) {
@@ -170,6 +173,7 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({
     let motivos: string[] = [];
     let volatilidade = results.all?.volatilityLevel || 0;
     let marketNoise = results.all?.marketNoiseLevel || 0;
+    let mainPattern = "";
 
     // Filtros de segurança
     if (volatilidade > 70 || marketNoise > 60) {
@@ -188,10 +192,12 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({
         buyScore += result.confidence / 100;
         buyConfluence++;
         motivos.push(`${type} indica compra (confiança ${result.confidence}%)`);
+        if (!mainPattern) mainPattern = type;
       } else if (decision?.includes("VENDA")) {
         sellScore += result.confidence / 100;
         sellConfluence++;
         motivos.push(`${type} indica venda (confiança ${result.confidence}%)`);
+        if (!mainPattern) mainPattern = type;
       }
     });
     m1Analyses.forEach(analysis => {
@@ -201,10 +207,12 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({
         buyScore += factor;
         buyConfluence++;
         motivos.push(`${analysis.name} (M1) indica compra (força ${analysis.strength}%)`);
+        if (!mainPattern) mainPattern = analysis.name;
       } else if (analysis.direction === "down") {
         sellScore += factor;
         sellConfluence++;
         motivos.push(`${analysis.name} (M1) indica venda (força ${analysis.strength}%)`);
+        if (!mainPattern) mainPattern = analysis.name;
       }
     });
 
@@ -212,6 +220,9 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({
     let direction: MarketDirection = "neutral";
     let strength: SignalStrength = "weak";
     let reason = "Confluência insuficiente ou sinais conflitantes";
+    let score = Math.max(buyScore, sellScore);
+    let chosenDirection = buyScore > sellScore ? "buy" : sellScore > buyScore ? "sell" : "wait";
+
     if (buyScore > sellScore && buyScore > 0.5 && buyConfluence >= 2) {
       direction = "buy";
       strength = buyScore > 1.5 ? "strong" : buyScore > 0.8 ? "moderate" : "weak";
@@ -221,6 +232,32 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({
       strength = sellScore > 1.5 ? "strong" : sellScore > 0.8 ? "moderate" : "weak";
       reason = motivos.filter(m => m.includes("venda")).join("; ");
     }
+
+    // Filtro para evitar entradas repetidas/alucinadas
+    const now = Date.now();
+    if (lastDecision &&
+        lastDecision.direction === direction &&
+        Math.abs(lastDecision.score - score) < 0.2 &&
+        lastDecision.pattern === mainPattern &&
+        (now - lastDecision.timestamp) < 90000 &&
+        direction !== "neutral" && direction !== "wait") {
+      return {
+        direction: "wait" as MarketDirection,
+        strength: "weak" as SignalStrength,
+        reason: "Entrada bloqueada: análise muito parecida e próxima da anterior"
+      };
+    }
+
+    // Atualiza histórico se for uma nova decisão válida
+    if (direction !== "neutral" && direction !== "wait") {
+      lastDecision = {
+        timestamp: now,
+        direction,
+        score,
+        pattern: mainPattern
+      };
+    }
+
     return { direction, strength, reason };
   }, [results, foundCount, m1Analyses]);
   
