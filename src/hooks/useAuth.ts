@@ -9,9 +9,13 @@ export const useAuth = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Configurar listener de mudanças de autenticação
+    let mounted = true;
+
+    // Configurar listener de mudanças de autenticação PRIMEIRO
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        if (!mounted) return;
+        
         console.log('Auth state changed:', event, session?.user?.email);
         setSession(session);
         setUser(session?.user ?? null);
@@ -19,40 +23,52 @@ export const useAuth = () => {
       }
     );
 
-    // Verificar sessão existente
+    // ENTÃO verificar sessão existente
     const getInitialSession = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
+        if (!mounted) return;
+        
         if (error) {
           console.error('Error getting session:', error);
         } else {
-          console.log('Initial session:', session?.user?.email);
+          console.log('Initial session:', session?.user?.email || 'No session');
           setSession(session);
           setUser(session?.user ?? null);
         }
       } catch (error) {
         console.error('Error in getSession:', error);
       } finally {
-        setLoading(false);
+        if (mounted) {
+          setLoading(false);
+        }
       }
     };
 
     getInitialSession();
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {
     try {
+      setLoading(true);
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error('Error signing out:', error);
         throw error;
       }
       console.log('User signed out successfully');
+      setUser(null);
+      setSession(null);
     } catch (error) {
       console.error('Error signing out:', error);
       throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -61,6 +77,6 @@ export const useAuth = () => {
     session,
     loading,
     signOut,
-    isAuthenticated: !!user
+    isAuthenticated: !!user && !!session
   };
 };

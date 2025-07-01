@@ -1,6 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,24 +16,6 @@ const Auth = () => {
   const [fullName, setFullName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    // Verificar se o usuário já está logado
-    const checkUser = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          console.log('User already logged in, redirecting...');
-          navigate('/');
-        }
-      } catch (error) {
-        console.error('Error checking session:', error);
-      }
-    };
-    
-    checkUser();
-  }, [navigate]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,9 +40,12 @@ const Auth = () => {
         setError(error.message);
         toast.error(error.message);
       } else {
-        setError('');
         toast.success('Verifique seu email para confirmar o cadastro!');
         console.log('Sign up successful:', data);
+        // Limpar formulário
+        setEmail('');
+        setPassword('');
+        setFullName('');
       }
     } catch (err) {
       console.error('Erro no cadastro:', err);
@@ -90,7 +74,7 @@ const Auth = () => {
       } else {
         console.log('Sign in successful:', data);
         toast.success('Login realizado com sucesso!');
-        navigate('/');
+        // O redirecionamento será feito automaticamente pelo AuthRoute
       }
     } catch (err) {
       console.error('Erro no login:', err);
@@ -232,16 +216,6 @@ const Auth = () => {
                 </form>
               </TabsContent>
             </Tabs>
-
-            <div className="mt-6 text-center">
-              <Button 
-                variant="ghost" 
-                onClick={() => navigate('/')}
-                className="text-trader-gray hover:text-white"
-              >
-                Voltar ao início
-              </Button>
-            </div>
           </CardContent>
         </Card>
       </div>
