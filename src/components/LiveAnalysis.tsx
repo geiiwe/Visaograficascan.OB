@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAnalyzer } from '@/context/AnalyzerContext';
 import { Button } from '@/components/ui/button';
@@ -140,8 +139,17 @@ const LiveAnalysis: React.FC = () => {
         setAnalysisProgress(prev => Math.min(prev + 20, 90));
       }, 200);
       
-      // Executar análise usando sistema existente - Fixed: provide all required parameters
-      const results = await detectPatterns(imageData, selectedTimeframe, marketType, precision === 'alta' ? 5 : 3);
+      // Executar análise usando sistema existente - Fix: pass correct parameters
+      const analysisTypes = ['trendlines', 'fibonacci', 'candlePatterns'] as const;
+      const results = await detectPatterns(
+        imageData, 
+        analysisTypes,
+        {
+          timeframe: selectedTimeframe,
+          marketType,
+          precision: precision === 'alta' ? 5 : 3
+        }
+      );
       
       clearInterval(progressInterval);
       setAnalysisProgress(100);
@@ -149,16 +157,16 @@ const LiveAnalysis: React.FC = () => {
       // Processar resultados
       const signal = generateSignalFromResults(results);
       
-      // Salvar análise no Supabase - Fixed: use correct property name
+      // Salvar análise no Supabase - Fix: use correct property names
       await saveAnalysis({
         analysis_type: 'live',
         image_data: imageData,
         results,
         timeframe: selectedTimeframe,
-        marketType,
+        market_type: marketType,
         precision: precision === 'alta' ? 5 : precision === 'normal' ? 3 : 1,
-        confidenceScore: signal.confidence,
-        aiDecision: {
+        confidence_score: signal.confidence,
+        ai_decision: {
           action: signal.signal,
           confidence: signal.confidence,
           reasoning: signal.reasoning,
