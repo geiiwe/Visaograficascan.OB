@@ -23,6 +23,7 @@ import {
 import { cn } from '@/lib/utils';
 import { detectPatterns } from '@/utils/patternDetection';
 import { useSupabaseAnalysis } from '@/hooks/useSupabaseAnalysis';
+import type { AnalysisType } from '@/context/AnalyzerContext';
 
 interface LiveSignal {
   id: string;
@@ -139,8 +140,8 @@ const LiveAnalysis: React.FC = () => {
         setAnalysisProgress(prev => Math.min(prev + 20, 90));
       }, 200);
       
-      // Executar análise usando sistema existente - Fix: remove 'as const' to make array mutable
-      const analysisTypes = ['trendlines', 'fibonacci', 'candlePatterns'];
+      // Executar análise usando sistema existente - Fix: properly type the analysis types
+      const analysisTypes: AnalysisType[] = ['trendlines', 'fibonacci', 'candlePatterns'];
       const results = await detectPatterns(
         imageData, 
         analysisTypes,
