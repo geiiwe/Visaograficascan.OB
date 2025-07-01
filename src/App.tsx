@@ -2,7 +2,6 @@
 import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { supabase } from './integrations/supabase/client';
 import Auth from './pages/Auth';
 import GraphAnalyzer from './components/GraphAnalyzer';
 import Dashboard from './pages/Dashboard';
@@ -17,14 +16,23 @@ const queryClient = new QueryClient();
 function App() {
   // Componente protegido que requer autenticação
   const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const { user } = useAuth();
+    const { user, loading } = useAuth();
     const navigate = useNavigate();
     
     useEffect(() => {
-      if (!user) {
+      if (!loading && !user) {
+        console.log('User not authenticated, redirecting to auth...');
         navigate('/auth');
       }
-    }, [user, navigate]);
+    }, [user, loading, navigate]);
+    
+    if (loading) {
+      return (
+        <div className="min-h-screen bg-trader-dark flex items-center justify-center">
+          <div className="text-white">Carregando...</div>
+        </div>
+      );
+    }
     
     if (!user) {
       return null;

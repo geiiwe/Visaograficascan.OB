@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChartLine, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 const Auth = () => {
   const [email, setEmail] = useState('');
@@ -21,9 +22,14 @@ const Auth = () => {
   useEffect(() => {
     // Verificar se o usuário já está logado
     const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        navigate('/');
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          console.log('User already logged in, redirecting...');
+          navigate('/');
+        }
+      } catch (error) {
+        console.error('Error checking session:', error);
       }
     };
     
@@ -38,7 +44,7 @@ const Auth = () => {
     try {
       const redirectUrl = `${window.location.origin}/`;
 
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -51,13 +57,17 @@ const Auth = () => {
 
       if (error) {
         setError(error.message);
+        toast.error(error.message);
       } else {
         setError('');
-        alert('Verifique seu email para confirmar o cadastro!');
+        toast.success('Verifique seu email para confirmar o cadastro!');
+        console.log('Sign up successful:', data);
       }
     } catch (err) {
       console.error('Erro no cadastro:', err);
-      setError('Erro inesperado durante o cadastro');
+      const errorMessage = 'Erro inesperado durante o cadastro';
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -69,19 +79,24 @@ const Auth = () => {
     setError('');
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) {
         setError(error.message);
+        toast.error(error.message);
       } else {
+        console.log('Sign in successful:', data);
+        toast.success('Login realizado com sucesso!');
         navigate('/');
       }
     } catch (err) {
       console.error('Erro no login:', err);
-      setError('Erro inesperado durante o login');
+      const errorMessage = 'Erro inesperado durante o login';
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
