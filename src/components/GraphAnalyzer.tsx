@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useIsMobile } from "@/hooks/use-mobile";
 import MarketTypeSelector from "./MarketTypeSelector";
+import LiveAnalysisButton from "./LiveAnalysisButton";
+import { useAuth } from "@/hooks/useAuth";
 
 const GraphAnalyzer = () => {
   const { 
@@ -35,6 +37,29 @@ const GraphAnalyzer = () => {
   const imageRef = useRef<HTMLImageElement>(null);
   const [croppedImage, setCroppedImage] = useState<string | null>(null);
   const isMobile = useIsMobile();
+  const { user } = useAuth();
+
+  // Adicionar verificação de autenticação no início do componente
+  if (!user) {
+    return (
+      <div className="w-full max-w-4xl mx-auto p-4 text-center">
+        <div className="bg-gray-900 rounded-lg p-8 border border-gray-700">
+          <h2 className="text-2xl font-bold text-white mb-4">
+            Acesso Restrito
+          </h2>
+          <p className="text-gray-400 mb-6">
+            Faça login para usar o analisador de gráficos
+          </p>
+          <Button 
+            onClick={() => window.location.href = '/auth'}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            Fazer Login
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   useEffect(() => {
     // Check if the device has camera capabilities
@@ -165,6 +190,9 @@ const GraphAnalyzer = () => {
             <h2 className={`${isMobile ? 'text-base' : 'text-lg'} font-medium text-white`}>
               {isMobile ? "Análise" : "Análise de Gráficos"}
             </h2>
+            
+            {/* Botão para modo Live */}
+            <LiveAnalysisButton />
             
             <div className="flex gap-1 sm:gap-2">
               <Tabs 

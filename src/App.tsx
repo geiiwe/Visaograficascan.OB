@@ -1,39 +1,101 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import Index from "./pages/Index";
-import Auth from "./pages/Auth";
-import Dashboard from "./pages/Dashboard";
-import NotFound from "./pages/NotFound";
-import { useAuth } from "@/hooks/useAuth";
+import React, { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Link, useNavigate } from 'react-router-dom';
+import { QueryClient } from 'react-query';
+import { SessionContextProvider } from '@supabase/auth-helpers-react';
+import { supabase } from './lib/supabaseClient';
+import { Auth } from './pages/Auth';
+import { GraphAnalyzer } from './components/GraphAnalyzer';
+import { Dashboard } from './pages/Dashboard';
+import { AuthButton } from './components/AuthButton';
+import { Toaster } from 'sonner';
+import { AnalyzerProvider } from './context/AnalyzerContext';
+import LiveAnalysisPage from './pages/LiveAnalysis';
+import { useAuth } from './hooks/useAuth';
 
-function ProtectedRoute({ children }: { children: JSX.Element }) {
-  const { user, loading } = useAuth();
-  if (loading) return <div>Carregando...</div>;
-  if (!user) return <Navigate to="/auth" replace />;
-  return children;
-}
+function App() {
+  const { requireAuth } = useAuth();
+  
+  // Componente protegido que requer autenticação
+  const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const { user } = useAuth();
+    const navigate = useNavigate();
+    
+    useEffect(() => {
+      if (!user) {
+        navigate('/auth');
+      }
+    }, [user, navigate]);
+    
+    if (!user) {
+      return null;
+    }
+    
+    return <>{children}</>;
+  };
 
-const queryClient = new QueryClient();
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
+  return (
+    <QueryClient>
       <BrowserRouter>
-        <Routes>
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <SessionContextProvider supabaseClient={supabase}>
+          <AnalyzerProvider>
+            <Toaster />
+            <div className="min-h-screen bg-trader-dark">
+              <nav className="bg-trader-panel border-b border-trader-border p-4">
+                <div className="max-w-4xl mx-auto flex items-center justify-between">
+                  <Link to="/" className="text-xl font-bold text-white">
+                    Graph Analyzer
+                  </Link>
+                  <div className="flex items-center gap-4">
+                    <Link 
+                      to="/live-analysis" 
+                      className="text-trader-gray hover:text-white transition-colors"
+                    >
+                      Live Analysis
+                    </Link>
+                    <Link 
+                      to="/dashboard" 
+                      className="text-trader-gray hover:text-white transition-colors"
+                    >
+                      Dashboard
+                    </Link>
+                    <AuthButton />
+                  </div>
+                </div>
+              </nav>
+              
+              <Routes>
+                <Route path="/auth" element={<Auth />} />
+                <Route 
+                  path="/" 
+                  element={
+                    <ProtectedRoute>
+                      <GraphAnalyzer />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/dashboard" 
+                  element={
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/live-analysis" 
+                  element={
+                    <ProtectedRoute>
+                      <LiveAnalysisPage />
+                    </ProtectedRoute>
+                  } 
+                />
+              </Routes>
+            </div>
+          </AnalyzerProvider>
+        </SessionContextProvider>
       </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+    </QueryClient>
+  );
+}
 
 export default App;
