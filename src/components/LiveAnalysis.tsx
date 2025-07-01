@@ -140,16 +140,12 @@ const LiveAnalysis: React.FC = () => {
         setAnalysisProgress(prev => Math.min(prev + 20, 90));
       }, 200);
       
-      // Executar análise usando sistema existente - Fix: properly type the analysis types
+      // Executar análise usando sistema existente - Fix: pass precision directly
       const analysisTypes: AnalysisType[] = ['trendlines', 'fibonacci', 'candlePatterns'];
       const results = await detectPatterns(
         imageData, 
         analysisTypes,
-        {
-          timeframe: selectedTimeframe,
-          marketType,
-          precision: precision === 'alta' ? 5 : 3
-        }
+        precision // Pass precision directly as PrecisionLevel
       );
       
       clearInterval(progressInterval);
