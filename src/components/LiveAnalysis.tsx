@@ -140,8 +140,8 @@ const LiveAnalysis: React.FC = () => {
         setAnalysisProgress(prev => Math.min(prev + 20, 90));
       }, 200);
       
-      // Executar análise usando sistema existente
-      const results = await detectPatterns(imageData);
+      // Executar análise usando sistema existente - Fixed: provide all required parameters
+      const results = await detectPatterns(imageData, selectedTimeframe, marketType, precision === 'alta' ? 5 : 3);
       
       clearInterval(progressInterval);
       setAnalysisProgress(100);
@@ -149,10 +149,10 @@ const LiveAnalysis: React.FC = () => {
       // Processar resultados
       const signal = generateSignalFromResults(results);
       
-      // Salvar análise no Supabase
+      // Salvar análise no Supabase - Fixed: use correct property name
       await saveAnalysis({
         analysis_type: 'live',
-        imageData,
+        image_data: imageData,
         results,
         timeframe: selectedTimeframe,
         marketType,
@@ -535,8 +535,8 @@ const LiveAnalysis: React.FC = () => {
                 >
                   <div className="flex items-center gap-2">
                     <Badge 
-                      size="sm"
                       className={cn(
+                        "text-xs px-2 py-1",
                         signal.signal === 'BUY' ? "bg-green-600" :
                         signal.signal === 'SELL' ? "bg-red-600" :
                         "bg-yellow-600"

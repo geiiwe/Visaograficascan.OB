@@ -1,3 +1,4 @@
+
 import React, { useMemo } from "react";
 import { PatternResult } from "@/utils/patternDetection";
 import { cn } from "@/lib/utils";
@@ -171,14 +172,15 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({
     let buyConfluence = 0;
     let sellConfluence = 0;
     let motivos: string[] = [];
-    let volatilidade = results.all?.volatilityLevel || 0;
-    let marketNoise = results.all?.marketNoiseLevel || 0;
+    // Fixed: Use optional chaining and provide default values
+    let volatilidade = (results.all as any)?.volatilityLevel || 0;
+    let marketNoise = (results.all as any)?.marketNoiseLevel || 0;
     let mainPattern = "";
 
     // Filtros de segurança
     if (volatilidade > 70 || marketNoise > 60) {
       return {
-        direction: "wait" as MarketDirection,
+        direction: "neutral" as MarketDirection,
         strength: "weak" as SignalStrength,
         reason: "Mercado instável ou volátil demais"
       };
@@ -221,7 +223,7 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({
     let strength: SignalStrength = "weak";
     let reason = "Confluência insuficiente ou sinais conflitantes";
     let score = Math.max(buyScore, sellScore);
-    let chosenDirection = buyScore > sellScore ? "buy" : sellScore > buyScore ? "sell" : "wait";
+    let chosenDirection = buyScore > sellScore ? "buy" : sellScore > buyScore ? "sell" : "neutral";
 
     if (buyScore > sellScore && buyScore > 0.5 && buyConfluence >= 2) {
       direction = "buy";
@@ -240,16 +242,16 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({
         Math.abs(lastDecision.score - score) < 0.2 &&
         lastDecision.pattern === mainPattern &&
         (now - lastDecision.timestamp) < 90000 &&
-        direction !== "neutral" && direction !== "wait") {
+        direction !== "neutral") {
       return {
-        direction: "wait" as MarketDirection,
+        direction: "neutral" as MarketDirection,
         strength: "weak" as SignalStrength,
         reason: "Entrada bloqueada: análise muito parecida e próxima da anterior"
       };
     }
 
     // Atualiza histórico se for uma nova decisão válida
-    if (direction !== "neutral" && direction !== "wait") {
+    if (direction !== "neutral") {
       lastDecision = {
         timestamp: now,
         direction,
@@ -263,14 +265,14 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({
   
   // Check if AI confirmation is available
   const hasAiConfirmation = results.all && 
-    (results.all.buyScore && results.all.buyScore > 0.5) || 
-    (results.all.sellScore && results.all.sellScore > 0.5);
+    ((results.all as any).buyScore && (results.all as any).buyScore > 0.5) || 
+    ((results.all as any).sellScore && (results.all as any).sellScore > 0.5);
   
   // Score mínimo para considerar análise válida
   const SCORE_MINIMO = 0.7;
   const scoreAtual = Math.max(
-    results.all?.buyScore || 0,
-    results.all?.sellScore || 0
+    (results.all as any)?.buyScore || 0,
+    (results.all as any)?.sellScore || 0
   );
 
   // Função para checar se a imagem/análise é ruim (simulação)
@@ -308,12 +310,12 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({
         {hasAiConfirmation && (
           <div className={`
             text-xs px-2 py-1 rounded-full flex items-center mr-1
-            ${results.all && results.all.buyScore && results.all.buyScore > results.all.sellScore ? 
+            ${results.all && (results.all as any).buyScore && (results.all as any).buyScore > (results.all as any).sellScore ? 
               "bg-trader-green/80 text-white" : 
               "bg-trader-red/80 text-white"}
           `}>
             <Bot className="h-3 w-3 mr-1" />
-            <span>IA {results.all && results.all.buyScore && results.all.buyScore > results.all.sellScore ? 
+            <span>IA {results.all && (results.all as any).buyScore && (results.all as any).buyScore > (results.all as any).sellScore ? 
               "confirma COMPRA" : "confirma VENDA"}</span>
           </div>
         )}
@@ -519,12 +521,12 @@ const AnalysisLabels: React.FC<AnalysisLabelsProps> = ({
           {hasAiConfirmation && (
             <div className={`
               text-xs px-2 py-1 rounded-full flex items-center
-              ${results.all && results.all.buyScore && results.all.buyScore > results.all.sellScore ? 
+              ${results.all && (results.all as any).buyScore && (results.all as any).buyScore > (results.all as any).sellScore ? 
                 "bg-trader-green/80 text-white" : 
                 "bg-trader-red/80 text-white"}
             `}>
               <Bot className="h-3 w-3 mr-1" />
-              <span>IA {results.all && results.all.buyScore && results.all.buyScore > results.all.sellScore ? 
+              <span>IA {results.all && (results.all as any).buyScore && (results.all as any).buyScore > (results.all as any).sellScore ? 
                 "confirma COMPRA" : "confirma VENDA"}</span>
             </div>
           )}
