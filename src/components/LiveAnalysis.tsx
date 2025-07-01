@@ -22,7 +22,7 @@ import {
   Eye
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { analyzeImage } from '@/utils/patternDetection';
+import { detectPatterns } from '@/utils/patternDetection';
 import { useSupabaseAnalysis } from '@/hooks/useSupabaseAnalysis';
 
 interface LiveSignal {
@@ -74,7 +74,6 @@ const LiveAnalysis: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const analysisCountRef = useRef(0);
   
   // Configurações do modo live
   const ANALYSIS_INTERVAL = selectedTimeframe === '30s' ? 30000 : 60000; // 30s ou 1min
@@ -142,12 +141,7 @@ const LiveAnalysis: React.FC = () => {
       }, 200);
       
       // Executar análise usando sistema existente
-      const results = await analyzeImage(imageData, {
-        timeframe: selectedTimeframe,
-        marketType,
-        precision,
-        activeAnalysis
-      });
+      const results = await detectPatterns(imageData);
       
       clearInterval(progressInterval);
       setAnalysisProgress(100);
@@ -157,7 +151,7 @@ const LiveAnalysis: React.FC = () => {
       
       // Salvar análise no Supabase
       await saveAnalysis({
-        analysisType: 'live',
+        analysis_type: 'live',
         imageData,
         results,
         timeframe: selectedTimeframe,
