@@ -139,8 +139,8 @@ const LiveAnalysis: React.FC = () => {
         setAnalysisProgress(prev => Math.min(prev + 20, 90));
       }, 200);
       
-      // Executar análise usando sistema existente - Fix: pass correct parameters
-      const analysisTypes = ['trendlines', 'fibonacci', 'candlePatterns'] as const;
+      // Executar análise usando sistema existente - Fix: remove 'as const' to make array mutable
+      const analysisTypes = ['trendlines', 'fibonacci', 'candlePatterns'];
       const results = await detectPatterns(
         imageData, 
         analysisTypes,
