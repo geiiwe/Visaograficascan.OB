@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -34,27 +35,32 @@ const Auth = () => {
     setLoading(true);
     setError('');
 
-    const redirectUrl = `${window.location.origin}/`;
+    try {
+      const redirectUrl = `${window.location.origin}/`;
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: {
-          full_name: fullName
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: {
+            full_name: fullName
+          }
         }
+      });
+
+      if (error) {
+        setError(error.message);
+      } else {
+        setError('');
+        alert('Verifique seu email para confirmar o cadastro!');
       }
-    });
-
-    if (error) {
-      setError(error.message);
-    } else {
-      setError('');
-      alert('Verifique seu email para confirmar o cadastro!');
+    } catch (err) {
+      console.error('Erro no cadastro:', err);
+      setError('Erro inesperado durante o cadastro');
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -62,18 +68,23 @@ const Auth = () => {
     setLoading(true);
     setError('');
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (error) {
-      setError(error.message);
-    } else {
-      navigate('/');
+      if (error) {
+        setError(error.message);
+      } else {
+        navigate('/');
+      }
+    } catch (err) {
+      console.error('Erro no login:', err);
+      setError('Erro inesperado durante o login');
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
