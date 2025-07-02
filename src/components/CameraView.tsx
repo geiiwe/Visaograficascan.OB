@@ -1,21 +1,45 @@
-
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { useAnalyzer } from "@/context/AnalyzerContext";
-import { Camera, RefreshCw, X, ZoomIn, ZoomOut, FlipHorizontal, Settings } from "lucide-react";
+import { Camera, RefreshCw, X, ZoomIn, ZoomOut, FlipHorizontal, Settings, Square, Play, Pause } from "lucide-react";
 import { toast } from "sonner";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { Progress } from "@/components/ui/progress";
 
-const CameraView = () => {
+export type CameraMode = 'single' | 'continuous';
+
+interface CameraViewProps {
+  mode?: CameraMode;
+  onCapture?: (imageData: string) => void;
+  onContinuousCapture?: (imageData: string) => void;
+  captureInterval?: number;
+  showProgress?: boolean;
+  progress?: number;
+}
+
+const CameraView: React.FC<CameraViewProps> = ({
+  mode = 'single',
+  onCapture,
+  onContinuousCapture,
+  captureInterval = 30000,
+  showProgress = false,
+  progress = 0
+}) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  
   const [streamActive, setStreamActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [cameraLoading, setCameraLoading] = useState(false);
+  const [isLiveActive, setIsLiveActive] = useState(false);
+  const [livePaused, setLivePaused] = useState(false);
+  
   const { setImageData, captureMode, setCaptureMode, precision } = useAnalyzer();
   const isMobile = useIsMobile();
+  
   const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([]);
   const [selectedCamera, setSelectedCamera] = useState<string>("");
-  const [cameraLoading, setCameraLoading] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [videoConstraints, setVideoConstraints] = useState({
     width: { ideal: isMobile ? 1280 : 1920 },
@@ -23,187 +47,45 @@ const CameraView = () => {
     facingMode: isMobile ? "environment" : "user"
   });
 
-  // List available cameras
-  useEffect(() => {
-    const getCameras = async () => {
-      try {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
-          console.error("enumerateDevices() not supported.");
-          return;
-        }
-
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const cameras = devices.filter(device => device.kind === 'videoinput');
-        setAvailableCameras(cameras);
-        
-        // Set the default camera (usually back camera on mobile)
-        if (cameras.length > 0) {
-          // On mobile, prefer the environment-facing camera
-          if (isMobile) {
-            // Try to find back camera
-            const backCamera = cameras.find(camera => 
-              camera.label.toLowerCase().includes('back') || 
-              camera.label.toLowerCase().includes('traseira') ||
-              camera.label.toLowerCase().includes('rear')
-            );
-            if (backCamera) {
-              setSelectedCamera(backCamera.deviceId);
-            } else {
-              setSelectedCamera(cameras[0].deviceId);
-            }
-          } else {
-            setSelectedCamera(cameras[0].deviceId);
-          }
-        }
-      } catch (err) {
-        console.error("Error enumerating devices:", err);
-      }
-    };
-
-    getCameras();
-  }, [isMobile]);
-
-  useEffect(() => {
-    let stream: MediaStream | null = null;
-
-    const setupCamera = async () => {
-      if (!captureMode) {
-        return;
-      }
-
-      try {
-        // Stop any existing streams first
-        if (videoRef.current && videoRef.current.srcObject) {
-          const currentStream = videoRef.current.srcObject as MediaStream;
-          currentStream.getTracks().forEach(track => track.stop());
-          videoRef.current.srcObject = null;
-        }
-
-        setCameraError(null);
-        setStreamActive(false);
-        setCameraLoading(true);
-        console.log("Requesting camera access...", isMobile ? "mobile" : "desktop");
-        
-        // Request camera access with appropriate constraints
-        const constraints: MediaStreamConstraints = {
-          video: {
-            ...videoConstraints,
-            deviceId: selectedCamera ? { exact: selectedCamera } : undefined
-          },
-          audio: false,
-        };
-        
-        console.log("Using constraints:", constraints);
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
-        console.log("Camera access granted:", stream.active);
-
-        if (!stream.active) {
-          throw new Error("Camera stream is not active");
-        }
-
-        // Set the stream to the video element
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.muted = true;
-          videoRef.current.setAttribute("playsinline", "true");
-          
-          videoRef.current.onloadedmetadata = () => {
-            if (videoRef.current) {
-              videoRef.current.play()
-                .then(() => {
-                  console.log("Video playback started");
-                  setStreamActive(true);
-                  setCameraLoading(false);
-                })
-                .catch(err => {
-                  console.error("Error starting video playback:", err);
-                  setCameraError("Could not start video playback");
-                  setCameraLoading(false);
-                  toast.error("Could not start video playback");
-                });
-            }
-          };
-        }
-      } catch (error) {
-        console.error("Error accessing camera:", error);
-        let errorMessage = "Error accessing camera. ";
-        
-        if (isMobile) {
-          errorMessage += "Please make sure camera permissions are granted in your browser settings.";
-        } else {
-          errorMessage += "Please allow camera access and try again.";
-        }
-        
-        setCameraError(errorMessage);
-        setCameraLoading(false);
-        toast.error(errorMessage);
-        setCaptureMode(false);
-      }
-    };
-
-    setupCamera();
-
-    // Cleanup function to stop camera when component unmounts
-    return () => {
-      if (videoRef.current && videoRef.current.srcObject) {
-        const currentStream = videoRef.current.srcObject as MediaStream;
-        currentStream.getTracks().forEach(track => track.stop());
-        videoRef.current.srcObject = null;
-      }
-    };
-  }, [captureMode, setCaptureMode, isMobile, selectedCamera, videoConstraints]);
-
-  const captureImage = () => {
-    if (videoRef.current && canvasRef.current) {
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
+  // Capturar frame atual
+  const captureCurrentFrame = useCallback((): string | null => {
+    if (!videoRef.current || !canvasRef.current) return null;
+    
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    
+    if (!ctx) return null;
+    
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    // Aplicar zoom se necessário
+    if (zoom > 1) {
+      const zoomOffsetX = (canvas.width - canvas.width / zoom) / 2;
+      const zoomOffsetY = (canvas.height - canvas.height / zoom) / 2;
       
-      // Set canvas dimensions to match video
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      
-      // Draw the current video frame to the canvas
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        // Apply zoom if needed (using clipping)
-        if (zoom > 1) {
-          const zoomOffsetX = (canvas.width - canvas.width / zoom) / 2;
-          const zoomOffsetY = (canvas.height - canvas.height / zoom) / 2;
-          
-          ctx.drawImage(
-            video, 
-            zoomOffsetX, zoomOffsetY,  // Source position
-            canvas.width / zoom, canvas.height / zoom,  // Source size
-            0, 0,  // Destination position
-            canvas.width, canvas.height  // Destination size
-          );
-        } else {
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        }
-        
-        // Apply high-quality processing for precise mode
-        if (precision === "alta") {
-          // Apply sharpening
-          applySharpening(ctx, canvas.width, canvas.height);
-          
-          // Apply contrast enhancement
-          applyContrastEnhancement(ctx, canvas.width, canvas.height, 1.2);
-        }
-        
-        // Convert canvas to data URL with appropriate quality
-        const imageQuality = precision === "alta" ? 1.0 : precision === "normal" ? 0.9 : 0.85;
-        const imageData = canvas.toDataURL("image/png", imageQuality);
-        
-        setImageData(imageData);
-        toast.success("Imagem capturada! Pronta para análise.");
-        
-        // Stop camera stream after capture
-        setCaptureMode(false);
-      }
+      ctx.drawImage(
+        video, 
+        zoomOffsetX, zoomOffsetY,
+        canvas.width / zoom, canvas.height / zoom,
+        0, 0,  
+        canvas.width, canvas.height
+      );
+    } else {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     }
-  };
-  
-  const applySharpening = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
+    
+    // Aplicar processamento de alta qualidade se necessário
+    if (precision === "alta") {
+      applyImageEnhancement(ctx, canvas.width, canvas.height);
+    }
+    
+    const imageQuality = precision === "alta" ? 1.0 : precision === "normal" ? 0.9 : 0.85;
+    return canvas.toDataURL("image/png", imageQuality);
+  }, [zoom, precision]);
+
+  const applyImageEnhancement = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
     const imageData = ctx.getImageData(0, 0, width, height);
     const data = imageData.data;
     const dataBackup = new Uint8ClampedArray(data);
@@ -249,6 +131,175 @@ const CameraView = () => {
     }
     
     ctx.putImageData(imageData, 0, 0);
+  };
+
+  // Configurar câmera
+  useEffect(() => {
+    const getCameras = async () => {
+      try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+          console.error("enumerateDevices() not supported.");
+          return;
+        }
+
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const cameras = devices.filter(device => device.kind === 'videoinput');
+        setAvailableCameras(cameras);
+        
+        if (cameras.length > 0) {
+          if (isMobile) {
+            const backCamera = cameras.find(camera => 
+              camera.label.toLowerCase().includes('back') || 
+              camera.label.toLowerCase().includes('traseira') ||
+              camera.label.toLowerCase().includes('rear')
+            );
+            if (backCamera) {
+              setSelectedCamera(backCamera.deviceId);
+            } else {
+              setSelectedCamera(cameras[0].deviceId);
+            }
+          } else {
+            setSelectedCamera(cameras[0].deviceId);
+          }
+        }
+      } catch (err) {
+        console.error("Error enumerating devices:", err);
+      }
+    };
+
+    getCameras();
+  }, [isMobile]);
+
+  // Setup da câmera
+  useEffect(() => {
+    let stream: MediaStream | null = null;
+
+    const setupCamera = async () => {
+      if (!captureMode) return;
+
+      try {
+        if (videoRef.current && videoRef.current.srcObject) {
+          const currentStream = videoRef.current.srcObject as MediaStream;
+          currentStream.getTracks().forEach(track => track.stop());
+          videoRef.current.srcObject = null;
+        }
+
+        setCameraError(null);
+        setStreamActive(false);
+        setCameraLoading(true);
+        
+        const constraints: MediaStreamConstraints = {
+          video: {
+            ...videoConstraints,
+            deviceId: selectedCamera ? { exact: selectedCamera } : undefined
+          },
+          audio: false,
+        };
+        
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+        if (!stream.active) {
+          throw new Error("Camera stream is not active");
+        }
+
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.muted = true;
+          videoRef.current.setAttribute("playsinline", "true");
+          
+          videoRef.current.onloadedmetadata = () => {
+            if (videoRef.current) {
+              videoRef.current.play()
+                .then(() => {
+                  setStreamActive(true);
+                  setCameraLoading(false);
+                })
+                .catch(err => {
+                  console.error("Error starting video playback:", err);
+                  setCameraError("Could not start video playback");
+                  setCameraLoading(false);
+                  toast.error("Could not start video playback");
+                });
+            }
+          };
+        }
+      } catch (error) {
+        console.error("Error accessing camera:", error);
+        let errorMessage = "Error accessing camera. ";
+        
+        if (isMobile) {
+          errorMessage += "Please make sure camera permissions are granted in your browser settings.";
+        } else {
+          errorMessage += "Please allow camera access and try again.";
+        }
+        
+        setCameraError(errorMessage);
+        setCameraLoading(false);
+        toast.error(errorMessage);
+        setCaptureMode(false);
+      }
+    };
+
+    setupCamera();
+
+    return () => {
+      if (videoRef.current && videoRef.current.srcObject) {
+        const currentStream = videoRef.current.srcObject as MediaStream;
+        currentStream.getTracks().forEach(track => track.stop());
+        videoRef.current.srcObject = null;
+      }
+    };
+  }, [captureMode, setCaptureMode, isMobile, selectedCamera, videoConstraints]);
+
+  // Lógica para modo contínuo
+  useEffect(() => {
+    if (mode === 'continuous' && isLiveActive && !livePaused && streamActive) {
+      intervalRef.current = setInterval(() => {
+        const imageData = captureCurrentFrame();
+        if (imageData && onContinuousCapture) {
+          onContinuousCapture(imageData);
+        }
+      }, captureInterval);
+    }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [mode, isLiveActive, livePaused, streamActive, captureInterval, captureCurrentFrame, onContinuousCapture]);
+
+  // Captura single
+  const captureImage = () => {
+    const imageData = captureCurrentFrame();
+    if (imageData) {
+      if (onCapture) {
+        onCapture(imageData);
+      } else {
+        setImageData(imageData);
+        toast.success("Imagem capturada! Pronta para análise.");
+        setCaptureMode(false);
+      }
+    }
+  };
+
+  // Controles do modo live
+  const startLive = () => {
+    setIsLiveActive(true);
+    setLivePaused(false);
+    toast.success("Modo live iniciado");
+  };
+
+  const pauseLive = () => {
+    setLivePaused(!livePaused);
+    toast.info(livePaused ? "Live retomado" : "Live pausado");
+  };
+
+  const stopLive = () => {
+    setIsLiveActive(false);
+    setLivePaused(false);
+    toast.info("Modo live parado");
   };
 
   const resetCamera = () => {
@@ -297,6 +348,7 @@ const CameraView = () => {
                 transformOrigin: 'center'
               }}
             />
+            
             <div className="absolute inset-0 flex items-center justify-center">
               {!streamActive && (
                 <div className="animate-pulse-slow text-trader-gray text-center px-4">
@@ -316,20 +368,60 @@ const CameraView = () => {
                 </div>
               )}
             </div>
-            <div className="absolute bottom-4 left-0 right-0 flex justify-center">
-              <Button 
-                onClick={captureImage} 
-                variant="secondary"
-                className="bg-trader-blue hover:bg-trader-blue/80 text-white"
-                size="lg"
-                disabled={!streamActive}
-              >
-                <Camera className="mr-2 h-4 w-4" />
-                {precision === "alta" ? "Capturar em HD" : "Capturar"}
-              </Button>
-            </div>
+
+            {/* Controles do modo live */}
+            {mode === 'continuous' && streamActive && (
+              <div className="absolute bottom-4 left-4 right-4 space-y-2">
+                <div className="flex justify-center gap-2">
+                  {!isLiveActive ? (
+                    <Button onClick={startLive} className="bg-green-600 hover:bg-green-700">
+                      <Play className="h-4 w-4 mr-2" />
+                      Iniciar Live
+                    </Button>
+                  ) : (
+                    <>
+                      <Button onClick={pauseLive} variant={livePaused ? "default" : "secondary"}>
+                        {livePaused ? <Play className="h-4 w-4 mr-2" /> : <Pause className="h-4 w-4 mr-2" />}
+                        {livePaused ? 'Retomar' : 'Pausar'}
+                      </Button>
+                      <Button onClick={stopLive} variant="destructive">
+                        <Square className="h-4 w-4 mr-2" />
+                        Parar
+                      </Button>
+                    </>
+                  )}
+                </div>
+                
+                {/* Progresso do live */}
+                {showProgress && isLiveActive && (
+                  <div className="bg-black/70 rounded-lg p-3 backdrop-blur-sm">
+                    <div className="flex items-center justify-between text-white text-sm mb-2">
+                      <span>Próxima análise:</span>
+                      <span>{Math.round((100 - progress) * captureInterval / 100 / 1000)}s</span>
+                    </div>
+                    <Progress value={progress} className="h-2" />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Controles para modo single */}
+            {mode === 'single' && (
+              <div className="absolute bottom-4 left-0 right-0 flex justify-center">
+                <Button 
+                  onClick={captureImage} 
+                  variant="secondary"
+                  className="bg-trader-blue hover:bg-trader-blue/80 text-white"
+                  size="lg"
+                  disabled={!streamActive}
+                >
+                  <Camera className="mr-2 h-4 w-4" />
+                  {precision === "alta" ? "Capturar em HD" : "Capturar"}
+                </Button>
+              </div>
+            )}
             
-            {/* Camera controls */}
+            {/* Controles da câmera */}
             {streamActive && (
               <div className="absolute top-2 right-2 flex flex-col gap-2">
                 {availableCameras.length > 1 && (
@@ -371,7 +463,7 @@ const CameraView = () => {
               </div>
             )}
             
-            {/* Camera resolution indicator */}
+            {/* Indicador de resolução */}
             {streamActive && precision === "alta" && (
               <div className="absolute top-2 left-2 bg-black/30 text-white text-xs px-2 py-1 rounded">
                 {videoRef.current?.videoWidth || "-"}×{videoRef.current?.videoHeight || "-"}
@@ -393,7 +485,7 @@ const CameraView = () => {
             </div>
             <div className="flex flex-col items-center">
               <RefreshCw 
-                className="mb-2 text-trader-gray" 
+                className="mb-2 text-trader-gray cursor-pointer" 
                 size={32} 
                 onClick={resetCamera}
               />

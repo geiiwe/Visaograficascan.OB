@@ -8,7 +8,6 @@ import Dashboard from './pages/Dashboard';
 import AuthButton from './components/AuthButton';
 import { Toaster } from 'sonner';
 import { AnalyzerProvider } from './context/AnalyzerContext';
-import LiveAnalysisPage from './pages/LiveAnalysis';
 import { useAuth } from './hooks/useAuth';
 
 const queryClient = new QueryClient();
@@ -21,17 +20,11 @@ const Navigation: React.FC = () => {
   
   return (
     <nav className="bg-trader-panel border-b border-trader-border p-4">
-      <div className="max-w-4xl mx-auto flex items-center justify-between">
+      <div className="max-w-6xl mx-auto flex items-center justify-between">
         <Link to="/" className="text-xl font-bold text-white">
           Graph Analyzer
         </Link>
         <div className="flex items-center gap-4">
-          <Link 
-            to="/live-analysis" 
-            className="text-trader-gray hover:text-white transition-colors"
-          >
-            Live Analysis
-          </Link>
           <Link 
             to="/dashboard" 
             className="text-trader-gray hover:text-white transition-colors"
@@ -124,14 +117,6 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <Dashboard />
-                  </ProtectedRoute>
-                } 
-              />
-              <Route 
-                path="/live-analysis" 
-                element={
-                  <ProtectedRoute>
-                    <LiveAnalysisPage />
                   </ProtectedRoute>
                 } 
               />

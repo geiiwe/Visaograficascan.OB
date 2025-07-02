@@ -1,12 +1,14 @@
+
 import React, { createContext, useContext, useState, ReactNode } from "react";
 
 export type AnalysisType = "trendlines" | "fibonacci" | "candlePatterns" | "elliottWaves" | "dowTheory" | "all";
 export type PrecisionLevel = "baixa" | "normal" | "alta";
 export type EntryType = "buy" | "sell" | "wait";
 export type TimeframeType = "30s" | "1m";
-export type MarketType = "regular" | "otc"; // Adicionado tipo de mercado
+export type MarketType = "regular" | "otc";
 export type CandleFormationType = "doji" | "hammer" | "engulfing" | "harami" | "piercing" | "darkCloud" | "morningstar" | "eveningstar";
 export type CircularPatternType = "cycle" | "wave" | "rotation" | "divergence" | "convergence";
+export type AnalysisMode = "photo" | "live";
 
 interface PredictionData {
   entryPoint: EntryType;
@@ -18,7 +20,7 @@ interface PredictionData {
     signal: "buy" | "sell" | "neutral";
     strength: number;
   }[];
-  analysisNarrative?: string; // Added property for narrative explanation
+  analysisNarrative?: string;
   candleFormations?: CandleFormationType[];
   circularPatterns?: CircularPatternType[];
   keyLevels?: {
@@ -57,14 +59,16 @@ interface AnalyzerContextType {
   setPrediction: (data: PredictionData | null) => void;
   selectedTimeframe: TimeframeType;
   setSelectedTimeframe: (timeframe: TimeframeType) => void;
-  marketType: MarketType; // Novo estado para tipo de mercado
-  setMarketType: (type: MarketType) => void; // Setter para tipo de mercado
+  marketType: MarketType;
+  setMarketType: (type: MarketType) => void;
   lastUpdated: Date | null;
   setLastUpdated: (date: Date | null) => void;
   enableCircularAnalysis: boolean;
   toggleCircularAnalysis: () => void;
   candelPatternSensitivity: number;
   setCandelPatternSensitivity: (sensitivity: number) => void;
+  analysisMode: AnalysisMode;
+  setAnalysisMode: (mode: AnalysisMode) => void;
 }
 
 const AnalyzerContext = createContext<AnalyzerContextType | undefined>(undefined);
@@ -90,10 +94,11 @@ export const AnalyzerProvider = ({ children }: { children: ReactNode }) => {
   const [indicatorPosition, setIndicatorPosition] = useState<{ x: number; y: number }>({ x: 20, y: 20 });
   const [prediction, setPrediction] = useState<PredictionData | null>(null);
   const [selectedTimeframe, setSelectedTimeframe] = useState<TimeframeType>("1m");
-  const [marketType, setMarketType] = useState<MarketType>("regular"); // Estado inicial como mercado regular
+  const [marketType, setMarketType] = useState<MarketType>("regular");
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [enableCircularAnalysis, setEnableCircularAnalysis] = useState(true);
-  const [candelPatternSensitivity, setCandelPatternSensitivity] = useState(75); // 0-100, where higher means more sensitive
+  const [candelPatternSensitivity, setCandelPatternSensitivity] = useState(75);
+  const [analysisMode, setAnalysisMode] = useState<AnalysisMode>("photo");
 
   // Computed property to check if a custom region is set
   const hasCustomRegion = chartRegion !== null;
@@ -150,7 +155,6 @@ export const AnalyzerProvider = ({ children }: { children: ReactNode }) => {
       dowTheory: false,
       all: false,
     });
-    // Don't reset chartRegion here anymore - keep the user's selection
   };
 
   const toggleVisualMarkers = () => {
@@ -196,14 +200,16 @@ export const AnalyzerProvider = ({ children }: { children: ReactNode }) => {
         setPrediction,
         selectedTimeframe,
         setSelectedTimeframe,
-        marketType, // Novo valor no contexto
-        setMarketType, // Novo setter no contexto
+        marketType,
+        setMarketType,
         lastUpdated,
         setLastUpdated,
         enableCircularAnalysis,
         toggleCircularAnalysis,
         candelPatternSensitivity,
-        setCandelPatternSensitivity
+        setCandelPatternSensitivity,
+        analysisMode,
+        setAnalysisMode
       }}
     >
       {children}
