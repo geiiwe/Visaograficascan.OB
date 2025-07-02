@@ -34,12 +34,15 @@ export const useSupabaseAnalysis = () => {
 
   const saveAnalysis = async (data: AnalysisData) => {
     if (!user) {
+      console.error('Usuário não autenticado para salvar análise');
       toast.error('Usuário não autenticado');
       return null;
     }
 
     setLoading(true);
     try {
+      console.log('Salvando análise para usuário:', user.id, data);
+      
       const { data: analysis, error } = await supabase
         .from('chart_analyses')
         .insert({
@@ -49,8 +52,12 @@ export const useSupabaseAnalysis = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao salvar análise:', error);
+        throw error;
+      }
 
+      console.log('Análise salva com sucesso:', analysis);
       toast.success('Análise salva com sucesso!');
       return analysis;
     } catch (error) {
@@ -64,12 +71,15 @@ export const useSupabaseAnalysis = () => {
 
   const saveSignal = async (signal: TradingSignal) => {
     if (!user) {
+      console.error('Usuário não autenticado para salvar sinal');
       toast.error('Usuário não autenticado');
       return null;
     }
 
     setLoading(true);
     try {
+      console.log('Salvando sinal para usuário:', user.id, signal);
+      
       const { data: savedSignal, error } = await supabase
         .from('trading_signals')
         .insert({
@@ -79,8 +89,12 @@ export const useSupabaseAnalysis = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao salvar sinal:', error);
+        throw error;
+      }
 
+      console.log('Sinal salvo com sucesso:', savedSignal);
       toast.success('Sinal salvo com sucesso!');
       return savedSignal;
     } catch (error) {
@@ -93,9 +107,14 @@ export const useSupabaseAnalysis = () => {
   };
 
   const getUserAnalyses = async (limit = 10) => {
-    if (!user) return [];
+    if (!user) {
+      console.error('Usuário não autenticado para buscar análises');
+      return [];
+    }
 
     try {
+      console.log('Buscando análises para usuário:', user.id, 'limit:', limit);
+      
       const { data, error } = await supabase
         .from('chart_analyses')
         .select('*')
@@ -103,18 +122,29 @@ export const useSupabaseAnalysis = () => {
         .order('created_at', { ascending: false })
         .limit(limit);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao buscar análises:', error);
+        throw error;
+      }
+      
+      console.log('Análises encontradas:', data?.length || 0);
       return data || [];
     } catch (error) {
       console.error('Erro ao buscar análises:', error);
+      toast.error('Erro ao carregar análises');
       return [];
     }
   };
 
   const getUserSignals = async (limit = 20) => {
-    if (!user) return [];
+    if (!user) {
+      console.error('Usuário não autenticado para buscar sinais');
+      return [];
+    }
 
     try {
+      console.log('Buscando sinais para usuário:', user.id, 'limit:', limit);
+      
       const { data, error } = await supabase
         .from('trading_signals')
         .select('*')
@@ -122,10 +152,16 @@ export const useSupabaseAnalysis = () => {
         .order('created_at', { ascending: false })
         .limit(limit);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao buscar sinais:', error);
+        throw error;
+      }
+      
+      console.log('Sinais encontrados:', data?.length || 0);
       return data || [];
     } catch (error) {
       console.error('Erro ao buscar sinais:', error);
+      toast.error('Erro ao carregar sinais');
       return [];
     }
   };
