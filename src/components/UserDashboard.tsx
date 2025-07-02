@@ -15,8 +15,8 @@ const UserDashboard = () => {
   const { user } = useAuth();
   const { getUserAnalyses, getUserSignals, loading } = useSupabaseAnalysis();
   const { settings } = useUserSettings();
-  const [recentAnalyses, setRecentAnalyses] = useState([]);
-  const [recentSignals, setRecentSignals] = useState([]);
+  const [recentAnalyses, setRecentAnalyses] = useState<any[]>([]);
+  const [recentSignals, setRecentSignals] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState({
     totalAnalyses: 0,
@@ -38,17 +38,23 @@ const UserDashboard = () => {
       // Buscar análises recentes
       const analyses = await getUserAnalyses(5);
       console.log('Análises carregadas:', analyses);
-      setRecentAnalyses(analyses || []);
+      
+      // Garantir que analyses é um array
+      const analysesArray = Array.isArray(analyses) ? analyses : [];
+      setRecentAnalyses(analysesArray);
       
       // Buscar sinais recentes  
       const signals = await getUserSignals(10);
       console.log('Sinais carregados:', signals);
-      setRecentSignals(signals || []);
+      
+      // Garantir que signals é um array
+      const signalsArray = Array.isArray(signals) ? signals : [];
+      setRecentSignals(signalsArray);
       
       // Calcular estatísticas
-      const totalAnalyses = analyses?.length || 0;
-      const totalSignals = signals?.length || 0;
-      const executedSignals = signals?.filter(s => s.status === 'executed') || [];
+      const totalAnalyses = analysesArray.length;
+      const totalSignals = signalsArray.length;
+      const executedSignals = signalsArray.filter(s => s?.status === 'executed');
       const successRate = totalSignals > 0 ? Math.round((executedSignals.length / totalSignals) * 100) : 0;
       
       setStats({
@@ -62,6 +68,10 @@ const UserDashboard = () => {
     } catch (error) {
       console.error('Erro ao carregar dados do dashboard:', error);
       toast.error('Erro ao carregar dados do dashboard');
+      // Definir valores padrão em caso de erro
+      setRecentAnalyses([]);
+      setRecentSignals([]);
+      setStats({ totalAnalyses: 0, totalSignals: 0, successRate: 0 });
     } finally {
       setIsLoading(false);
     }
@@ -83,7 +93,8 @@ const UserDashboard = () => {
   };
 
   const getSignalColor = (type: string) => {
-    switch (type?.toLowerCase()) {
+    if (!type) return 'bg-gray-500';
+    switch (type.toLowerCase()) {
       case 'buy': return 'bg-green-500';
       case 'sell': return 'bg-red-500';
       default: return 'bg-gray-500';
@@ -91,6 +102,7 @@ const UserDashboard = () => {
   };
 
   const getStatusColor = (status: string) => {
+    if (!status) return 'bg-gray-100 text-gray-800';
     switch (status) {
       case 'executed': return 'bg-green-100 text-green-800';
       case 'pending': return 'bg-yellow-100 text-yellow-800';
@@ -190,7 +202,7 @@ const UserDashboard = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {recentAnalyses.length === 0 ? (
+          {!recentAnalyses || recentAnalyses.length === 0 ? (
             <div className="text-center py-8">
               <Activity className="h-12 w-12 text-trader-gray mx-auto mb-4" />
               <p className="text-trader-gray mb-2">Nenhuma análise encontrada</p>
@@ -204,19 +216,19 @@ const UserDashboard = () => {
                 <div key={analysis.id} className="flex items-center justify-between p-3 bg-trader-dark rounded-lg">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-white font-medium">{analysis.analysis_type}</span>
+                      <span className="text-white font-medium">{analysis.analysis_type || 'Análise'}</span>
                       <Badge variant="outline" className="text-xs">
-                        {analysis.market_type}
+                        {analysis.market_type || 'N/A'}
                       </Badge>
                       <Badge variant="outline" className="text-xs">
-                        {analysis.timeframe}
+                        {analysis.timeframe || 'N/A'}
                       </Badge>
                     </div>
                     <p className="text-sm text-trader-gray">
-                      {formatDistanceToNow(new Date(analysis.created_at), { 
+                      {analysis.created_at ? formatDistanceToNow(new Date(analysis.created_at), { 
                         addSuffix: true, 
                         locale: ptBR 
-                      })}
+                      }) : 'Data não disponível'}
                     </p>
                   </div>
                   {analysis.confidence_score && (
@@ -244,7 +256,7 @@ const UserDashboard = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {recentSignals.length === 0 ? (
+          {!recentSignals || recentSignals.length === 0 ? (
             <div className="text-center py-8">
               <TrendingUp className="h-12 w-12 text-trader-gray mx-auto mb-4" />
               <p className="text-trader-gray mb-2">Nenhum sinal encontrado</p>
@@ -259,20 +271,20 @@ const UserDashboard = () => {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <div className={`w-3 h-3 rounded-full ${getSignalColor(signal.signal_type)}`}></div>
-                      <span className="text-white font-medium">{signal.signal_type}</span>
+                      <span className="text-white font-medium">{signal.signal_type || 'Sinal'}</span>
                       <Badge className={getStatusColor(signal.status)}>
-                        {signal.status}
+                        {signal.status || 'pending'}
                       </Badge>
                     </div>
                     <p className="text-sm text-trader-gray">
-                      {formatDistanceToNow(new Date(signal.created_at), { 
+                      {signal.created_at ? formatDistanceToNow(new Date(signal.created_at), { 
                         addSuffix: true, 
                         locale: ptBR 
-                      })}
+                      }) : 'Data não disponível'}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm text-white">{signal.confidence_level}%</p>
+                    <p className="text-sm text-white">{signal.confidence_level || 0}%</p>
                     <p className="text-xs text-trader-gray">Confiança</p>
                   </div>
                 </div>

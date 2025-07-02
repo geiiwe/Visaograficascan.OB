@@ -128,7 +128,8 @@ export const useSupabaseAnalysis = () => {
       }
       
       console.log('Análises encontradas:', data?.length || 0);
-      return data || [];
+      // Garantir que sempre retornamos um array
+      return Array.isArray(data) ? data : [];
     } catch (error) {
       console.error('Erro ao buscar análises:', error);
       toast.error('Erro ao carregar análises');
@@ -158,7 +159,8 @@ export const useSupabaseAnalysis = () => {
       }
       
       console.log('Sinais encontrados:', data?.length || 0);
-      return data || [];
+      // Garantir que sempre retornamos um array
+      return Array.isArray(data) ? data : [];
     } catch (error) {
       console.error('Erro ao buscar sinais:', error);
       toast.error('Erro ao carregar sinais');
