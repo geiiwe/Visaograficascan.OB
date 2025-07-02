@@ -37,9 +37,21 @@ const GraphAnalyzer = () => {
   const imageRef = useRef<HTMLImageElement>(null);
   const [croppedImage, setCroppedImage] = useState<string | null>(null);
   const isMobile = useIsMobile();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
 
-  // Adicionar verificação de autenticação no início do componente
+  // Aguardar o carregamento da autenticação
+  if (loading) {
+    return (
+      <div className="w-full max-w-4xl mx-auto p-4 text-center">
+        <div className="bg-gray-900 rounded-lg p-8 border border-gray-700">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-white">Verificando autenticação...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Verificar se o usuário está autenticado
   if (!user) {
     return (
       <div className="w-full max-w-4xl mx-auto p-4 text-center">
