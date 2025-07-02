@@ -6,6 +6,16 @@ export interface PatternResult {
   confidence: number;
   buyScore: number;
   sellScore: number;
+  type?: string;
+  recommendation?: string;
+  description?: string;
+  majorPlayers?: string[];
+  visualMarkers?: Array<{
+    x: number;
+    y: number;
+    type: string;
+    color: string;
+  }>;
   details?: any;
 }
 
@@ -40,45 +50,63 @@ const generateMockPatternResult = (type: AnalysisType, precision: PrecisionLevel
   let buyScore = 0;
   let sellScore = 0;
   let found = false;
+  let description = '';
+  let recommendation = '';
+  let majorPlayers: string[] = [];
   
   switch (type) {
     case 'trendlines':
       found = Math.random() > 0.3;
+      description = 'Análise de linhas de tendência e níveis de suporte/resistência';
       if (found) {
         buyScore = Math.random() > 0.5 ? Math.random() * 30 + 20 : Math.random() * 10;
         sellScore = Math.random() > 0.5 ? Math.random() * 30 + 20 : Math.random() * 10;
+        recommendation = buyScore > sellScore ? 'DECISÃO: COMPRA - Rompimento de resistência detectado' : 'DECISÃO: VENDA - Quebra de suporte identificada';
+        majorPlayers = ['Goldman Sachs', 'JPMorgan', 'Morgan Stanley'];
       }
       break;
       
     case 'fibonacci':
       found = Math.random() > 0.4;
+      description = 'Análise de níveis de retração e extensão de Fibonacci';
       if (found) {
         buyScore = Math.random() * 25 + 15;
         sellScore = Math.random() * 25 + 15;
+        recommendation = buyScore > sellScore ? 'DECISÃO: COMPRA - Suporte em nível de Fibonacci' : 'DECISÃO: VENDA - Resistência em nível de Fibonacci';
+        majorPlayers = ['Bridgewater', 'Renaissance Technologies', 'Citadel'];
       }
       break;
       
     case 'candlePatterns':
       found = Math.random() > 0.25;
+      description = 'Detecção de padrões de candlesticks japoneses';
       if (found) {
         buyScore = Math.random() * 35 + 25;
         sellScore = Math.random() * 35 + 25;
+        recommendation = buyScore > sellScore ? 'DECISÃO: COMPRA - Padrão de reversão bullish' : 'DECISÃO: VENDA - Padrão de reversão bearish';
+        majorPlayers = ['Two Sigma', 'DE Shaw', 'AQR Capital'];
       }
       break;
       
     case 'elliottWaves':
       found = Math.random() > 0.6;
+      description = 'Análise de ondas de Elliott e ciclos de mercado';
       if (found) {
         buyScore = Math.random() * 40 + 30;
         sellScore = Math.random() * 40 + 30;
+        recommendation = buyScore > sellScore ? 'DECISÃO: COMPRA - Onda impulsiva iniciando' : 'DECISÃO: VENDA - Onda corretiva em andamento';
+        majorPlayers = ['Millennium Management', 'Point72', 'Balyasny'];
       }
       break;
       
     case 'dowTheory':
       found = Math.random() > 0.5;
+      description = 'Aplicação dos princípios da Teoria de Dow';
       if (found) {
         buyScore = Math.random() * 20 + 10;
         sellScore = Math.random() * 20 + 10;
+        recommendation = buyScore > sellScore ? 'DECISÃO: COMPRA - Tendência primária bullish confirmada' : 'DECISÃO: VENDA - Tendência primária bearish confirmada';
+        majorPlayers = ['BlackRock', 'Vanguard', 'State Street'];
       }
       break;
       
@@ -91,10 +119,31 @@ const generateMockPatternResult = (type: AnalysisType, precision: PrecisionLevel
     confidence: found ? confidence : 0,
     buyScore,
     sellScore,
+    type,
+    description,
+    recommendation,
+    majorPlayers,
+    visualMarkers: found ? generateVisualMarkers(type) : [],
     details: {
       type,
       precision,
       timestamp: new Date().toISOString()
     }
   };
+};
+
+const generateVisualMarkers = (type: string) => {
+  const markers = [];
+  const numMarkers = Math.floor(Math.random() * 3) + 1;
+  
+  for (let i = 0; i < numMarkers; i++) {
+    markers.push({
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      type: type,
+      color: type === 'trendlines' ? '#10b981' : type === 'fibonacci' ? '#f97316' : '#e11d48'
+    });
+  }
+  
+  return markers;
 };

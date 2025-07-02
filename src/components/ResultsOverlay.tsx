@@ -206,11 +206,11 @@ const ResultsOverlay = () => {
           
           console.log("Tipos de análise ativos antes da detecção:", activeAnalysis);
           
+          // Fix: Remove the fourth parameter that doesn't exist
           const results = await detectPatterns(
-            processedImage, 
+            processedImage || imageData, 
             activeAnalysis, 
-            precision,
-            enhancedOptions.disableSimulation
+            precision
           );
           
           console.log("Análise completa com resultados aprimorados:", results);
