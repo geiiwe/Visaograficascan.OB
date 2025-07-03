@@ -22,6 +22,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
 const GraphAnalyzer = () => {
+  // Todos os hooks primeiro para evitar Rules of Hooks violations
   const { 
     imageData, 
     isAnalyzing, 
@@ -66,6 +67,160 @@ const GraphAnalyzer = () => {
   const isMobile = useIsMobile();
   const { user, loading } = useAuth();
 
+  // Verificar suporte da câmera - hook sempre executado
+  useEffect(() => {
+    const checkCameraSupport = async () => {
+      try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          setCameraSupported(false);
+          toast.error("Acesso à câmera não é suportado neste navegador ou dispositivo");
+          return;
+        }
+        
+        try {
+          await navigator.mediaDevices.getUserMedia({ 
+            video: {
+              facingMode: 'environment',
+              width: { ideal: 1920 },
+              height: { ideal: 1080 },
+            }
+          });
+          setCameraSupported(true);
+          console.log("Suporte à câmera verificado com sucesso");
+        } catch (error) {
+          setCameraSupported(false);
+          console.log("Acesso à câmera negado ou não disponível:", error);
+        }
+      } catch (error) {
+        setCameraSupported(false);
+        console.error("Erro ao verificar suporte à câmera:", error);
+      }
+    };
+
+    checkCameraSupport();
+  }, []);
+
+  // Outros useEffects
+  useEffect(() => {
+    return () => {
+      if (liveIntervalRef.current) {
+        clearInterval(liveIntervalRef.current);
+      }
+    };
+  }, []);
+
+  const toggleChartSelection = () => {
+    if (isAnalyzing) {
+      toast.error("Não é possível selecionar região durante a análise");
+      return;
+    }
+    setSelectionMode(!selectionMode);
+    if (!selectionMode) {
+      toast.info("Arraste para selecionar a área exata do gráfico para análise");
+    }
+  };
+
+  const handleTimeframeChange = (timeframe: TimeframeType) => {
+    setSelectedTimeframe(timeframe);
+    toast.info(`Análise ajustada para timeframe de ${timeframe === "30s" ? "30 segundos" : "1 minuto"}`);
+  };
+
+  const handlePhotoCapture = async (imageData: string) => {
+    await analyzeImage(imageData);
+  };
+
+  const handleModeChange = (mode: AnalysisMode) => {
+    setAnalysisMode(mode);
+    if (liveIntervalRef.current) {
+      clearInterval(liveIntervalRef.current);
+      liveIntervalRef.current = null;
+    }
+  };
+
+  const startLiveAnalysis = () => {
+    if (liveIntervalRef.current) return;
+    
+    liveIntervalRef.current = setInterval(() => {
+      setLiveProgress(prev => (prev + 1) % 100);
+      
+      // Simular análise em tempo real
+      if (Math.random() > 0.7) {
+        setLiveStats(prev => ({
+          totalAnalyses: prev.totalAnalyses + 1,
+          buySignals: prev.buySignals + (Math.random() > 0.6 ? 1 : 0),
+          sellSignals: prev.sellSignals + (Math.random() > 0.7 ? 1 : 0),
+          waitSignals: prev.waitSignals + (Math.random() > 0.8 ? 1 : 0),
+          averageConfidence: Math.floor(Math.random() * 40) + 60
+        }));
+      }
+    }, 200);
+  };
+
+  const stopLiveAnalysis = () => {
+    if (liveIntervalRef.current) {
+      clearInterval(liveIntervalRef.current);
+      liveIntervalRef.current = null;
+    }
+  };
+
+  // Extrair região selecionada - MOVED TO TOP
+  useEffect(() => {
+    if (imageData && chartRegion && !selectionMode) {
+      const extractRegion = () => {
+        if (!imageData || !chartRegion) return;
+        
+        const img = new Image();
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            if (!ctx) return;
+            
+            canvas.width = chartRegion.width;
+            canvas.height = chartRegion.height;
+            
+            ctx.drawImage(
+              img, 
+              chartRegion.x, chartRegion.y, chartRegion.width, chartRegion.height,
+              0, 0, canvas.width, canvas.height
+            );
+            
+            const regionImage = canvas.toDataURL('image/png');
+            setCroppedImage(regionImage);
+          } catch (error) {
+            console.error("Error extracting region:", error);
+            setCroppedImage(null);
+          }
+        };
+        
+        img.src = imageData;
+      };
+      
+      extractRegion();
+    } else if (imageData && !chartRegion) {
+      setCroppedImage(null);
+    }
+  }, [imageData, chartRegion, selectionMode]);
+
+  // Progresso do modo live
+  useEffect(() => {
+    if (analysisMode === 'live') {
+      const interval = selectedTimeframe === '30s' ? 30000 : 60000;
+      
+      liveIntervalRef.current = setInterval(() => {
+        setLiveProgress(prev => (prev + 1) % 100);
+      }, interval / 100);
+    }
+
+    return () => {
+      if (liveIntervalRef.current) {
+        clearInterval(liveIntervalRef.current);
+        liveIntervalRef.current = null;
+      }
+    };
+  }, [analysisMode, selectedTimeframe]);
+
   // Aguardar o carregamento da autenticação
   if (loading) {
     return (
@@ -99,48 +254,6 @@ const GraphAnalyzer = () => {
       </div>
     );
   }
-
-  // Verificar suporte da câmera
-  useEffect(() => {
-    const checkCameraSupport = async () => {
-      try {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          setCameraSupported(false);
-          toast.error("Acesso à câmera não é suportado neste navegador ou dispositivo");
-          return;
-        }
-        
-        try {
-          await navigator.mediaDevices.getUserMedia({ 
-            video: {
-              facingMode: 'environment',
-              width: { ideal: 1920 },
-              height: { ideal: 1080 },
-            }
-          });
-          setCameraSupported(true);
-        } catch (error) {
-          toast.error("Por favor, permita o acesso à câmera para usar este aplicativo");
-          setCaptureMode(false);
-          setCameraSupported(true);
-        }
-      } catch (e) {
-        console.error("Error checking camera support:", e);
-        setCameraSupported(false);
-      }
-    };
-
-    checkCameraSupport();
-  }, [setCaptureMode]);
-
-  // Extrair região selecionada
-  useEffect(() => {
-    if (imageData && chartRegion && !selectionMode) {
-      extractSelectedRegion();
-    } else if (imageData && !chartRegion) {
-      setCroppedImage(null);
-    }
-  }, [imageData, chartRegion, selectionMode]);
 
   const extractSelectedRegion = () => {
     if (!imageData || !chartRegion) return;
@@ -179,26 +292,6 @@ const GraphAnalyzer = () => {
     toast.info(`Precisão de análise alterada para ${level}`);
   };
 
-  const toggleChartSelection = () => {
-    if (isAnalyzing) {
-      toast.error("Não é possível selecionar região durante a análise");
-      return;
-    }
-    setSelectionMode(!selectionMode);
-    if (!selectionMode) {
-      toast.info("Arraste para selecionar a área exata do gráfico para análise");
-    }
-  };
-
-  const handleTimeframeChange = (timeframe: TimeframeType) => {
-    setSelectedTimeframe(timeframe);
-    toast.info(`Análise ajustada para timeframe de ${timeframe === "30s" ? "30 segundos" : "1 minuto"}`);
-  };
-
-  const handlePhotoCapture = async (imageData: string) => {
-    await analyzeImage(imageData);
-  };
-
   const handleLiveCapture = async (imageData: string) => {
     if (canAnalyze) {
       const result = await analyzeImage(imageData);
@@ -228,23 +321,6 @@ const GraphAnalyzer = () => {
     });
   };
 
-  // Progresso do modo live
-  useEffect(() => {
-    if (analysisMode === 'live') {
-      const interval = selectedTimeframe === '30s' ? 30000 : 60000;
-      
-      liveIntervalRef.current = setInterval(() => {
-        setLiveProgress(prev => (prev + 1) % 100);
-      }, interval / 100);
-    }
-
-    return () => {
-      if (liveIntervalRef.current) {
-        clearInterval(liveIntervalRef.current);
-        liveIntervalRef.current = null;
-      }
-    };
-  }, [analysisMode, selectedTimeframe]);
 
   return (
     <div className="w-full max-w-6xl mx-auto p-2 sm:p-4 space-y-3 sm:space-y-4">

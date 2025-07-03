@@ -24,34 +24,83 @@ const UserDashboard = () => {
     successRate: 0
   });
 
-  const loadDashboardData = async () => {
-    if (!user) {
-      console.log('Usuário não encontrado, não carregando dados do dashboard');
-      setIsLoading(false);
-      return;
-    }
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      if (!user) {
+        console.log('Usuário não encontrado, não carregando dados do dashboard');
+        setIsLoading(false);
+        return;
+      }
 
-    console.log('Carregando dados do dashboard para:', user.email);
-    setIsLoading(true);
-    
-    try {
-      // Buscar análises recentes
-      const analyses = await getUserAnalyses(5);
-      console.log('Análises carregadas:', analyses);
+      console.log('Carregando dados do dashboard para:', user.email);
+      setIsLoading(true);
       
-      // Garantir que analyses é um array
+      try {
+        // Buscar análises recentes
+        const analyses = await getUserAnalyses(5);
+        console.log('Análises carregadas:', analyses);
+        
+        // Garantir que analyses é um array
+        const analysesArray = Array.isArray(analyses) ? analyses : [];
+        setRecentAnalyses(analysesArray);
+        
+        // Buscar sinais recentes  
+        const signals = await getUserSignals(10);
+        console.log('Sinais carregados:', signals);
+        
+        // Garantir que signals é um array
+        const signalsArray = Array.isArray(signals) ? signals : [];
+        setRecentSignals(signalsArray);
+        
+        // Calcular estatísticas
+        const totalAnalyses = analysesArray.length;
+        const totalSignals = signalsArray.length;
+        const executedSignals = signalsArray.filter(s => s?.status === 'executed');
+        const successRate = totalSignals > 0 ? Math.round((executedSignals.length / totalSignals) * 100) : 0;
+        
+        setStats({
+          totalAnalyses,
+          totalSignals,
+          successRate
+        });
+
+        console.log('Estatísticas calculadas:', { totalAnalyses, totalSignals, successRate });
+        
+      } catch (error) {
+        console.error('Erro ao carregar dados do dashboard:', error);
+        toast.error('Erro ao carregar dados do dashboard');
+        // Definir valores padrão em caso de erro
+        setRecentAnalyses([]);
+        setRecentSignals([]);
+        setStats({ totalAnalyses: 0, totalSignals: 0, successRate: 0 });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (user) {
+      console.log('Usuário autenticado, carregando dashboard:', user.email);
+      loadDashboardData();
+    } else {
+      console.log('Usuário não autenticado');
+      setIsLoading(false);
+    }
+  }, [user, getUserAnalyses, getUserSignals]);
+
+  const handleRefresh = async () => {
+    toast.info('Atualizando dados...');
+    if (!user) return;
+    
+    setIsLoading(true);
+    try {
+      const analyses = await getUserAnalyses(5);
       const analysesArray = Array.isArray(analyses) ? analyses : [];
       setRecentAnalyses(analysesArray);
       
-      // Buscar sinais recentes  
       const signals = await getUserSignals(10);
-      console.log('Sinais carregados:', signals);
-      
-      // Garantir que signals é um array
       const signalsArray = Array.isArray(signals) ? signals : [];
       setRecentSignals(signalsArray);
       
-      // Calcular estatísticas
       const totalAnalyses = analysesArray.length;
       const totalSignals = signalsArray.length;
       const executedSignals = signalsArray.filter(s => s?.status === 'executed');
@@ -62,35 +111,14 @@ const UserDashboard = () => {
         totalSignals,
         successRate
       });
-
-      console.log('Estatísticas calculadas:', { totalAnalyses, totalSignals, successRate });
-      
     } catch (error) {
-      console.error('Erro ao carregar dados do dashboard:', error);
-      toast.error('Erro ao carregar dados do dashboard');
-      // Definir valores padrão em caso de erro
-      setRecentAnalyses([]);
-      setRecentSignals([]);
-      setStats({ totalAnalyses: 0, totalSignals: 0, successRate: 0 });
+      console.error('Erro ao atualizar dados:', error);
+      toast.error('Erro ao atualizar dados');
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (user) {
-      console.log('Usuário autenticado, carregando dashboard:', user.email);
-      loadDashboardData();
-    } else {
-      console.log('Usuário não autenticado');
-      setIsLoading(false);
-    }
-  }, [user]);
-
-  const handleRefresh = () => {
-    toast.info('Atualizando dados...');
-    loadDashboardData();
-  };
 
   const getSignalColor = (type: string) => {
     if (!type) return 'bg-gray-500';

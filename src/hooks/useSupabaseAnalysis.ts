@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
@@ -32,7 +31,8 @@ export const useSupabaseAnalysis = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
 
-  const saveAnalysis = async (data: AnalysisData) => {
+  // Memoize functions to prevent useEffect dependency issues
+  const saveAnalysis = useCallback(async (data: AnalysisData) => {
     if (!user) {
       console.error('Usuário não autenticado para salvar análise');
       toast.error('Usuário não autenticado');
@@ -67,9 +67,9 @@ export const useSupabaseAnalysis = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
-  const saveSignal = async (signal: TradingSignal) => {
+  const saveSignal = useCallback(async (signal: TradingSignal) => {
     if (!user) {
       console.error('Usuário não autenticado para salvar sinal');
       toast.error('Usuário não autenticado');
@@ -104,9 +104,9 @@ export const useSupabaseAnalysis = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
-  const getUserAnalyses = async (limit = 10) => {
+  const getUserAnalyses = useCallback(async (limit = 10) => {
     if (!user) {
       console.error('Usuário não autenticado para buscar análises');
       return [];
@@ -128,16 +128,15 @@ export const useSupabaseAnalysis = () => {
       }
       
       console.log('Análises encontradas:', data?.length || 0);
-      // Garantir que sempre retornamos um array
       return Array.isArray(data) ? data : [];
     } catch (error) {
       console.error('Erro ao buscar análises:', error);
       toast.error('Erro ao carregar análises');
       return [];
     }
-  };
+  }, [user]);
 
-  const getUserSignals = async (limit = 20) => {
+  const getUserSignals = useCallback(async (limit = 20) => {
     if (!user) {
       console.error('Usuário não autenticado para buscar sinais');
       return [];
@@ -159,14 +158,13 @@ export const useSupabaseAnalysis = () => {
       }
       
       console.log('Sinais encontrados:', data?.length || 0);
-      // Garantir que sempre retornamos um array
       return Array.isArray(data) ? data : [];
     } catch (error) {
       console.error('Erro ao buscar sinais:', error);
       toast.error('Erro ao carregar sinais');
       return [];
     }
-  };
+  }, [user]);
 
   return {
     saveAnalysis,
