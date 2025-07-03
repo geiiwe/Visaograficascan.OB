@@ -56,17 +56,33 @@ export const useAuth = () => {
   const signOut = async () => {
     try {
       setLoading(true);
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error('Error signing out:', error);
-        throw error;
+      // Verificar se existe uma sessão antes de tentar fazer logout
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+          console.error('Error signing out:', error);
+          throw error;
+        }
+        console.log('User signed out successfully');
+      } else {
+        // Se não há sessão, apenas limpar o estado local
+        console.log('No active session found, clearing local state');
       }
-      console.log('User signed out successfully');
+      
       setUser(null);
       setSession(null);
     } catch (error) {
-      console.error('Error signing out:', error);
-      throw error;
+      // Suprimir erros de AuthSessionMissingError pois são esperados
+      if (error?.message !== 'Auth session missing!') {
+        console.error('Error signing out:', error);
+        throw error;
+      } else {
+        console.log('Session already cleared, ignoring AuthSessionMissingError');
+        setUser(null);
+        setSession(null);
+      }
     } finally {
       setLoading(false);
     }
