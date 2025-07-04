@@ -20,6 +20,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import MarketTypeSelector from "./MarketTypeSelector";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
+import TestAnalysisResults from "./TestAnalysisResults";
 
 const GraphAnalyzer = () => {
   // Todos os hooks primeiro para evitar Rules of Hooks violations
@@ -138,22 +139,8 @@ const GraphAnalyzer = () => {
   };
 
   const startLiveAnalysis = () => {
-    if (liveIntervalRef.current) return;
-    
-    liveIntervalRef.current = setInterval(() => {
-      setLiveProgress(prev => (prev + 1) % 100);
-      
-      // Simular análise em tempo real
-      if (Math.random() > 0.7) {
-        setLiveStats(prev => ({
-          totalAnalyses: prev.totalAnalyses + 1,
-          buySignals: prev.buySignals + (Math.random() > 0.6 ? 1 : 0),
-          sellSignals: prev.sellSignals + (Math.random() > 0.7 ? 1 : 0),
-          waitSignals: prev.waitSignals + (Math.random() > 0.8 ? 1 : 0),
-          averageConfidence: Math.floor(Math.random() * 40) + 60
-        }));
-      }
-    }, 200);
+    console.log('🚀 Iniciando modo live real (removido simulação)');
+    // Remover simulação - análises agora são feitas pelo CameraView
   };
 
   const stopLiveAnalysis = () => {
@@ -203,13 +190,18 @@ const GraphAnalyzer = () => {
     }
   }, [imageData, chartRegion, selectionMode]);
 
-  // Progresso do modo live
+  // Progresso unificado para modo live
   useEffect(() => {
     if (analysisMode === 'live') {
       const interval = selectedTimeframe === '30s' ? 30000 : 60000;
+      console.log(`⏱️ Configurando progresso live: intervalo de ${interval}ms`);
       
+      // Progresso visual sincronizado com análise real
       liveIntervalRef.current = setInterval(() => {
-        setLiveProgress(prev => (prev + 1) % 100);
+        setLiveProgress(prev => {
+          const newProgress = (prev + 1) % 100;
+          return newProgress;
+        });
       }, interval / 100);
     }
 
@@ -250,9 +242,12 @@ const GraphAnalyzer = () => {
           >
             Fazer Login
           </Button>
-        </div>
       </div>
-    );
+      
+      {/* Componente de debug */}
+      <TestAnalysisResults />
+    </div>
+  );
   }
 
   const extractSelectedRegion = () => {
@@ -293,10 +288,13 @@ const GraphAnalyzer = () => {
   };
 
   const handleLiveCapture = async (imageData: string) => {
-    if (canAnalyze) {
+    if (canAnalyze && analysisMode === 'live') {
+      console.log('🔴 Executando análise REAL no modo live...');
       const result = await analyzeImage(imageData);
       if (result) {
+        console.log('📊 Resultado da análise live:', result);
         updateLiveStats(result);
+        // Sinal já é salvo automaticamente pelo useUnifiedAnalysis
       }
     }
   };
@@ -684,6 +682,9 @@ const GraphAnalyzer = () => {
           </div>
         </div>
       )}
+      
+      {/* Componente de debug */}
+      <TestAnalysisResults />
     </div>
   );
 };
