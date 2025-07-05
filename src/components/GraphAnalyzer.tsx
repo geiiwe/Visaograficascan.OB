@@ -288,6 +288,12 @@ const GraphAnalyzer = () => {
   };
 
   const handleLiveCapture = async (imageData: string) => {
+    console.log('🎯 handleLiveCapture chamado:', { 
+      canAnalyze, 
+      analysisMode, 
+      hasImageData: !!imageData 
+    });
+    
     if (canAnalyze && analysisMode === 'live') {
       console.log('🔴 Executando análise REAL no modo live...');
       const result = await analyzeImage(imageData);
@@ -296,6 +302,8 @@ const GraphAnalyzer = () => {
         updateLiveStats(result);
         // Sinal já é salvo automaticamente pelo useUnifiedAnalysis
       }
+    } else {
+      console.log('❌ Análise live bloqueada:', { canAnalyze, analysisMode });
     }
   };
 
