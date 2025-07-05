@@ -294,19 +294,38 @@ const GraphAnalyzer = () => {
     console.log('🎯 handleLiveCapture chamado:', { 
       canAnalyze, 
       analysisMode, 
-      hasImageData: !!imageData 
+      hasImageData: !!imageData,
+      isAnalyzing
     });
     
     if (canAnalyze && analysisMode === 'live') {
       console.log('🔴 Executando análise REAL no modo live...');
-      const result = await analyzeImage(imageData);
-      if (result) {
-        console.log('📊 Resultado da análise live:', result);
-        updateLiveStats(result);
-        // Sinal já é salvo automaticamente pelo useUnifiedAnalysis
+      console.log('📋 Parâmetros de análise:', { precision, marketType, selectedTimeframe });
+      
+      try {
+        const result = await analyzeImage(imageData);
+        if (result) {
+          console.log('✅ Análise live concluída com sucesso:', {
+            signal: result.signal,
+            confidence: result.confidence,
+            patterns: result.patterns?.length || 0
+          });
+          updateLiveStats(result);
+          toast.success(`Live: ${result.signal} (${result.confidence}%)`);
+        } else {
+          console.log('❌ Análise live retornou null');
+          toast.error('Erro na análise live');
+        }
+      } catch (error) {
+        console.error('💥 Erro na análise live:', error);
+        toast.error('Falha na análise live');
       }
     } else {
-      console.log('❌ Análise live bloqueada:', { canAnalyze, analysisMode });
+      console.log('❌ Análise live bloqueada:', { 
+        canAnalyze, 
+        analysisMode,
+        motivo: !canAnalyze ? 'Análise em andamento' : 'Modo não é live'
+      });
     }
   };
 
