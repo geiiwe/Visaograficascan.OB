@@ -194,12 +194,15 @@ const GraphAnalyzer = () => {
   useEffect(() => {
     if (analysisMode === 'live') {
       const interval = selectedTimeframe === '30s' ? 30000 : 60000;
-      console.log(`⏱️ Configurando progresso live: intervalo de ${interval}ms`);
+      console.log(`⏱️ GraphAnalyzer: Configurando progresso live: intervalo de ${interval}ms`);
       
       // Progresso visual sincronizado com análise real
       liveIntervalRef.current = setInterval(() => {
         setLiveProgress(prev => {
           const newProgress = (prev + 1) % 100;
+          if (newProgress === 0) {
+            console.log('🔄 GraphAnalyzer: Ciclo de progresso completo');
+          }
           return newProgress;
         });
       }, interval / 100);
