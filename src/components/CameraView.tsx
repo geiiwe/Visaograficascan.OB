@@ -254,12 +254,9 @@ const CameraView: React.FC<CameraViewProps> = ({
   // Lógica para modo contínuo
   useEffect(() => {
     if (mode === 'continuous' && isLiveActive && !livePaused && streamActive) {
-      console.log('🎯 CameraView: Iniciando intervalo live', { captureInterval });
       intervalRef.current = setInterval(() => {
-        console.log('📸 CameraView: Capturando frame para análise live');
         const imageData = captureCurrentFrame();
         if (imageData && onContinuousCapture) {
-          console.log('✅ CameraView: Enviando imagem para handleLiveCapture');
           onContinuousCapture(imageData);
         }
       }, captureInterval);
@@ -289,10 +286,9 @@ const CameraView: React.FC<CameraViewProps> = ({
 
   // Controles do modo live
   const startLive = () => {
-    console.log('🚀 CameraView: Iniciando modo live');
     setIsLiveActive(true);
     setLivePaused(false);
-    toast.success("Modo live iniciado - análises automáticas ativadas");
+    toast.success("Modo live iniciado");
   };
 
   const pauseLive = () => {

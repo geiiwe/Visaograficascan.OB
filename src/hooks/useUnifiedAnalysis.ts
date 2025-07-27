@@ -32,7 +32,7 @@ export const useUnifiedAnalysis = () => {
     isAnalyzing
   } = useAnalyzer();
   
-  const { saveAnalysis, saveSignal } = useSupabaseAnalysis();
+  const { saveAnalysis } = useSupabaseAnalysis();
   const [progress, setProgress] = useState<AnalysisProgress>({
     stage: 'idle',
     percentage: 0,
@@ -46,32 +46,6 @@ export const useUnifiedAnalysis = () => {
   const updateProgress = useCallback((stage: AnalysisProgress['stage'], percentage: number, message: string) => {
     setProgress({ stage, percentage, message });
   }, []);
-
-  const generateSignalFromResult = useCallback(async (result: PatternDetectionResult) => {
-    try {
-      const signal = {
-        signal_type: result.signal,
-        confidence_level: result.confidence,
-        timeframe: selectedTimeframe,
-        ai_reasoning: result.reasoning,
-        market_conditions: {
-          patterns: result.patterns,
-          marketType,
-          precision,
-          buyScore: result.buyScore,
-          sellScore: result.sellScore,
-          timestamp: new Date().toISOString()
-        }
-      };
-      
-      console.log('💾 Salvando sinal automático:', signal);
-      await saveSignal(signal);
-      return signal;
-    } catch (error) {
-      console.error('❌ Erro ao salvar sinal:', error);
-      return null;
-    }
-  }, [selectedTimeframe, marketType, precision, saveSignal]);
 
   const analyzeImage = useCallback(async (imageData: string): Promise<AnalysisResult | null> => {
     if (isAnalyzing) {
@@ -153,10 +127,6 @@ export const useUnifiedAnalysis = () => {
       
       toast.success(`Análise concluída: ${detectionResult.signal} (${detectionResult.confidence}%)`);
       
-      // Auto-gerar sinal para todas as análises
-      console.log('🎯 Gerando sinal automático para análise:', detectionResult.signal);
-      await generateSignalFromResult(detectionResult);
-      
       return analysisResult;
       
     } catch (error) {
@@ -187,8 +157,7 @@ export const useUnifiedAnalysis = () => {
     selectedTimeframe,
     setIsAnalyzing,
     updateProgress,
-    saveAnalysis,
-    generateSignalFromResult
+    saveAnalysis
   ]);
 
   const cancelAnalysis = useCallback(() => {
