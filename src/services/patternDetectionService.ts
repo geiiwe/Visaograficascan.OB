@@ -29,11 +29,7 @@ export class PatternDetectionService {
       const results = await detectPatterns(
         imageData,
         options.analysisTypes,
-        options.precision,
-        {
-          timeframe: options.timeframe,
-          marketType: options.marketType
-        }
+        options.precision
       );
 
       // Processar resultados de forma unificada

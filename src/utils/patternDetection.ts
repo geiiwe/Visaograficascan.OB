@@ -1,7 +1,5 @@
 
 import type { AnalysisType, PrecisionLevel } from '@/context/AnalyzerContext';
-import { performEnhancedVisualAnalysis } from './enhancedVisualAnalysis';
-import { performAdvancedVisualAnalysis } from './visualAnalysis';
 
 export interface PatternResult {
   found: boolean;
@@ -24,134 +22,19 @@ export interface PatternResult {
 export const detectPatterns = async (
   imageData: string,
   analysisTypes: AnalysisType[],
-  precision: PrecisionLevel,
-  options?: {
-    timeframe?: string;
-    marketType?: string;
-  }
-): Promise<Record<string, PatternResult>> => {
-  console.log('🔍 Executando análise REAL de padrões:', { analysisTypes, precision });
-  
-  try {
-    // Usar análise visual real em vez de simulação
-    const analysisOptions = {
-      precision,
-      timeframe: options?.timeframe || '1m',
-      marketType: options?.marketType || 'forex'
-    };
-
-    // Executar análise visual aprimorada
-    const enhancedAnalysis = await performEnhancedVisualAnalysis(imageData, analysisOptions);
-    console.log('✅ Análise visual real concluída:', enhancedAnalysis.recommendation);
-
-    // Converter resultado da análise para formato esperado
-    const results: Record<string, PatternResult> = {};
-    
-    // Processar cada tipo de análise solicitado
-    for (const type of analysisTypes) {
-      if (type === 'all') continue;
-      
-      results[type] = convertAnalysisToPatternResult(
-        enhancedAnalysis, 
-        type, 
-        precision
-      );
-    }
-    
-    console.log('📊 Padrões detectados:', Object.keys(results).filter(k => results[k].found));
-    return results;
-    
-  } catch (error) {
-    console.error('❌ Erro na análise real, usando fallback:', error);
-    // Fallback para simulação apenas em caso de erro
-    return await detectPatternsSimulated(imageData, analysisTypes, precision);
-  }
-};
-
-// Função para converter análise aprimorada em formato de padrões
-const convertAnalysisToPatternResult = (
-  enhancedAnalysis: any,
-  type: AnalysisType,
-  precision: PrecisionLevel
-): PatternResult => {
-  const recommendation = enhancedAnalysis.recommendation;
-  const confidence = recommendation.confidence;
-  
-  // Mapear tipos de análise para dados relevantes
-  const typeMapping: Record<string, any> = {
-    'trendlines': {
-      found: enhancedAnalysis.visualAnalysis?.supportResistanceLevels?.length > 0,
-      description: 'Análise de linhas de tendência e níveis de suporte/resistência',
-      buyScore: recommendation.action === 'BUY' ? confidence * 0.4 : 0,
-      sellScore: recommendation.action === 'SELL' ? confidence * 0.4 : 0,
-    },
-    'fibonacci': {
-      found: enhancedAnalysis.visualAnalysis?.fibonacciLevels?.length > 0,
-      description: 'Análise de níveis de retração e extensão de Fibonacci',
-      buyScore: recommendation.action === 'BUY' ? confidence * 0.3 : 0,
-      sellScore: recommendation.action === 'SELL' ? confidence * 0.3 : 0,
-    },
-    'candlePatterns': {
-      found: enhancedAnalysis.visualAnalysis?.candlePatterns?.length > 0,
-      description: 'Detecção de padrões de candlesticks japoneses',
-      buyScore: recommendation.action === 'BUY' ? confidence * 0.5 : 0,
-      sellScore: recommendation.action === 'SELL' ? confidence * 0.5 : 0,
-    },
-    'elliottWaves': {
-      found: enhancedAnalysis.microPatterns?.length > 0,
-      description: 'Análise de ondas de Elliott e micro padrões',
-      buyScore: recommendation.action === 'BUY' ? confidence * 0.4 : 0,
-      sellScore: recommendation.action === 'SELL' ? confidence * 0.4 : 0,
-    },
-    'dowTheory': {
-      found: enhancedAnalysis.visualAnalysis?.marketStructure != null,
-      description: 'Aplicação dos princípios da Teoria de Dow',
-      buyScore: recommendation.action === 'BUY' ? confidence * 0.2 : 0,
-      sellScore: recommendation.action === 'SELL' ? confidence * 0.2 : 0,
-    }
-  };
-
-  const typeData = typeMapping[type] || {
-    found: false,
-    description: `Análise de ${type}`,
-    buyScore: 0,
-    sellScore: 0
-  };
-
-  return {
-    found: typeData.found,
-    confidence: typeData.found ? confidence : 0,
-    buyScore: typeData.buyScore,
-    sellScore: typeData.sellScore,
-    type,
-    description: typeData.description,
-    recommendation: typeData.found ? recommendation.reasoning : 'Nenhum padrão detectado',
-    majorPlayers: ['Análise AI', 'Sistema Profissional'],
-    visualMarkers: typeData.found ? generateVisualMarkers(type) : [],
-    details: {
-      type,
-      precision,
-      timestamp: new Date().toISOString(),
-      realAnalysis: true
-    }
-  };
-};
-
-// Função de fallback com simulação (apenas para casos de erro)
-const detectPatternsSimulated = async (
-  imageData: string,
-  analysisTypes: AnalysisType[],
   precision: PrecisionLevel
 ): Promise<Record<string, PatternResult>> => {
-  console.log('⚠️ Usando análise simulada como fallback');
   const results: Record<string, PatternResult> = {};
   
+  // Simular análise para diferentes tipos de padrões
   for (const type of analysisTypes) {
     if (type === 'all') continue;
     
+    // Simular delay baseado na precisão
     const delay = precision === 'alta' ? 800 : precision === 'normal' ? 500 : 200;
     await new Promise(resolve => setTimeout(resolve, delay));
     
+    // Simular resultados baseados no tipo de análise
     results[type] = generateMockPatternResult(type, precision);
   }
   
