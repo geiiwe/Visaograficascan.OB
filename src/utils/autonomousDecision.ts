@@ -6,6 +6,7 @@
 import { ExtendedPatternResult } from './predictionUtils';
 import { performProfessionalAnalysis, MarketContext } from './professionalAnalysisEngine';
 import { checkCandleConfirmation, CandleConfirmation } from './candleConfirmation/candleConfirmationEngine';
+import { detectMarketManipulation, ManipulationAnalysis } from './antiManipulation/marketManipulationDetector';
 
 export interface AutonomousDecision {
   action: "BUY" | "SELL" | "WAIT";
@@ -24,6 +25,7 @@ export interface AutonomousDecision {
     market_grade: "A" | "B" | "C" | "D" | "F";
   };
   candle_confirmation?: CandleConfirmation;
+  manipulation_analysis?: ManipulationAnalysis;
   decision_flow: {
     step: string;
     status: "completed" | "pending" | "failed";
@@ -191,6 +193,7 @@ export const makeAutonomousDecision = (
             market_grade: marketGrade
           },
           candle_confirmation: candleConfirmation,
+          manipulation_analysis: undefined,
           decision_flow: decisionFlow
         };
       }
@@ -233,6 +236,7 @@ export const makeAutonomousDecision = (
             market_grade: marketGrade
           },
           candle_confirmation: candleConfirmation,
+          manipulation_analysis: undefined,
           decision_flow: decisionFlow
         };
       }
@@ -259,7 +263,117 @@ export const makeAutonomousDecision = (
     }
   }
   
-  // PASSO 6: Calcular timing APRIMORADO e taxa de sucesso
+  // PASSO 6: ANÁLISE ANTI-MANIPULAÇÃO
+  let manipulationAnalysis: ManipulationAnalysis | undefined;
+  
+  if (professionalResult.signal !== "WAIT") {
+    decisionFlow.push({
+      step: "manipulation_analysis",
+      status: "pending",
+      details: `Verificando sinais de manipulação para ${professionalResult.signal}`
+    });
+    
+    console.log("🛡️ Executando análise anti-manipulação...");
+    
+    try {
+      // Preparar dados para análise de manipulação
+      const manipulationData = {
+        priceAction: {
+          sudden_moves: factors.market_conditions.volatility > 80,
+          unusual_volume: determineVolumeProfile(factors.visual_analysis) === "high" && factors.market_conditions.volatility > 70,
+          price_gaps: factors.market_conditions.noise > 60,
+          reversal_speed: Math.max(0, 100 - factors.market_conditions.trend_strength)
+        },
+        timeframe,
+        marketType,
+        patterns: Object.keys(factors.technical_indicators).filter(key => factors.technical_indicators[key]?.found),
+        confidence: professionalResult.confidence,
+        visualAnalysis: factors.visual_analysis
+      };
+      
+      manipulationAnalysis = detectMarketManipulation(manipulationData, professionalResult.signal);
+      
+      console.log(`🛡️ Análise anti-manipulação: ${manipulationAnalysis.recommendation} (Score: ${manipulationAnalysis.manipulationScore}/100)`);
+      
+      // VERIFICAR SE DEVE ABORTAR POR MANIPULAÇÃO
+      if (manipulationAnalysis.recommendation === 'ABORT') {
+        decisionFlow.push({
+          step: "manipulation_analysis",
+          status: "failed",
+          details: `MANIPULAÇÃO DETECTADA - Abortando ${professionalResult.signal} (Score: ${manipulationAnalysis.manipulationScore}/100)`
+        });
+        
+        console.log(`🚨 OPERAÇÃO ABORTADA - Manipulação detectada: Score ${manipulationAnalysis.manipulationScore}/100`);
+        
+        return {
+          action: "WAIT",
+          confidence: Math.max(20, professionalResult.confidence - 40),
+          timing: {
+            enter_now: false,
+            wait_seconds: 180, // Aguardar mais tempo após detectar manipulação
+            optimal_window: 90
+          },
+          reasoning: [
+            `🚨 OPERAÇÃO ABORTADA - Manipulação detectada (Score: ${manipulationAnalysis.manipulationScore}/100)`,
+            `🛡️ Risco: ${manipulationAnalysis.riskLevel} - ${manipulationAnalysis.suspiciousPatterns.join(', ')}`,
+            `⚠️ Sistema de proteção anti-manipulação ativado`,
+            "🔄 Aguardando condições de mercado mais seguras",
+            ...manipulationAnalysis.reasoning.slice(0, 2)
+          ],
+          risk_level: "HIGH",
+          expected_success_rate: Math.max(30, professionalResult.confidence - 30),
+          professional_analysis: {
+            confluences: professionalResult.confluences,
+            contraindications: professionalResult.contraindications,
+            market_grade: marketGrade
+          },
+          manipulation_analysis: manipulationAnalysis,
+          candle_confirmation: candleConfirmation,
+          decision_flow: decisionFlow
+        };
+      }
+      
+      // VERIFICAR SE DEVE PROCEDER COM CAUTELA
+      if (manipulationAnalysis.recommendation === 'CAUTION') {
+        decisionFlow.push({
+          step: "manipulation_analysis",
+          status: "completed",
+          details: `Sinais de risco detectados - Procedendo com CAUTELA (Score: ${manipulationAnalysis.manipulationScore}/100)`
+        });
+        
+        console.log(`⚠️ Procedendo com CAUTELA - Score de manipulação: ${manipulationAnalysis.manipulationScore}/100`);
+      } else {
+        decisionFlow.push({
+          step: "manipulation_analysis",
+          status: "completed",
+          details: `Mercado aprovado - Baixo risco de manipulação (Score: ${manipulationAnalysis.manipulationScore}/100)`
+        });
+        
+        console.log(`✅ Mercado seguro - Score de manipulação: ${manipulationAnalysis.manipulationScore}/100`);
+      }
+      
+    } catch (error) {
+      decisionFlow.push({
+        step: "manipulation_analysis",
+        status: "failed",
+        details: `Erro na análise anti-manipulação: ${error}`
+      });
+      
+      console.error("Erro na análise anti-manipulação:", error);
+      
+      // Em caso de erro, proceder com cautela extra
+      manipulationAnalysis = {
+        isManipulated: false,
+        manipulationScore: 30,
+        suspiciousPatterns: ['Erro na análise'],
+        riskLevel: 'MEDIUM',
+        recommendation: 'CAUTION',
+        reasoning: ['Erro na verificação anti-manipulação - procedendo com cautela']
+      };
+    }
+  }
+
+  // PASSO 7: Calcular timing APRIMORADO e taxa de sucesso
   decisionFlow.push({
     step: "timing_calculation",
     status: "completed",
@@ -300,11 +414,21 @@ export const makeAutonomousDecision = (
     successRate = Math.min(95, successRate + confirmationBoost);
   }
   
-  // PASSO 7: Compilar reasoning APRIMORADO
+  // PASSO 8: Compilar reasoning APRIMORADO com anti-manipulação
   const professionalReasoning = [
     `🏆 Setup ULTRA grau ${marketGrade} APROVADO (${professionalResult.confluences} confluências)`,
     `📊 Análise técnica APRIMORADA: ${professionalResult.signal} com ${professionalResult.confidence}% confiança`
   ];
+
+  // Adicionar informações da análise anti-manipulação
+  if (manipulationAnalysis) {
+    if (manipulationAnalysis.recommendation === 'PROCEED') {
+      professionalReasoning.push(`🛡️ Anti-manipulação: APROVADO (Score: ${manipulationAnalysis.manipulationScore}/100)`);
+    } else if (manipulationAnalysis.recommendation === 'CAUTION') {
+      professionalReasoning.push(`⚠️ Anti-manipulação: CAUTELA (Score: ${manipulationAnalysis.manipulationScore}/100)`);
+      professionalReasoning.push(`🔍 Fatores de risco: ${manipulationAnalysis.suspiciousPatterns.join(', ')}`);
+    }
+  }
   
   // Adicionar informações APRIMORADAS de confirmação por vela
   if (candleConfirmation) {
@@ -325,7 +449,8 @@ export const makeAutonomousDecision = (
   professionalReasoning.push(
     `🎯 Taxa de sucesso esperada: ${successRate}%`,
     `⚠️ Nível de risco: ${professionalResult.riskLevel}`,
-    `📚 Baseado em Edwards & Magee + Elder + validação sequencial aprimorada`
+    `🛡️ Proteção anti-manipulação: ${manipulationAnalysis?.recommendation || 'N/A'}`,
+    `📚 Baseado em Edwards & Magee + Elder + validação sequencial + anti-manipulação`
   );
   
   decisionFlow.push({
@@ -349,6 +474,7 @@ export const makeAutonomousDecision = (
       market_grade: marketGrade
     },
     candle_confirmation: candleConfirmation,
+    manipulation_analysis: manipulationAnalysis,
     decision_flow: decisionFlow
   };
 };
@@ -409,6 +535,7 @@ const createWaitDecision = (
       contraindications: professionalResult.contraindications,
       market_grade: marketGrade as any
     },
+    manipulation_analysis: undefined,
     decision_flow: decisionFlow
   };
 };
