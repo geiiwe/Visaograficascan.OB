@@ -20,6 +20,8 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import MarketTypeSelector from "./MarketTypeSelector";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
+import { performComprehensiveScan, type ComprehensiveScanResult } from "@/utils/comprehensiveScanner";
+import { ComprehensiveScannerDisplay } from "./ComprehensiveScannerDisplay";
 
 const GraphAnalyzer = () => {
   // Todos os hooks primeiro para evitar Rules of Hooks violations
@@ -47,7 +49,7 @@ const GraphAnalyzer = () => {
     analysisHistory, 
     cancelAnalysis,
     clearHistory,
-    canAnalyze 
+    canAnalyze
   } = useUnifiedAnalysis();
   
   const [cameraSupported, setCameraSupported] = useState<boolean | null>(null);
@@ -63,6 +65,8 @@ const GraphAnalyzer = () => {
   
   const imageRef = useRef<HTMLImageElement>(null);
   const [croppedImage, setCroppedImage] = useState<string | null>(null);
+  const [comprehensiveScanResult, setComprehensiveScanResult] = useState<ComprehensiveScanResult | null>(null);
+  const [isComprehensiveScanning, setIsComprehensiveScanning] = useState(false);
   const liveIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const isMobile = useIsMobile();
   const { user, loading } = useAuth();
@@ -290,6 +294,33 @@ const GraphAnalyzer = () => {
   const handlePrecisionChange = (level: "baixa" | "normal" | "alta") => {
     setPrecision(level);
     toast.info(`Precisão de análise alterada para ${level}`);
+  };
+
+  const handleComprehensiveScan = async () => {
+    if (!imageData) {
+      toast.error("Nenhuma imagem capturada para análise");
+      return;
+    }
+
+    setIsComprehensiveScanning(true);
+    try {
+      toast.info("🔍 Iniciando scanner completo da região...");
+      
+      const scanResult = await performComprehensiveScan(imageData, chartRegion, {
+        precision,
+        timeframe: selectedTimeframe,
+        marketType,
+        deepScan: true
+      });
+
+      setComprehensiveScanResult(scanResult);
+      toast.success(`✅ Scanner completo finalizado! ${scanResult.technicalDetails.elementsScanned} elementos identificados`);
+    } catch (error) {
+      console.error("Erro no scanner completo:", error);
+      toast.error("Erro ao executar scanner completo");
+    } finally {
+      setIsComprehensiveScanning(false);
+    }
   };
 
   const handleLiveCapture = async (imageData: string) => {
@@ -548,18 +579,51 @@ const GraphAnalyzer = () => {
                       {currentResult.reasoning}
                     </div>
                     
-                    <div className="text-xs text-gray-500">
-                      {currentResult.timestamp.toLocaleTimeString()}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center text-gray-400 py-8">
-                    <Eye className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p>Aguardando análise...</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                     <div className="text-xs text-gray-500">
+                       {currentResult.timestamp.toLocaleTimeString()}
+                     </div>
+
+                     {/* Scanner Completo Button */}
+                     <div className="pt-4 border-t">
+                       <Button
+                         onClick={handleComprehensiveScan}
+                         disabled={isComprehensiveScanning || !imageData}
+                         className="w-full"
+                         variant="outline"
+                       >
+                         <Eye className="mr-2 h-4 w-4" />
+                         {isComprehensiveScanning ? "Executando Scanner..." : "Scanner Completo (Pente Fino)"}
+                       </Button>
+                     </div>
+                   </div>
+                 ) : (
+                   <div className="text-center text-gray-400 py-8">
+                     <Eye className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                     <p>Aguardando análise...</p>
+                     <Button
+                       onClick={handleComprehensiveScan}
+                       disabled={isComprehensiveScanning || !imageData}
+                       className="mt-4"
+                       variant="outline"
+                     >
+                       <Eye className="mr-2 h-4 w-4" />
+                       {isComprehensiveScanning ? "Executando..." : "Scanner Completo"}
+                     </Button>
+                   </div>
+                 )}
+
+                 {/* Exibir resultados do scanner */}
+                 {comprehensiveScanResult && (
+                   <div className="mt-4 pt-4 border-t">
+                     <h4 className="text-white font-semibold mb-2 flex items-center gap-2">
+                       <Eye className="h-4 w-4" />
+                       Scanner Completo
+                     </h4>
+                     <ComprehensiveScannerDisplay scanResult={comprehensiveScanResult} />
+                   </div>
+                 )}
+               </CardContent>
+             </Card>
             
             {/* Estatísticas do modo live */}
             {analysisMode === 'live' && (
