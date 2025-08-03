@@ -76,7 +76,7 @@ export const useAutonomousAI = (
       // Simular processamento mais realista
       await new Promise(resolve => setTimeout(resolve, 1800));
       
-      const decision = makeAutonomousDecision(factors, selectedTimeframe, marketType);
+      const decision = await makeAutonomousDecision(factors, selectedTimeframe, marketType);
       setAiDecision(decision);
       
       console.log("✅ Decisão IA APRIMORADA processada:", {

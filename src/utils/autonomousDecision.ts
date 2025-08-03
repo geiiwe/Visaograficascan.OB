@@ -7,6 +7,7 @@ import { ExtendedPatternResult } from './predictionUtils';
 import { performProfessionalAnalysis, MarketContext } from './professionalAnalysisEngine';
 import { checkCandleConfirmation, CandleConfirmation } from './candleConfirmation/candleConfirmationEngine';
 import { detectMarketManipulation, ManipulationAnalysis } from './antiManipulation/marketManipulationDetector';
+import { performComprehensiveScan, ComprehensiveScanResult } from './comprehensiveScanner';
 
 export interface AutonomousDecision {
   action: "BUY" | "SELL" | "WAIT";
@@ -45,11 +46,11 @@ export interface DecisionFactors {
   technical_indicators: Record<string, ExtendedPatternResult>;
 }
 
-export const makeAutonomousDecision = (
+export const makeAutonomousDecision = async (
   factors: DecisionFactors,
   timeframe: string,
   marketType: string
-): AutonomousDecision => {
+): Promise<AutonomousDecision> => {
   console.log("🎓 IA iniciando decisão APRIMORADA com validação sequencial de velas...");
   
   const decisionFlow: AutonomousDecision['decision_flow'] = [];
@@ -69,7 +70,72 @@ export const makeAutonomousDecision = (
     volumeProfile: determineVolumeProfile(factors.visual_analysis)
   };
   
-  // PASSO 2: Realizar análise ULTRA profissional
+  // PASSO 2: SCANNER COMPLETO DA REGIÃO (PENTE FINO)
+  decisionFlow.push({
+    step: "comprehensive_scan",
+    status: "pending",
+    details: "Executando scanner completo da região - análise detalhada"
+  });
+  
+  let comprehensiveScanResult: ComprehensiveScanResult | undefined;
+  
+  try {
+    console.log("🔍 Executando scanner completo da região...");
+    
+    // Executar scanner detalhado da região selecionada
+    comprehensiveScanResult = await performComprehensiveScan(
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==", // placeholder
+      null,
+      {
+        timeframe,
+        marketType,
+        precision: "alta"
+      }
+    );
+    
+    console.log(`🔍 Scanner completo: ${comprehensiveScanResult.identifiedElements.candles.length} velas, ${comprehensiveScanResult.identifiedElements.patterns.length} padrões, ${comprehensiveScanResult.identifiedElements.levels.length} níveis`);
+    
+    decisionFlow.push({
+      step: "comprehensive_scan",
+      status: "completed",
+      details: `Scanner: ${comprehensiveScanResult.identifiedElements.candles.length} velas, ${comprehensiveScanResult.identifiedElements.patterns.length} padrões, ${comprehensiveScanResult.identifiedElements.levels.length} níveis, Qualidade: ${comprehensiveScanResult.regionAnalysis.quality.toFixed(1)}%`
+    });
+    
+    // Verificar se a qualidade da região é suficiente
+    if (comprehensiveScanResult.regionAnalysis.quality < 70) {
+      decisionFlow.push({
+        step: "quality_check",
+        status: "failed",
+        details: `Qualidade da região insuficiente: ${comprehensiveScanResult.regionAnalysis.quality.toFixed(1)}% (mínimo 70%)`
+      });
+      
+      console.log(`❌ Região rejeitada: Qualidade ${comprehensiveScanResult.regionAnalysis.quality.toFixed(1)}% insuficiente`);
+      
+      return createWaitDecision(
+        "F",
+        { confidence: 30, confluences: 0, contraindications: ["Qualidade de imagem insuficiente"], reasoning: [] },
+        decisionFlow,
+        `Qualidade da região insuficiente: ${comprehensiveScanResult.regionAnalysis.quality.toFixed(1)}%`
+      );
+    }
+    
+    decisionFlow.push({
+      step: "quality_check",
+      status: "completed",
+      details: `Qualidade aprovada: ${comprehensiveScanResult.regionAnalysis.quality.toFixed(1)}% - Prosseguindo com análise`
+    });
+    
+  } catch (error) {
+    decisionFlow.push({
+      step: "comprehensive_scan",
+      status: "failed",
+      details: `Erro no scanner: ${error}`
+    });
+    
+    console.error("Erro no scanner completo:", error);
+  }
+
+  // PASSO 3: Realizar análise ULTRA profissional
   decisionFlow.push({
     step: "professional_analysis",
     status: "completed",
