@@ -28,6 +28,7 @@ import { performEnhancedVisualAnalysis } from '@/utils/enhancedVisualAnalysis';
 import { enhancedPrepareForAnalysis } from '@/utils/enhancedImageProcessing';
 import { analyzeMicroConsolidations, analyzeCandleSize, analyzeRetracements } from '@/utils/microPatternAnalysis';
 import { identifyClassicPatterns } from '@/utils/classicPatterns/chartPatternEngine';
+import { performDetailedCandleAnalysis } from '@/utils/candleByCandle/detailedCandleAnalysis';
 
 export interface ComprehensiveAnalysisResult {
   timestamp: Date;
@@ -58,6 +59,7 @@ export interface ComprehensiveAnalysisResult {
     classicPatterns: any[];
     visualPatterns: any[];
     candlestickPatterns: any[];
+    detailedCandleAnalysis: any;
   };
   
   // Análises de Contexto
@@ -148,6 +150,12 @@ export const useAdvancedAnalysisArsenal = () => {
       const mockPriceData = [100, 102, 98, 105, 103, 107, 104, 109];
       const mockVolumeData = [1000, 1200, 800, 1500, 1100, 1800, 900, 2000];
       
+      // ===== NOVA ANÁLISE VELA A VELA =====
+      setCurrentStage('Analisando Vela a Vela (Máximas/Mínimas)...');
+      setAnalysisProgress(45);
+      
+      const detailedCandleAnalysis = performDetailedCandleAnalysis(imageData, selectedTimeframe);
+      
       const patternAnalysis = {
         microPatterns: [
           analyzeMicroConsolidations(mockPriceData, selectedTimeframe),
@@ -156,7 +164,8 @@ export const useAdvancedAnalysisArsenal = () => {
         ],
         classicPatterns: identifyClassicPatterns(mockPriceData, mockVolumeData, selectedTimeframe),
         visualPatterns: [], // Simplificado para compatibilidade
-        candlestickPatterns: [] // Integrar com detecção de candles existente
+        candlestickPatterns: [], // Integrar com detecção de candles existente
+        detailedCandleAnalysis
       };
 
       // ===== FASE 4: ANÁLISES DE CONTEXTO (55%) =====
@@ -221,6 +230,11 @@ export const useAdvancedAnalysisArsenal = () => {
       if (technicalAnalysis.divergences.length > 0) signals.push('SELL');
       if (patternAnalysis.classicPatterns.length > 0) {
         signals.push(patternAnalysis.classicPatterns[0].confidence > 70 ? 'BUY' : 'WAIT');
+      }
+      
+      // Adicionar sinais da análise vela a vela
+      if (detailedCandleAnalysis.recommendation.signal !== 'WAIT') {
+        signals.push(detailedCandleAnalysis.recommendation.signal);
       }
       
       // Verificar manipulação
