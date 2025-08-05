@@ -6,6 +6,7 @@
 import { useState, useCallback } from 'react';
 import { useAnalyzer } from '@/context/AnalyzerContext';
 import { useSupabaseAnalysis } from './useSupabaseAnalysis';
+import { performCompleteImageAnalysis } from '@/utils/completeImageAnalysis';
 import { useAuth } from './useAuth';
 import { toast } from 'sonner';
 
