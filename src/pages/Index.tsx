@@ -3,7 +3,7 @@ import { AnalyzerProvider } from "@/context/AnalyzerContext";
 import GraphAnalyzer from "@/components/GraphAnalyzer";
 import DisclaimerAlert from "@/components/DisclaimerAlert";
 import AuthButton from "@/components/AuthButton";
-import { BarChart3, Camera, ChartLine, TrendingUp, LineChart, Activity, BarChart4, Fingerprint, CandlestickChart, TrendingDown, BarChart, ShieldCheck, Star, Award, Clock, BookOpen, AlertTriangle, HelpCircle } from "lucide-react";
+import { BarChart3, Camera, ChartLine, TrendingUp, LineChart, Activity, BarChart4, Fingerprint, CandlestickChart, TrendingDown, BarChart, ShieldCheck, Star, Award, Clock, BookOpen, AlertTriangle, HelpCircle, Upload } from "lucide-react";
 
 const Index = () => {
   return (
@@ -29,6 +29,26 @@ const Index = () => {
         <main className="py-4">
           <GraphAnalyzer />
           <DisclaimerAlert showOnStartup={true} />
+          
+          {/* Image Upload Section */}
+          <div className="max-w-4xl mx-auto px-4 mt-6">
+            <div className="bg-gradient-to-r from-trader-blue/20 to-trader-green/20 rounded-lg p-6 border border-trader-blue/30">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-xl font-bold text-white mb-2">Análise Manual de Imagens</h2>
+                  <p className="text-trader-gray">Upload uma imagem da galeria para análises detalhadas e seleção de regiões específicas</p>
+                </div>
+                <Camera className="h-12 w-12 text-trader-blue" />
+              </div>
+              <a 
+                href="/upload-analysis" 
+                className="inline-flex items-center px-4 py-2 bg-trader-blue hover:bg-trader-blue/80 text-white rounded-lg transition-colors"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Fazer Upload e Analisar
+              </a>
+            </div>
+          </div>
           
           {/* Educational Tooltip Section com transparência melhorada */}
           <div className="max-w-4xl mx-auto px-4 mt-4">

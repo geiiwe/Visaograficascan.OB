@@ -3,8 +3,9 @@ import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Auth from './pages/Auth';
-import GraphAnalyzer from './components/GraphAnalyzer';
+import Index from './pages/Index';
 import Dashboard from './pages/Dashboard';
+import UploadAnalysis from './pages/UploadAnalysis';
 import AuthButton from './components/AuthButton';
 import { Toaster } from 'sonner';
 import { AnalyzerProvider } from './context/AnalyzerContext';
@@ -108,7 +109,15 @@ function App() {
                 path="/" 
                 element={
                   <ProtectedRoute>
-                    <GraphAnalyzer />
+                    <Index />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/upload-analysis" 
+                element={
+                  <ProtectedRoute>
+                    <UploadAnalysis />
                   </ProtectedRoute>
                 } 
               />
