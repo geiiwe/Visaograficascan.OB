@@ -5,12 +5,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAnalyzer } from '@/context/AnalyzerContext';
 import ManualAnalysisInterface from './ManualAnalysisInterface';
 import { toast } from 'sonner';
+import { performCompleteImageAnalysis, CompleteImageAnalysisResult } from '@/utils/completeImageAnalysis';
+import { CompleteAnalysisDisplay } from '@/components/CompleteAnalysisDisplay';
+import ProcessingIndicator from '@/components/overlay/ProcessingIndicator';
 
 export const ImageUploadAnalysis = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragActive, setDragActive] = useState(false);
-  const { imageData, setImageData, analysisMode, setAnalysisMode } = useAnalyzer();
-
+  const { imageData, setImageData, analysisMode, setAnalysisMode, precision, selectedTimeframe, marketType, chartRegion, isAnalyzing, setIsAnalyzing } = useAnalyzer();
+  const [completeAnalysis, setCompleteAnalysis] = useState<CompleteImageAnalysisResult | null>(null);
+  const [processingStage, setProcessingStage] = useState<string>('');
   const handleFiles = (files: FileList) => {
     const file = files[0];
     if (!file) return;
@@ -21,11 +25,30 @@ export const ImageUploadAnalysis = () => {
     }
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       const result = e.target?.result as string;
       setImageData(result);
       setAnalysisMode('photo');
-      toast.success('Imagem carregada com sucesso! Agora você pode fazer análises manuais.');
+      setCompleteAnalysis(null);
+      try {
+        setIsAnalyzing(true);
+        setProcessingStage('Analisando imagem...');
+        const analysis = await performCompleteImageAnalysis(result, {
+          precision,
+          timeframe: selectedTimeframe,
+          marketType,
+          region: chartRegion || undefined,
+        });
+        setCompleteAnalysis(analysis);
+        toast.success('Análise completa concluída!');
+      } catch (err) {
+        console.error(err);
+        toast.error('Falha ao analisar a imagem');
+      } finally {
+        setIsAnalyzing(false);
+        setProcessingStage('');
+        toast.success('Imagem carregada com sucesso! Agora você pode fazer análises manuais.');
+      }
     };
     reader.readAsDataURL(file);
   };
@@ -62,6 +85,8 @@ export const ImageUploadAnalysis = () => {
 
   const clearImage = () => {
     setImageData(null);
+    setCompleteAnalysis(null);
+    setProcessingStage('');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -70,6 +95,7 @@ export const ImageUploadAnalysis = () => {
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
+      <ProcessingIndicator processingStage={processingStage} />
       <Card className="bg-trader-panel/90 backdrop-blur-sm border-trader-blue/20">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-white">
@@ -161,6 +187,10 @@ export const ImageUploadAnalysis = () => {
           )}
         </CardContent>
       </Card>
+
+      {completeAnalysis && (
+        <CompleteAnalysisDisplay analysis={completeAnalysis} />
+      )}
 
       {imageData && (
         <Card className="bg-trader-panel/90 backdrop-blur-sm border-trader-green/20">
