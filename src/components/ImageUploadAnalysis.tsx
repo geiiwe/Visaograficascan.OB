@@ -15,6 +15,7 @@ export const ImageUploadAnalysis = () => {
   const { imageData, setImageData, analysisMode, setAnalysisMode, precision, selectedTimeframe, marketType, chartRegion, isAnalyzing, setIsAnalyzing } = useAnalyzer();
   const [completeAnalysis, setCompleteAnalysis] = useState<CompleteImageAnalysisResult | null>(null);
   const [processingStage, setProcessingStage] = useState<string>('');
+  const [processingError, setProcessingError] = useState<boolean>(false);
   const handleFiles = (files: FileList) => {
     const file = files[0];
     if (!file) return;
@@ -29,9 +30,11 @@ export const ImageUploadAnalysis = () => {
       const result = e.target?.result as string;
       setImageData(result);
       setAnalysisMode('photo');
+      toast.success('Imagem carregada com sucesso! Agora você pode fazer análises manuais.');
       setCompleteAnalysis(null);
       try {
         setIsAnalyzing(true);
+        setProcessingError(false);
         setProcessingStage('Analisando imagem...');
         const analysis = await performCompleteImageAnalysis(result, {
           precision,
@@ -43,11 +46,12 @@ export const ImageUploadAnalysis = () => {
         toast.success('Análise completa concluída!');
       } catch (err) {
         console.error(err);
+        setProcessingError(true);
+        setProcessingStage('Falha ao analisar a imagem');
         toast.error('Falha ao analisar a imagem');
       } finally {
         setIsAnalyzing(false);
         setProcessingStage('');
-        toast.success('Imagem carregada com sucesso! Agora você pode fazer análises manuais.');
       }
     };
     reader.readAsDataURL(file);
@@ -95,7 +99,7 @@ export const ImageUploadAnalysis = () => {
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
-      <ProcessingIndicator processingStage={processingStage} />
+      <ProcessingIndicator processingStage={processingStage} isError={processingError} />
       <Card className="bg-trader-panel/90 backdrop-blur-sm border-trader-blue/20">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-white">
